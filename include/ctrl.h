@@ -183,12 +183,12 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
     for (size_t i = 0; i < n_qps; i++) {
-        printf("started creating qp\n");
+        //printf("started creating qp\n");
         h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
-        printf("finished creating qp\n");
+        //printf("finished creating qp\n");
         cuda_err_chk(cudaMemcpy(d_qps+i, h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
     }
-    printf("finished creating all qps\n");
+    //printf("finished creating all qps\n");
 
 
     close(fd);

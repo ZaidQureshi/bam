@@ -177,8 +177,7 @@ static long map_user_pages(struct map* map)
             printk(KERN_ERR "Failed to map page for some reason\n");
             return retval;
         }
-        printk("map_user_page: device: %02x:%02x.%1x\tvaddr: %llx\ti: %lu\tdma_addr: %llx\n", map->pdev->bus->number, PCI_SLOT(map->pdev->devfn), PCI_FUNC(map->pdev->devfn),
-            (uint64_t) map->vaddr, i, map->addrs[i]);
+       // printk("map_user_page: device: %02x:%02x.%1x\tvaddr: %llx\ti: %lu\tdma_addr: %llx\n", map->pdev->bus->number, PCI_SLOT(map->pdev->devfn), PCI_FUNC(map->pdev->devfn), (uint64_t) map->vaddr, i, map->addrs[i]);
     }
 
     return 0;
@@ -361,11 +360,11 @@ int map_gpu_memory(struct map* map, struct list* list)
             //printk(KERN_ERR "nvidia_p2p_dma_map_pages() failed for nvme%u: %d\n", j-1, err);
             return err;
         }
-        for (i = 0; i < map->n_addrs; ++i)
-        {
+        //for (i = 0; i < map->n_addrs; ++i)
+        //{
 
-           printk("device: %u\ti: %lu\tpaddr: %llx\n", (j-1), i, (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
-        }
+        //   printk("device: %u\ti: %lu\tpaddr: %llx\n", (j-1), i, (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
+        //}
         if (j == 1) {
             for (i = 0; i < map->n_addrs; ++i)
             {

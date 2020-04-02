@@ -289,9 +289,9 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     *NVM_CMD_CID(&local_copy) = in_queue_id;
     *in_queue_cmd = local_copy;
 
-    for (int i = 0; i < 16; i++) {
-        printf("cmd: %p\tdword[%d] = %x\n", in_queue_cmd, i, local_copy.dword[i]);
-    }
+    //for (int i = 0; i < 16; i++) {
+    //    printf("cmd: %p\tdword[%d] = %x\n", in_queue_cmd, i, local_copy.dword[i]);
+    //}
     std::atomic_thread_fence(std::memory_order_seq_cst);
     // Submit command and wait for completion
     nvm_sq_submit(&admin->asq);
@@ -303,10 +303,10 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
         return ETIME;
     }
     std::atomic_thread_fence(std::memory_order_seq_cst);
-    for (int i = 0; i < 4; i++) {
-        printf("cpl: %p\tdword[%d] = %x\n", in_queue_cpl, i, in_queue_cpl->dword[i]);
+    //for (int i = 0; i < 4; i++) {
+    //    printf("cpl: %p\tdword[%d] = %x\n", in_queue_cpl, i, in_queue_cpl->dword[i]);
 
-    }
+    //}
     //printf("cpl cmd_id: %u\tstatus and phase: %x\n", in_queue_cpl->dword[3] & 0x0000ffff, in_queue_cpl->dword[3] >> 16);
 
     nvm_sq_update(&admin->asq);
@@ -486,8 +486,8 @@ int nvm_aq_create(nvm_aq_ref* handle, const nvm_ctrl_t* ctrl, const nvm_dma_t* w
     // Reset controller
     const struct local_admin* admin = (const struct local_admin*) ref->data;
     nvm_raw_ctrl_reset(ctrl, admin->qmem->ioaddrs[0], admin->qmem->ioaddrs[1]);
-    printf("admin sq vaddr: %p\tsq ioaddr: %lx\n", admin->qmem->vaddr, admin->qmem->ioaddrs[0]);
-    printf("admin cq vaddr: %p\tcq ioaddr: %lx\n", admin->qmem->vaddr+4096, admin->qmem->ioaddrs[1]);
+    //printf("admin sq vaddr: %p\tsq ioaddr: %lx\n", admin->qmem->vaddr, admin->qmem->ioaddrs[0]);
+    //printf("admin cq vaddr: %p\tcq ioaddr: %lx\n", admin->qmem->vaddr+4096, admin->qmem->ioaddrs[1]);
     
     *handle = ref;
     return 0;
