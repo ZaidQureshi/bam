@@ -17,13 +17,13 @@
 
 
 
-static void admin_cq_create(nvm_cmd_t* cmd, const nvm_queue_t* cq, uint64_t ioaddr)
+static void admin_cq_create(nvm_cmd_t* cmd, const nvm_queue_t* cq, uint64_t ioaddr, bool need_prp = false)
 {
     nvm_cmd_header(cmd, 0, NVM_ADMIN_CREATE_CQ, 0);
     nvm_cmd_data_ptr(cmd, ioaddr, 0);
 
     cmd->dword[10] = (((uint32_t) cq->qs - 1) << 16) | cq->no;
-    cmd->dword[11] = (0x0000 << 16) | (0x00 << 1) | 0x01;
+    cmd->dword[11] = (0x0000 << 16) | (0x00 << 1) | (!need_prp);
 }
 
 
@@ -36,15 +36,14 @@ static void admin_cq_delete(nvm_cmd_t* cmd, const nvm_queue_t* cq)
 
 
 
-static void admin_sq_create(nvm_cmd_t* cmd, const nvm_queue_t* sq, const nvm_queue_t* cq, uint64_t ioaddr)
+static void admin_sq_create(nvm_cmd_t* cmd, const nvm_queue_t* sq, const nvm_queue_t* cq, uint64_t ioaddr, bool need_prp = false)
 {
     nvm_cmd_header(cmd, 0, NVM_ADMIN_CREATE_SQ, 0);
     nvm_cmd_data_ptr(cmd, ioaddr, 0);
 
     cmd->dword[10] = (((uint32_t) sq->qs - 1) << 16) | sq->no;
-    cmd->dword[11] = (((uint32_t) cq->no) << 16) | (0x00 << 1) | 0x01;
+    cmd->dword[11] = (((uint32_t) cq->no) << 16) | (0x00 << 1) | (!need_prp);
 }
-
 
 
 static void admin_sq_delete(nvm_cmd_t* cmd, const nvm_queue_t* sq)
@@ -229,7 +228,7 @@ int nvm_admin_get_log_page(nvm_aq_ref ref, uint32_t ns_id, void* ptr, uint64_t i
 
 
 
-int nvm_admin_cq_create(nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs)
+int nvm_admin_cq_create(nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp)
 {
     int err;
     nvm_cmd_t command;
@@ -264,26 +263,25 @@ int nvm_admin_cq_create(nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_
     n_pages = NVM_CQ_PAGES(ctrl, qs);
 
     // We currently only support contiguous memory
-    if (n_pages > 1 && !dma->contiguous)
-    {
-        dprintf("Non-contiguous queues are not supported\n");
-        return NVM_ERR_PACK(NULL, ENOTSUP);
-    }
+    //if (n_pages > 1 && !dma->contiguous) {
+    //    dprintf("Non-contiguous queues are not supported\n");
+    //    return NVM_ERR_PACK(NULL, ENOTSUP);
+    //}
 
     // Do some sanity checking
     if (dma->vaddr == NULL)
     {
         return NVM_ERR_PACK(NULL, EINVAL);
     }
-    else if (n_pages == 0 
-            || n_pages > dma->n_ioaddrs 
-            || offset > dma->n_ioaddrs 
+    else if (n_pages == 0
+            || n_pages > dma->n_ioaddrs
+            || offset > dma->n_ioaddrs
             || offset + n_pages > dma->n_ioaddrs)
     {
         return NVM_ERR_PACK(NULL, EINVAL);
     }
 
-    err = nvm_queue_clear(&queue, ctrl, true, id, qs, 
+    err = nvm_queue_clear(&queue, ctrl, true, id, qs,
             dma->local, NVM_DMA_OFFSET(dma, offset), dma->ioaddrs[offset]);
     if (err != 0)
     {
@@ -293,7 +291,7 @@ int nvm_admin_cq_create(nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_
     memset(&command, 0, sizeof(command));
     memset(&completion, 0, sizeof(completion));
 
-    admin_cq_create(&command, &queue, dma->ioaddrs[offset]);
+    admin_cq_create(&command, &queue, dma->ioaddrs[offset], need_prp);
 
     err = nvm_raw_rpc(ref, &command, &completion);
     if (!nvm_ok(err))
@@ -336,7 +334,7 @@ int nvm_admin_cq_delete(nvm_aq_ref ref, nvm_queue_t* cq)
 
 
 
-int nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs)
+int nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp)
 {
     int err;
     nvm_cmd_t command;
@@ -370,21 +368,22 @@ int nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, 
 
     n_pages = NVM_SQ_PAGES(ctrl, qs);
 
+
     // We currently only support contiguous memory
-    if (n_pages > 1 && !dma->contiguous)
-    {
-        dprintf("Non-contiguous queues are not supported\n");
-        return NVM_ERR_PACK(NULL, ENOTSUP);
-    }
+    //if (n_pages > 1 && !dma->contiguous) {
+    //    dprintf("Non-contiguous queues are not supported\n");
+    //    return NVM_ERR_PACK(NULL, ENOTSUP);
+    //}
+
 
     // Do some sanity checking
     if (dma->vaddr == NULL)
     {
         return NVM_ERR_PACK(NULL, EINVAL);
     }
-    else if (n_pages == 0 
-            || n_pages > dma->n_ioaddrs 
-            || offset > dma->n_ioaddrs 
+    else if (n_pages == 0
+            || n_pages > dma->n_ioaddrs
+            || offset > dma->n_ioaddrs
             || offset + n_pages > dma->n_ioaddrs)
     {
         return NVM_ERR_PACK(NULL, EINVAL);
@@ -399,7 +398,7 @@ int nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, 
 
     memset(&command, 0, sizeof(command));
     memset(&completion, 0, sizeof(completion));
-    admin_sq_create(&command, &queue, cq, dma->ioaddrs[offset]);
+    admin_sq_create(&command, &queue, cq, dma->ioaddrs[offset], need_prp);
 
     err = nvm_raw_rpc(ref, &command, &completion);
     if (!nvm_ok(err))
