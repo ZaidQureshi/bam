@@ -20,6 +20,10 @@
 #include "settings.h"
 #include "event.h"
 #include "queue.h"
+#include "nvm_parallel_queue.h"
+#include "page_cache.h"
+#include "util.h"
+#include <iostream>
 #ifdef __DIS_CLUSTER__
 #include <sisci_api.h>
 #endif
@@ -27,6 +31,135 @@
 using error = std::runtime_error;
 using std::string;
 
+
+
+__device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_byte, const uint64_t num_bytes, const unsigned long long pc_entry) {
+    uint64_t starting_lba = starting_byte >> qp->block_size_log;
+    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
+    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
+
+    uint64_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
+
+    nvm_cmd_t cmd;
+    uint16_t cid = get_cid(&(qp->sq));
+
+    /*
+    nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
+    uint64_t prp1 = pc->prp1[pc_entry];
+    uint64_t prp2 = 0;
+    if (pc->prps)
+        prp2 = pc->prp2[pc_entry];
+
+    nvm_cmd_data_ptr(&cmd, prp1, prp2);
+    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
+    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
+    uint32_t cq_pos = cq_poll(&qp->cq, cid);
+    sq_dequeue(&qp->sq, sq_pos);
+    cq_dequeue(&qp->cq, cq_pos);
+    put_cid(&qp->sq, cid);
+    */
+}
+__global__
+void new_kernel() {
+    printf("in threads\n");
+}
+__global__
+void access_kernel(QueuePair* qp, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count) {
+    printf("in threads\n");
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    unsigned long long v = atomicAdd(req_count, 1);
+
+    if (v < n_reqs) {
+
+       read_data(pc, qp, v*512, 512, v);
+    }
+
+}
+
+int main(int argc, char** argv) {
+
+    Settings settings;
+    try
+    {
+        settings.parseArguments(argc, argv);
+    }
+    catch (const string& e)
+    {
+        fprintf(stderr, "%s\n", e.c_str());
+        fprintf(stderr, "%s\n", Settings::usageString(argv[0]).c_str());
+        return 1;
+    }
+
+
+    cudaDeviceProp properties;
+    if (cudaGetDeviceProperties(&properties, settings.cudaDevice) != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to get CUDA device properties\n");
+        return 1;
+    }
+
+    try {
+        Controller ctrl(settings.controllerPath, settings.nvmNamespace);
+        cudaError_t err = cudaHostRegister((void*) ctrl.ctrl->mm_ptr, NVM_CTRL_MEM_MINSIZE, cudaHostRegisterIoMemory);
+        if (err != cudaSuccess)
+        {
+            throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
+        }
+        //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
+
+        //std::cout << dma.get()->vaddr << std::endl;
+        QueuePair h_qp(ctrl, settings, 1);
+        std::cout << "in main: " << std::hex << h_qp.sq_cid.get() << "raw: " << h_qp.sq.cid<< std::endl;
+        //std::memset(&h_qp, 0, sizeof(QueuePair));
+        //prepareQueuePair(h_qp, ctrl, settings, 1);
+        //const uint32_t ps, const uint64_t np, const uint64_t c_ps, const Settings& settings, const Controller& ctrl)
+        uint64_t page_size = 512;
+        uint64_t n_pages = 1;
+        page_cache_t h_pc(page_size, n_pages, settings, ctrl);
+
+        QueuePair* d_qp;
+        page_cache_t* d_pc;
+        cuda_err_chk(cudaMalloc(&d_qp, sizeof(QueuePair)));
+        cuda_err_chk(cudaMalloc(&d_pc, sizeof(page_cache_t)));
+        std::cout << "cuda malloced\n";
+
+
+        cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
+
+        cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
+
+
+
+        unsigned long long* d_req_count;
+        cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
+        cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
+        std::cout << "atlaunch kernel\n";
+        access_kernel<<<1,1>>>(d_qp, d_pc, 512, 1, d_req_count);
+        //new_kernel<<<1,1>>>();
+        uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
+
+        cuda_err_chk(cudaMemcpy(ret_array, h_pc.meta->pages_dma.get()->vaddr,page_size*n_pages, cudaMemcpyDeviceToHost));
+        hexdump(ret_array, n_pages*page_size);
+/*
+        cudaFree(d_qp);
+        cudaFree(d_pc);
+        cudaFree(d_req_count);
+        free(ret_array);
+*/
+        std::cout << "END\n";
+
+    }
+    catch (const error& e) {
+        fprintf(stderr, "Unexpected error: %s\n", e.what());
+        return 1;
+    }
+
+
+
+}
+
+/*
 
 struct __align__(64) CmdTime
 {
@@ -37,7 +170,7 @@ struct __align__(64) CmdTime
 };
 
 
-__host__ static
+__host__
 std::shared_ptr<CmdTime> createReportingList(size_t numEntries, int device)
 {
     auto err = cudaSetDevice(device);
@@ -57,7 +190,7 @@ std::shared_ptr<CmdTime> createReportingList(size_t numEntries, int device)
 }
 
 
-__host__ static
+__host__
 std::shared_ptr<CmdTime> createReportingList(size_t numEntries)
 {
     CmdTime* list = nullptr;
@@ -73,7 +206,7 @@ std::shared_ptr<CmdTime> createReportingList(size_t numEntries)
 
 
 
-__device__ static
+__device__
 void moveBytes(const void* src, size_t srcOffset, void* dst, size_t dstOffset, size_t size)
 {
     const uint16_t numThreads = blockDim.x;
@@ -82,14 +215,14 @@ void moveBytes(const void* src, size_t srcOffset, void* dst, size_t dstOffset, s
     const ulong4* source = (ulong4*) (((const unsigned char*) src) + srcOffset);
     ulong4* destination = (ulong4*) (((unsigned char*) dst) + dstOffset);
 
-//    for (size_t i = 0, n = size / sizeof(ulong4); i < n; i += numThreads)
-//    {
-//        destination[i + threadNum] = source[i + threadNum];
-//    }
+    for (size_t i = 0, n = size / sizeof(ulong4); i < n; i += numThreads)
+    {
+        destination[i + threadNum] = source[i + threadNum];
+    }
 }
 
 
-__device__ static
+__device__
 void waitForIoCompletion(nvm_queue_t* cq, nvm_queue_t* sq, int* errCode)
 {
     const uint16_t numThreads = blockDim.x;
@@ -103,7 +236,7 @@ void waitForIoCompletion(nvm_queue_t* cq, nvm_queue_t* sq, int* errCode)
 
         if (!NVM_ERR_OK(cpl))
         {
-            //*errCount = *errCount + 1;
+            // *errCount = *errCount + 1;
             *errCode = NVM_ERR_PACK(cpl, 0);
         }
     }
@@ -112,7 +245,7 @@ void waitForIoCompletion(nvm_queue_t* cq, nvm_queue_t* sq, int* errCode)
 }
 
 
-__device__ static
+__device__
 nvm_cmd_t* prepareChunk(QueuePair* qp, nvm_cmd_t* last, const uint64_t ioaddr, uint16_t offset, uint64_t blockOffset, uint32_t currChunk)
 {
     nvm_cmd_t local;
@@ -147,7 +280,7 @@ nvm_cmd_t* prepareChunk(QueuePair* qp, nvm_cmd_t* last, const uint64_t ioaddr, u
     nvm_cmd_header(&local, threadNum, NVM_IO_READ, nvmNamespace);
     nvm_cmd_data(&local, 1, &prpList, chunkPages, addrs);
     nvm_cmd_rw_blks(&local, currBlock + blockOffset, blocksPerChunk);
-    
+
     *cmd = local;
     __threadfence();
     return cmd;
@@ -155,7 +288,7 @@ nvm_cmd_t* prepareChunk(QueuePair* qp, nvm_cmd_t* last, const uint64_t ioaddr, u
 
 
 
-__global__ static 
+__global__
 void moveKernel(void* src, void* dst, size_t chunkSize)
 {
     const uint16_t numThreads = blockDim.x;
@@ -164,7 +297,7 @@ void moveKernel(void* src, void* dst, size_t chunkSize)
 
 
 
-__host__ static inline
+__host__  inline
 void launchMoveKernel(size_t pageSize, void* input, void* src, void* dst, size_t currChunk, const Settings& settings)
 {
     const auto numPages = settings.numPages;
@@ -272,7 +405,7 @@ void readDoubleBuffered(QueuePair* qp, const uint64_t ioaddr, void* src, void* d
             t->moveTime = afterMove;
         }
         __syncthreads();
-    
+
         // Update position and input buffer
         bufferOffset = !bufferOffset;
         currChunk += numThreads;
@@ -354,7 +487,7 @@ void readSingleBuffered(QueuePair* qp, const uint64_t ioaddr, void* src, void* d
             t->moveTime = afterMove;
         }
         __syncthreads();
-    
+
         // Update position and input buffer
         currChunk += numThreads;
         ++i;
@@ -390,7 +523,7 @@ static void printStatistics(const Settings& settings, const cudaDeviceProp& prop
         auto moveBw = times[i].size / moveTime;
         auto totalBw = times[i].size / totalTime;
 
-        fprintf(stdout, "%10zu; %12.3f; %12.3f; %12.3f; %12.3f; %12.3f; %12.3f;\n", 
+        fprintf(stdout, "%10zu; %12.3f; %12.3f; %12.3f; %12.3f; %12.3f; %12.3f;\n",
                 t.size, diskTime, diskBw, moveTime, moveBw, totalTime, totalBw);
         fflush(stdout);
     }
@@ -400,7 +533,7 @@ static void printStatistics(const Settings& settings, const cudaDeviceProp& prop
 static double launchNvmKernel(const Controller& ctrl, BufferPtr destination, const Settings& settings, const cudaDeviceProp& prop)
 {
     QueuePair queuePair;
-    DmaPtr queueMemory = prepareQueuePair(queuePair, ctrl, settings);
+    DmaPtr queueMemory = prepareQueuePair(queuePair, ctrl, settings,1);
 
     const size_t pageSize = ctrl.info.page_size;
     const size_t chunkSize = pageSize * settings.numPages;
@@ -749,3 +882,4 @@ int main(int argc, char** argv)
 #endif
     return 0;
 }
+*/
