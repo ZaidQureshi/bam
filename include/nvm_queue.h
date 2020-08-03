@@ -23,9 +23,7 @@
  *
  * Queue memory must be physically contiguous.
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 __host__
 int nvm_queue_clear(nvm_queue_t* q,            // NVM queue descriptor
                     const nvm_ctrl_t* ctrl,    // NVM controller handle
@@ -35,9 +33,7 @@ int nvm_queue_clear(nvm_queue_t* q,            // NVM queue descriptor
                     bool local,                // Is this local or remote memory
                     volatile void* vaddr,      // Virtual address to queue memory
                     uint64_t ioaddr);          // Bus address to queue memory (as seen from the controller)
-#ifdef __cplusplus
-}
-#endif
+
 
 
 /*
@@ -47,14 +43,10 @@ int nvm_queue_clear(nvm_queue_t* q,            // NVM queue descriptor
  *       not yet deleted, as it will lead to inconsistent state for the
  *       controller.
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 __host__
 void nvm_queue_reset(nvm_queue_t* q);
-#ifdef __cplusplus
-}
-#endif
+
 
 
 
@@ -221,14 +213,10 @@ nvm_cpl_t* nvm_cq_dequeue(nvm_queue_t* cq)
  * Returns a pointer to the completion entry, or NULL if the queue is empty or
  * on timeout.
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 __host__
 nvm_cpl_t* nvm_cq_dequeue_block(nvm_queue_t* cq, uint64_t timeout);
-#ifdef __cplusplus
-}
-#endif
+
 
 
 

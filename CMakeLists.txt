@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.1)
-project (libnvm LANGUAGES C CXX)
+project (libnvm LANGUAGES CUDA C CXX)
 
 set (CMAKE_C_STANDARD 99)
 set (CMAKE_CXX_STANDARD 11)
@@ -9,12 +9,13 @@ find_package (Threads REQUIRED)
 find_package (CUDA 8.0)
 
 
+
 set (DIS "/opt/DIS" CACHE PATH "SISCI install location")
 set (NVIDIA "" CACHE PATH "Path to Nvidia driver source")
 set (KERNEL "/lib/modules/${CMAKE_SYSTEM_VERSION}/build" CACHE PATH "Path to kernel source, or module directory")
 set (FIO "" CACHE PATH "Path to FIO installation")
 
-set (nvidia_archs "30;50;52;60;61;70" CACHE STRING "NVIDIA compute architectures")
+set (nvidia_archs "70" CACHE STRING "NVIDIA compute architectures")
 set (no_smartio_samples false CACHE BOOL "Do not use SISCI for examples")
 set (no_smartio_benchmarks false CACHE BOOL "Do not use SISCI for benchmarks")
 set (no_smartio false CACHE BOOL "Do not use SISCI for library or examples")
@@ -43,10 +44,10 @@ endforeach()
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra ${flags}" CACHE INTERNAL "" FORCE)
 set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG} -g -DDEBUG" CACHE INTERNAL "" FORCE)
 set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORCE)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra" CACHE INTERNAL "" FORCE)
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} -g -DDEBUG" CACHE INTERNAL "" FORCE)
-set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORCE)
-set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -D__CUDA__;-std=c++11;${GPU_ARCHS}")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++11" CACHE INTERNAL "" FORCE)
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} -g -DDEBUG " CACHE INTERNAL "" FORCE)
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -std=c++11" CACHE INTERNAL "" FORCE)
+set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -D__CUDA__ -D__CUDACC__ -g -lineinfo;-std=c++11;${GPU_ARCHS}")
 set (CUDA_NVCC_FLAGS_RELEASE "${CMAKE_NVCC_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORCE)
 
 if (no_cc)
@@ -98,9 +99,9 @@ endif ()
 
 # Library source files
 set (libnvm_root "${PROJECT_SOURCE_DIR}/src")
-file (GLOB libnvm_source "${libnvm_root}/*.c")
-file (GLOB libnvm_dis_source "${libnvm_root}/dis/*.c")
-file (GLOB libnvm_linux_source "${libnvm_root}/linux/*.c")
+file (GLOB libnvm_source "${libnvm_root}/*.cpp")
+file (GLOB libnvm_dis_source "${libnvm_root}/dis/*.cu")
+file (GLOB libnvm_linux_source "${libnvm_root}/linux/*.cpp")
 file (GLOB libnvm_include "${PROJECT_BINARY_DIR}/include/*.h" "${PROJECT_SOURCE_DIR}/include/*.h")
 
 # Module source files
@@ -128,16 +129,16 @@ set (fio_output "${CMAKE_BINARY_DIR}/fio")
 
 
 # Set include directories
-include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include")
+include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/freestanding/include" "/usr/local/cuda/include")
 if (sisci_include)
     include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${sisci_include}" "${sisci_include}/dis")
 endif ()
 
 
 # Create NVME library target
-add_library (libnvm ${libnvm_source} ${libnvm_linux_source}) # TODO: add check for OS
+CUDA_ADD_LIBRARY (libnvm ${libnvm_source} ${libnvm_linux_source}) # TODO: add check for OS
 target_include_directories (libnvm PRIVATE "${libnvm_root}")
-
+target_link_libraries(libnvm ${CUDA_LIBRARIES})
 
 if (sisci_include AND sisci_lib AND NOT no_smartio)
     target_sources (libnvm PRIVATE ${libnvm_dis_source})
@@ -150,6 +151,8 @@ else ()
     message (STATUS "Configuring libnvm without SmartIO")
 
 endif ()
+
+
 
 if (CUDA_FOUND AND NOT no_cuda)
     target_compile_definitions(libnvm PRIVATE _CUDA __CUDA__)
@@ -254,6 +257,7 @@ macro (make_benchmark target binary_name files)
 
         add_dependencies (${target} libnvm)
         target_link_libraries (${target} libnvm)
+        target_link_libraries (${target} ${CUDA_LIBRARIES})
         set_target_properties (${target} PROPERTIES OUTPUT_NAME "nvm-${binary_name}")
 
         list (APPEND benchmark_targets "${target}")
@@ -314,7 +318,6 @@ endif ()
 
 # Add individual benchmarks
 if (CUDA_FOUND AND NOT no_cuda)
-    add_subdirectory ("${benchmarks_root}/latency")
     add_subdirectory ("${benchmarks_root}/cuda")
     add_custom_target (benchmarks DEPENDS ${benchmark_targets})
 endif ()

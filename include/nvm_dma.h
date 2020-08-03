@@ -1,8 +1,5 @@
 #ifndef __NVM_DMA_H__
 #define __NVM_DMA_H__
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <nvm_types.h>
 #include <stddef.h>
@@ -178,7 +175,5 @@ int nvm_dis_dma_map_device(nvm_dma_t** map, const nvm_ctrl_t* ctrl, void* devptr
 
 
 
-#ifdef __cplusplus
-}
-#endif
+
 #endif /* __NVM_DMA_H__ */

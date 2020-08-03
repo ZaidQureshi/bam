@@ -1,8 +1,5 @@
 #ifndef __NVM_CTRL_H__
 #define __NVM_CTRL_H__
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <nvm_types.h>
 #include <stddef.h>
@@ -99,7 +96,4 @@ void nvm_dis_ctrl_unmap_p2p_device(const nvm_ctrl_t* ctrl, sci_smartio_device_t 
 #endif
 
 
-#ifdef __cplusplus
-}
-#endif
 #endif /* __NVM_CTRL_H__ */

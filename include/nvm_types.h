@@ -1,11 +1,9 @@
 #ifndef __NVM_TYPES_H__
 #define __NVM_TYPES_H__
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <stddef.h>
 #include <stdint.h>
+#include <simt/atomic>
 
 #ifndef __CUDACC__
 #define __align__(x)
@@ -77,6 +75,12 @@ typedef struct __align__(32)
 
 
 
+typedef struct __align__(128)
+{
+    simt::atomic<uint64_t, simt::thread_scope_system>  val;
+    uint8_t pad[120];
+} __attribute__((aligned (128))) padded_struct;
+
 /* 
  * NVM queue descriptor.
  *
@@ -89,11 +93,28 @@ typedef struct __align__(32)
  */
 typedef struct __align__(64) 
 {
+    simt::atomic<uint32_t, simt::thread_scope_system> head;
+    uint8_t pad0[124];
+    simt::atomic<uint32_t, simt::thread_scope_system> tail;
+    uint8_t pad1[124];
+    /* padded_struct<simt::atomic<uint32_t, simt::thread_scope_system>> head; */
+    /* padded_struct<simt::atomic<uint32_t, simt::thread_scope_system>> tail; */
+    simt::atomic<uint32_t, simt::thread_scope_system> in_ticket;
+    uint8_t pad2[124];
+    simt::atomic<uint32_t, simt::thread_scope_system> cid_ticket;
+    uint8_t pad3[124];
+    padded_struct* tickets;
+
+    padded_struct* head_mark;
+    padded_struct* tail_mark;
+    padded_struct* cid;
+    uint32_t qs_minus_1;
+    uint32_t qs_log2;
     uint16_t                no;             // Queue number (must be unique per SQ/CQ pair)
     uint16_t                es;             // Queue entry size
     uint32_t                qs;             // Queue size (number of entries)
-    uint16_t                head;           // Queue's head pointer
-    uint16_t                tail;           // Queue's tail pointer
+    //uint16_t                head;           // Queue's head pointer
+    //uint16_t                tail;           // Queue's tail pointer
     int8_t                  phase;          // Current phase tag
     int8_t                  local;          // Is the queue allocated in local memory
     uint32_t                last;           // Used internally to check db writes
@@ -186,7 +207,4 @@ struct nvm_ns_info
 #undef __align__
 #endif
 
-#ifdef __cplusplus
-}
-#endif
 #endif /* __NVM_TYPES_H__ */

@@ -1,8 +1,5 @@
 #ifndef __NVM_AQ_H__
 #define __NVM_AQ_H__
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <nvm_types.h>
 #include <stddef.h>
@@ -77,7 +74,5 @@ void nvm_dis_rpc_disable(nvm_aq_ref ref, uint32_t dis_adapter);
 
 
 
-#ifdef __cplusplus
-}
-#endif
+
 #endif /* #ifdef __NVM_AQ_H__ */

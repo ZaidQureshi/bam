@@ -301,8 +301,8 @@ int nvm_admin_cq_create(nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_
         dprintf("Creating completion queue failed: %s\n", nvm_strerror(err));
         return err;
     }
-
-    *cq = queue;
+    memcpy((void*) cq, (void*) &queue, sizeof(nvm_queue_t));
+    //*cq = queue;
     return NVM_ERR_PACK(NULL, 0);
 }
 
@@ -407,8 +407,8 @@ int nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, 
         dprintf("Creating submission queue failed: %s\n", nvm_strerror(err));
         return err;
     }
-
-    *sq = queue;
+    memcpy((void*) sq, (void*) &queue, sizeof(nvm_queue_t));
+    //*sq = queue;
     return NVM_ERR_PACK(NULL, 0);
 }
 

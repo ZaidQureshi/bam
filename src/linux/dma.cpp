@@ -52,7 +52,7 @@ static int create_mapping_descriptor(struct ioctl_mapping** handle, size_t page_
         return EINVAL;
     }
 
-    struct ioctl_mapping* md = malloc(sizeof(struct ioctl_mapping));
+    struct ioctl_mapping* md = (struct ioctl_mapping*) malloc(sizeof(struct ioctl_mapping));
     if (md == NULL)
     {
         dprintf("Failed to allocate mapping descriptor: %s\n", strerror(errno));

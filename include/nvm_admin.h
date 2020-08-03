@@ -1,8 +1,5 @@
 #ifndef __NVM_ADMIN_H__
 #define __NVM_ADMIN_H__
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <nvm_types.h>
 #include <stddef.h>
@@ -113,7 +110,5 @@ int nvm_admin_get_log_page(nvm_aq_ref ref,
                            uint8_t log_id, 
                            uint64_t log_offset);
 
-#ifdef __cplusplus
-}
-#endif
+
 #endif /* #ifdef __NVM_ADMIN_H__ */
