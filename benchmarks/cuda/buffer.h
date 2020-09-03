@@ -32,19 +32,19 @@ typedef std::shared_ptr<void> BufferPtr;
 DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size);
 
 
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice);
+nvm_dma_t* createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice);
 
-
+/*
 DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, uint32_t adapter, uint32_t id);
 
 
 DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice, uint32_t adapter, uint32_t id);
-
+*/
 
 BufferPtr createBuffer(size_t size);
 
 
-BufferPtr createBuffer(size_t size, int cudaDevice);
+void* createBuffer(size_t size, int cudaDevice);
 
 static void getDeviceMemory(int device, void*& bufferPtr, void*& devicePtr, size_t size)
 {
@@ -159,17 +159,19 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
         nvm_dma_unmap(dma);
         cudaFreeHost(buffer);
     });
+
 }
 
 
 
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
+nvm_dma_t* createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
 {
+    /*
     if (cudaDevice < 0)
     {
         return createDma(ctrl, size);
     }
-
+    */
     nvm_dma_t* dma = nullptr;
     void* bufferPtr = nullptr;
     void* devicePtr = nullptr;
@@ -187,13 +189,22 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
 
     dma->vaddr = bufferPtr;
 
+    return dma;
+    /*
     return DmaPtr(dma, [bufferPtr](nvm_dma_t* dma) {
         nvm_dma_unmap(dma);
         cudaFree(bufferPtr);
         std::cout << "Deleting DMA\n";
     });
+    */
 }
 
+void destroyDma(nvm_dma_t* dma) {
+    void* bufferptr = dma->vaddr;
+    nvm_dma_unmap(dma);
+    cudaFree(bufferptr);
+
+}
 
 
 BufferPtr createBuffer(size_t size)
@@ -213,25 +224,33 @@ BufferPtr createBuffer(size_t size)
 
 
 
-BufferPtr createBuffer(size_t size, int cudaDevice)
+void* createBuffer(size_t size, int cudaDevice)
 {
+    /*
     if (cudaDevice < 0)
     {
         return createBuffer(size);
     }
+    */
 
     void* bufferPtr = nullptr;
 
     getDeviceMemory2(cudaDevice, bufferPtr, size);
     std::cout << "createbuffer: " << std::hex << bufferPtr <<  std::endl;
 
+    return bufferPtr;
+    /*
     return BufferPtr(bufferPtr, [](void* ptr) {
         cudaFree(ptr);
         std::cout << "Deleting Buffer\n";});
+    */
 }
 
+void destroyBuffer(void* ptr) {
+    cudaFree(ptr);
+}
 
-
+/*
 #ifdef __DIS_CLUSTER__
 DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, uint32_t, uint32_t)
 {
@@ -303,6 +322,6 @@ DmaPtr createRemoteDma(const nvm_ctrl_t* ctrl, size_t size)
     return DmaPtr(dma, nvm_dma_unmap);
 }
 #endif
-
+*/
 
 #endif

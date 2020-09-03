@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
 
         //std::cout << dma.get()->vaddr << std::endl;
         QueuePair h_qp(ctrl, settings, 1);
-        std::cout << "in main: " << std::hex << h_qp.sq_cid.get() << "raw: " << h_qp.sq.cid<< std::endl;
+        std::cout << "in main: " << std::hex << h_qp.sq.cid << "raw: " << h_qp.sq.cid<< std::endl;
         //std::memset(&h_qp, 0, sizeof(QueuePair));
         //prepareQueuePair(h_qp, ctrl, settings, 1);
         //const uint32_t ps, const uint64_t np, const uint64_t c_ps, const Settings& settings, const Controller& ctrl)
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
-        cuda_err_chk(cudaMemcpy(ret_array, h_pc.meta->pages_dma.get()->vaddr,page_size*n_pages, cudaMemcpyDeviceToHost));
+        cuda_err_chk(cudaMemcpy(ret_array, h_pc.pages_dma->vaddr,page_size*n_pages, cudaMemcpyDeviceToHost));
         hexdump(ret_array, n_pages*page_size);
 /*
         cudaFree(d_qp);

@@ -238,33 +238,35 @@ struct page_cache_t {
 
     //BufferPtr prp2_list_buf;
     bool prps;
-    page_cache_meta* meta;
+
+    nvm_dma_t* pages_dma;
+    nvm_dma_t* prp_list_dma;
+
 
 
 
 
 page_cache_t(const uint32_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl)
     : page_size(ps), n_pages(np), ctrl_page_size(ctrl.ctrl->page_size) {
-        meta = new page_cache_meta[1];
         page_ticket.val = 0;
         uint64_t cache_size = ps*np;
-        meta->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
-        base_addr = (uint8_t*) meta->pages_dma.get()->vaddr;
+        this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), settings.cudaDevice);
+        base_addr = (uint8_t*) this->pages_dma->vaddr;
         std::cout << "HEREN\n";
-        if (ps <= meta->pages_dma.get()->page_size) {
-            uint64_t how_many_in_one = meta->pages_dma.get()->page_size/ps;
-            meta->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
-            prp1 = (uint64_t*) meta->prp1_buf.get();
+        if (ps <= this->pages_dma->page_size) {
+            uint64_t how_many_in_one = this->pages_dma->page_size/ps;
+            prp1 =  (uint64_t*) createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
 
 
-            std::cout << np << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << meta->pages_dma.get()->n_ioaddrs <<std::endl;
-            uint64_t* temp = new uint64_t[how_many_in_one *  meta->pages_dma.get()->n_ioaddrs];
+
+            std::cout << np << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma->n_ioaddrs <<std::endl;
+            uint64_t* temp = new uint64_t[how_many_in_one *  this->pages_dma->n_ioaddrs];
             if (temp == NULL)
                 std::cout << "NULL\n";
             size_t fined = 0;
-            for (size_t i = 0; (i < meta->pages_dma.get()->n_ioaddrs) && (fined < np); i++) {
+            for (size_t i = 0; (i < this->pages_dma->n_ioaddrs) && (fined < np); i++) {
                 for (size_t j = 0; (j < how_many_in_one)  && (fined < np); j++) {
-                    temp[i*how_many_in_one + j] = ((uint64_t)meta->pages_dma.get()->ioaddrs[i]) + j*ps;
+                    temp[i*how_many_in_one + j] = ((uint64_t)this->pages_dma->ioaddrs[i]) + j*ps;
                 }
             }
             cuda_err_chk(cudaMemcpy(prp1, temp, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
@@ -274,16 +276,16 @@ page_cache_t(const uint32_t ps, const uint64_t np, const Settings& settings, con
             prps = false;
         }
 
-        else if ((ps > meta->pages_dma.get()->page_size) && (ps <= (meta->pages_dma.get()->page_size * 2))) {
-            meta->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
-            prp1 = (uint64_t*) meta->prp1_buf.get();
-            meta->prp2_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
-            prp2 = (uint64_t*) meta->prp2_buf.get();
+        else if ((ps > this->pages_dma->page_size) && (ps <= (this->pages_dma->page_size * 2))) {
+            prp1 = (uint64_t*) createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+
+            prp2 = (uint64_t*) createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
-            for (size_t i = 0; i < meta->pages_dma.get()->n_ioaddrs; i+=2) {
-                temp1[i] = ((uint64_t)meta->pages_dma.get()->ioaddrs[i]);
-                temp2[i] = ((uint64_t)meta->pages_dma.get()->ioaddrs[i+1]);
+            for (size_t i = 0; i < this->pages_dma->n_ioaddrs; i+=2) {
+                temp1[i] = ((uint64_t)this->pages_dma->ioaddrs[i]);
+                temp2[i] = ((uint64_t)this->pages_dma->ioaddrs[i+1]);
             }
             cuda_err_chk(cudaMemcpy(prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
@@ -293,28 +295,28 @@ page_cache_t(const uint32_t ps, const uint64_t np, const Settings& settings, con
             prps = true;
         }
         else {
-            meta->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
-            prp1 = (uint64_t*) meta->prp1_buf.get();
-            uint32_t prp_list_size = meta->pages_dma.get()->page_size * np;
-            meta->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
-            meta->prp2_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
-            prp2 = (uint64_t*) meta->prp2_buf.get();
+            prp1 = (uint64_t*) createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+
+            uint32_t prp_list_size = this->pages_dma->page_size * np;
+            this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), settings.cudaDevice);
+            prp2 = (uint64_t*) createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp3 = (uint64_t*) malloc(prp_list_size);
-            const uint32_t uints_per_page = meta->pages_dma.get()->page_size / sizeof(uint64_t);
-            uint32_t how_many_in_one = ps/meta->pages_dma.get()->page_size;
-            for (size_t i = 0; i < meta->pages_dma.get()->n_ioaddrs; i+=how_many_in_one) {
-                temp1[i] = ((uint64_t)meta->pages_dma.get()->ioaddrs[i]);
-                temp2[i] = ((uint64_t)meta->prp_list_dma.get()->ioaddrs[i]);
+            const uint32_t uints_per_page = this->pages_dma->page_size / sizeof(uint64_t);
+            uint32_t how_many_in_one = ps/this->pages_dma->page_size;
+            for (size_t i = 0; i < this->pages_dma->n_ioaddrs; i+=how_many_in_one) {
+                temp1[i] = ((uint64_t)this->pages_dma->ioaddrs[i]);
+                temp2[i] = ((uint64_t)this->prp_list_dma->ioaddrs[i]);
                 for (size_t j = 0; j < (how_many_in_one-1); j++) {
 
-                    temp3[(i/how_many_in_one)*uints_per_page + j] = ((uint64_t)meta->pages_dma.get()->ioaddrs[i+1+j]);
+                    temp3[(i/how_many_in_one)*uints_per_page + j] = ((uint64_t)this->pages_dma->ioaddrs[i+1+j]);
                 }
             }
             cuda_err_chk(cudaMemcpy(prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            cuda_err_chk(cudaMemcpy(meta->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(this->prp_list_dma->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
 
             free(temp1);
             free(temp2);

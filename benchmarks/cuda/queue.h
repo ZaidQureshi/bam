@@ -19,19 +19,6 @@
 using error = std::runtime_error;
 using std::string;
 
-struct QueuePairMeta {
-    DmaPtr              sq_mem;
-    DmaPtr              cq_mem;
-    DmaPtr              prp_mem;
-    BufferPtr           sq_tickets;
-    BufferPtr           sq_head_mark;
-    BufferPtr           sq_tail_mark;
-    BufferPtr           sq_cid;
-    BufferPtr           cq_tickets;
-    BufferPtr           cq_head_mark;
-    BufferPtr           cq_tail_mark;
-};
-
 struct QueuePair
 {
     uint32_t            pageSize;
@@ -44,17 +31,9 @@ struct QueuePair
     nvm_queue_t         sq;
     nvm_queue_t         cq;
     uint16_t            qp_id;
-    QueuePairMeta*      meta;
-    DmaPtr              sq_mem;
-    DmaPtr              cq_mem;
-    DmaPtr              prp_mem;
-    BufferPtr           sq_tickets;
-    BufferPtr           sq_head_mark;
-    BufferPtr           sq_tail_mark;
-    BufferPtr           sq_cid;
-    BufferPtr           cq_tickets;
-    BufferPtr           cq_head_mark;
-    BufferPtr           cq_tail_mark;
+
+    nvm_dma_t*              sq_mem;
+    nvm_dma_t*              cq_mem;
 
 
 
@@ -63,25 +42,30 @@ struct QueuePair
 #define MAX_CQ_ENTRIES_64K  (64*1024/16)
 
     void init_gpu_specific_struct(const Settings& settings) {
-        this->sq_tickets = createBuffer(this->sq.qs * sizeof(padded_struct), settings.cudaDevice);
-        this->sq_head_mark = createBuffer(this->sq.qs * sizeof(padded_struct), settings.cudaDevice);
-        this->sq_tail_mark = createBuffer(this->sq.qs * sizeof(padded_struct), settings.cudaDevice);
-        this->sq_cid = createBuffer(65536 * sizeof(padded_struct), settings.cudaDevice);
+        this->sq.tickets = (padded_struct*) createBuffer(this->sq.qs * sizeof(padded_struct), settings.cudaDevice);
+        this->sq.head_mark = (padded_struct*) createBuffer(this->sq.qs * sizeof(padded_struct), settings.cudaDevice);
+        this->sq.tail_mark = (padded_struct*) createBuffer(this->sq.qs * sizeof(padded_struct), settings.cudaDevice);
+        this->sq.cid = (padded_struct*) createBuffer(65536 * sizeof(padded_struct), settings.cudaDevice);
+
+        /*
         this->sq.tickets = (padded_struct*) this->sq_tickets.get();
         this->sq.head_mark = (padded_struct*) this->sq_head_mark.get();
         this->sq.tail_mark = (padded_struct*) this->sq_tail_mark.get();
         this->sq.cid = (padded_struct*) this->sq_cid.get();
+        */
         std::cout << "init_gpu_specific: " << std::hex << this->sq.cid <<  std::endl;
         this->sq.qs_minus_1 = this->sq.qs - 1;
         this->sq.qs_log2 = (uint32_t) std::log2(this->sq.qs);
 
 
-        this->cq_tickets = createBuffer(this->cq.qs * sizeof(padded_struct), settings.cudaDevice);
-        this->cq_head_mark = createBuffer(this->cq.qs * sizeof(padded_struct), settings.cudaDevice);
-        this->cq_tail_mark = createBuffer(this->cq.qs * sizeof(padded_struct), settings.cudaDevice);
+        this->cq.tickets = (padded_struct*) createBuffer(this->cq.qs * sizeof(padded_struct), settings.cudaDevice);
+        this->cq.head_mark = (padded_struct*) createBuffer(this->cq.qs * sizeof(padded_struct), settings.cudaDevice);
+        this->cq.tail_mark = (padded_struct*) createBuffer(this->cq.qs * sizeof(padded_struct), settings.cudaDevice);
+        /*
         this->cq.tickets = (padded_struct*) this->cq_tickets.get();
         this->cq.head_mark = (padded_struct*) this->cq_head_mark.get();
         this->cq.tail_mark = (padded_struct*) this->cq_tail_mark.get();
+        */
         this->cq.qs_minus_1 = this->cq.qs - 1;
         this->cq.qs_log2 = (uint32_t) std::log2(this->cq.qs);
 
@@ -142,14 +126,14 @@ struct QueuePair
             for (size_t i = 0; i < iters; i++) {
                 size_t page_64  = i/(64*1024);
                 size_t page_4 = i%(64*1024/ctrl.ctrl->page_size);
-                cpu_vaddrs[i] = this->cq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl.ctrl->page_size);
+                cpu_vaddrs[i] = this->cq_mem->ioaddrs[1 + page_64] + (page_4 * ctrl.ctrl->page_size);
             }
 
-            if (this->cq_mem.get()->vaddr) {
-                cuda_err_chk(cudaMemcpy(this->cq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
+            if (this->cq_mem->vaddr) {
+                cuda_err_chk(cudaMemcpy(this->cq_mem->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
             }
 
-            this->cq_mem.get()->vaddr = (void*)((uint64_t)this->cq_mem.get()->vaddr + 64*1024);
+            this->cq_mem->vaddr = (void*)((uint64_t)this->cq_mem->vaddr + 64*1024);
 
             free(cpu_vaddrs);
         }
@@ -161,21 +145,21 @@ struct QueuePair
             for (size_t i = 0; i < iters; i++) {
                 size_t page_64  = i/(64*1024);
                 size_t page_4 = i%(64*1024/ctrl.ctrl->page_size);
-                cpu_vaddrs[i] = this->sq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl.ctrl->page_size);
+                cpu_vaddrs[i] = this->sq_mem->ioaddrs[1 + page_64] + (page_4 * ctrl.ctrl->page_size);
             }
 
-            if (this->sq_mem.get()->vaddr) {
-                cuda_err_chk(cudaMemcpy(this->sq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
+            if (this->sq_mem->vaddr) {
+                cuda_err_chk(cudaMemcpy(this->sq_mem->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
             }
 
-            this->sq_mem.get()->vaddr = (void*)((uint64_t)this->sq_mem.get()->vaddr + 64*1024);
+            this->sq_mem->vaddr = (void*)((uint64_t)this->sq_mem->vaddr + 64*1024);
 
             free(cpu_vaddrs);
         }
 
         // Create completion queue
         // (nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
-        int status = nvm_admin_cq_create(ctrl.aq_ref, &this->cq, qp_id, this->cq_mem.get(), 0, cq_size, cq_need_prp);
+        int status = nvm_admin_cq_create(ctrl.aq_ref, &this->cq, qp_id, this->cq_mem, 0, cq_size, cq_need_prp);
         if (!nvm_ok(status))
         {
             throw error(string("Failed to create completion queue: ") + nvm_strerror(status));
@@ -192,7 +176,7 @@ struct QueuePair
 
         // Create submission queue
         //  nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
-        status = nvm_admin_sq_create(ctrl.aq_ref, &this->sq, &this->cq, qp_id, this->sq_mem.get(), 0, sq_size, sq_need_prp);
+        status = nvm_admin_sq_create(ctrl.aq_ref, &this->sq, &this->cq, qp_id, this->sq_mem, 0, sq_size, sq_need_prp);
         if (!nvm_ok(status))
         {
             throw error(string("Failed to create submission queue: ") + nvm_strerror(status));
@@ -211,6 +195,17 @@ struct QueuePair
 
 
 
+    }
+    ~QueuePair() {
+        destroyDma(this->sq_mem);
+        destroyDma(this->cq_mem);
+        destroyBuffer(this->sq.tickets);
+        destroyBuffer(this->sq.head_mark);
+        destroyBuffer(this->sq.tail_mark);
+        destroyBuffer(this->sq.cid);
+        destroyBuffer(this->cq.tickets);
+        destroyBuffer(this->cq.head_mark);
+        destroyBuffer(this->cq.tail_mark);
     }
 
 };
