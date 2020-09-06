@@ -15,7 +15,7 @@ set (NVIDIA "" CACHE PATH "Path to Nvidia driver source")
 set (KERNEL "/lib/modules/${CMAKE_SYSTEM_VERSION}/build" CACHE PATH "Path to kernel source, or module directory")
 set (FIO "" CACHE PATH "Path to FIO installation")
 
-set (nvidia_archs "70" CACHE STRING "NVIDIA compute architectures")
+set (nvidia_archs "70;75" CACHE STRING "NVIDIA compute architectures")
 set (no_smartio_samples false CACHE BOOL "Do not use SISCI for examples")
 set (no_smartio_benchmarks false CACHE BOOL "Do not use SISCI for benchmarks")
 set (no_smartio false CACHE BOOL "Do not use SISCI for library or examples")

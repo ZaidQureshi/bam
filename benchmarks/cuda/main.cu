@@ -38,26 +38,33 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
-    uint64_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
+    uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
+
+
 
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
+    printf("cid: %u\n", (unsigned int) cid);
 
-    /*
+
     nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-
+    //if (pc->prps)
+    //    prp2 = pc->prp2[pc_entry];
+    printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) threadIdx.x, (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
+
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
     sq_dequeue(&qp->sq, sq_pos);
     cq_dequeue(&qp->cq, cq_pos);
+
+
     put_cid(&qp->sq, cid);
-    */
+    
+
 }
 __global__
 void new_kernel() {
@@ -72,7 +79,9 @@ void access_kernel(QueuePair* qp, page_cache_t* pc,  uint32_t req_size, uint32_t
 
     if (v < n_reqs) {
 
-       read_data(pc, qp, v*512, 512, v);
+        read_data(pc, qp, v*4096, 4096, v);
+        printf("vaddr: %p\n", pc->base_addr);
+
     }
 
 }
@@ -100,32 +109,28 @@ int main(int argc, char** argv) {
     }
 
     try {
-        Controller ctrl(settings.controllerPath, settings.nvmNamespace);
-        cudaError_t err = cudaHostRegister((void*) ctrl.ctrl->mm_ptr, NVM_CTRL_MEM_MINSIZE, cudaHostRegisterIoMemory);
-        if (err != cudaSuccess)
-        {
-            throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
-        }
+        Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
+        
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 
         //std::cout << dma.get()->vaddr << std::endl;
-        QueuePair h_qp(ctrl, settings, 1);
-        std::cout << "in main: " << std::hex << h_qp.sq.cid << "raw: " << h_qp.sq.cid<< std::endl;
+        //QueuePair h_qp(ctrl, settings, 1);
+        //std::cout << "in main: " << std::hex << h_qp.sq.cid << "raw: " << h_qp.sq.cid<< std::endl;
         //std::memset(&h_qp, 0, sizeof(QueuePair));
         //prepareQueuePair(h_qp, ctrl, settings, 1);
         //const uint32_t ps, const uint64_t np, const uint64_t c_ps, const Settings& settings, const Controller& ctrl)
-        uint64_t page_size = 512;
-        uint64_t n_pages = 1;
+        uint64_t page_size = 8192;
+        uint64_t n_pages = 2;
         page_cache_t h_pc(page_size, n_pages, settings, ctrl);
 
-        QueuePair* d_qp;
+        //QueuePair* d_qp;
         page_cache_t* d_pc;
-        cuda_err_chk(cudaMalloc(&d_qp, sizeof(QueuePair)));
+        //cuda_err_chk(cudaMalloc(&d_qp, sizeof(QueuePair)));
         cuda_err_chk(cudaMalloc(&d_pc, sizeof(page_cache_t)));
         std::cout << "cuda malloced\n";
+        
 
-
-        cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
+        //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
 
@@ -135,11 +140,11 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
-        access_kernel<<<1,1>>>(d_qp, d_pc, 512, 1, d_req_count);
+        access_kernel<<<1, 2>>>(ctrl.d_qps, d_pc, 4096, 64, d_req_count);
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
-        cuda_err_chk(cudaMemcpy(ret_array, h_pc.pages_dma->vaddr,page_size*n_pages, cudaMemcpyDeviceToHost));
+        cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
         hexdump(ret_array, n_pages*page_size);
 /*
         cudaFree(d_qp);

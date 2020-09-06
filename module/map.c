@@ -317,7 +317,9 @@ int map_gpu_memory(struct map* map)
     for (i = 0; i < map->n_addrs; ++i)
     {
         map->addrs[i] = gd->mappings->dma_addresses[i];
+        printk("paddr: %llx\n", (uint64_t) map->addrs[i]);
     }
+    printk("vaddr: %llx\n", (uint64_t) map->vaddr);
     
     return 0;
 }
