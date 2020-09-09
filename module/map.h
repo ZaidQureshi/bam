@@ -22,6 +22,7 @@ struct map
     struct list_node    list;           /* Linked list header */
     struct task_struct* owner;          /* Owner of mapping */
     u64                 vaddr;          /* Starting virtual address */
+    struct list*        ctrl_list;
     struct pci_dev*     pdev;           /* Reference to physical PCI device */
     unsigned long       page_size;      /* Logical page size */
     void*               data;           /* Custom data */
@@ -50,7 +51,7 @@ void unmap_and_release(struct map* map);
 /*
  * Lock and map GPU device memory.
  */
-struct map* map_device_memory(struct list* list, const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages);
+struct map* map_device_memory(struct list* list, const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages, struct list* ctrl_list);
 #endif
 
 

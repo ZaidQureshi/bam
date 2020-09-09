@@ -132,7 +132,7 @@ static long map_ioctl(struct file* file, unsigned int cmd, unsigned long arg)
                 return -EFAULT;
             }
 
-            map = map_device_memory(&device_list, ctrl, request.vaddr_start, request.n_pages);
+            map = map_device_memory(&device_list, ctrl, request.vaddr_start, request.n_pages, &ctrl_list);
 
             if (!IS_ERR_OR_NULL(map))
             {

@@ -8,8 +8,8 @@
 #include "settings.h"
 #include <iostream>
 
-/*
 
+/*
 enum page_state {USE = 1, USE_DIRTY = ((1 << 63) | 1), VALID_DIRTY = (1 << 63), VALID = 0, INVALID = (UINT_MAX & 0x7fffffffffffffff), BUSY = ((UINT_MAX & 0x7fffffffffffffff)-1)};
 
 template <typname T>

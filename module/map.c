@@ -17,7 +17,7 @@
 struct gpu_region
 {
     nvidia_p2p_page_table_t* pages;
-    nvidia_p2p_dma_mapping_t* mappings;
+    nvidia_p2p_dma_mapping_t** mappings;
 };
 #endif
 
@@ -26,6 +26,7 @@ struct gpu_region
 #define GPU_PAGE_SIZE   (1UL << GPU_PAGE_SHIFT)
 #define GPU_PAGE_MASK   ~(GPU_PAGE_SIZE - 1)
 
+uint32_t num_ctrls = 8;
 
 
 static struct map* create_descriptor(const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages)
@@ -49,6 +50,7 @@ static struct map* create_descriptor(const struct ctrl* ctrl, u64 vaddr, unsigne
     map->data = NULL;
     map->release = NULL;
     map->n_addrs = n_pages;
+
 
     for (i = 0; i < map->n_addrs; ++i)
     {
@@ -220,12 +222,26 @@ struct map* map_userspace(struct list* list, const struct ctrl* ctrl, u64 vaddr,
 static void force_release_gpu_memory(struct map* map)
 {
     struct gpu_region* gd = (struct gpu_region*) map->data;
+    struct list* list = map->ctrl_list;
 
     if (gd != NULL)
     {
         if (gd->mappings != NULL)
         {
-            nvidia_p2p_free_dma_mapping(gd->mappings);
+            const struct list_node* element = list_next(&list->head);
+            struct ctrl* ctrl;
+
+            uint32_t j = 0;
+            while (element != NULL)
+            {
+                ctrl = container_of(element, struct ctrl, list);
+                if (gd->mappings[j] != NULL)
+                    nvidia_p2p_dma_unmap_pages(ctrl->pdev, gd->pages, gd->mappings[j++]);
+
+                element = list_next(element);
+            }
+            kfree(gd->mappings);
+
         }
 
         if (gd->pages != NULL)
@@ -249,12 +265,26 @@ static void force_release_gpu_memory(struct map* map)
 void release_gpu_memory(struct map* map)
 {
     struct gpu_region* gd = (struct gpu_region*) map->data;
+    struct list* list = map->ctrl_list;
 
     if (gd != NULL)
     {
         if (gd->mappings != NULL)
         {
-            nvidia_p2p_dma_unmap_pages(map->pdev, gd->pages, gd->mappings);
+            const struct list_node* element = list_next(&list->head);
+            struct ctrl* ctrl;
+
+            uint32_t j = 0;
+            while (element != NULL)
+            {
+                ctrl = container_of(element, struct ctrl, list);
+                if (gd->mappings[j] != NULL)
+                    nvidia_p2p_dma_unmap_pages(ctrl->pdev, gd->pages, gd->mappings[j++]);
+
+                element = list_next(element);
+            }
+            kfree(gd->mappings);
+
         }
 
         if (gd->pages != NULL)
@@ -273,11 +303,14 @@ void release_gpu_memory(struct map* map)
 
 
 #ifdef _CUDA
-int map_gpu_memory(struct map* map)
+int map_gpu_memory(struct map* map, struct list* list)
 {
     unsigned long i;
+    uint32_t j;
     int err;
     struct gpu_region* gd;
+    const struct list_node* element;
+    struct ctrl* ctrl;
 
     gd = kmalloc(sizeof(struct gpu_region), GFP_KERNEL);
     if (gd == NULL)
@@ -286,8 +319,18 @@ int map_gpu_memory(struct map* map)
         return -ENOMEM;
     }
 
+    gd->mappings = (nvidia_p2p_dma_mapping_t**)  kmalloc(sizeof(nvidia_p2p_dma_mapping_t*) * num_ctrls, GFP_KERNEL);
+    if (gd->mappings == NULL)
+    {
+        printk(KERN_CRIT "Failed to allocate mapping descriptor\n");
+        kfree(gd);
+        return -ENOMEM;
+    }
+    for (j = 0; j < num_ctrls; j++)
+        gd->mappings[j] = NULL;
+
     gd->pages = NULL;
-    gd->mappings = NULL;
+    //gd->mappings = NULL;
 
     map->page_size = GPU_PAGE_SIZE;
     map->data = gd;
@@ -301,12 +344,37 @@ int map_gpu_memory(struct map* map)
         return err;
     }
 
-    err = nvidia_p2p_dma_map_pages(map->pdev, gd->pages, &gd->mappings);
-    if (err != 0)
+    element = list_next(&list->head);
+
+
+    j = 0;
+    while (element != NULL)
     {
-        printk(KERN_ERR "nvidia_p2p_dma_map_pages() failed: %d\n", err);
-        return err;
+        ctrl = container_of(element, struct ctrl, list);
+
+        err = nvidia_p2p_dma_map_pages(ctrl->pdev, gd->pages, gd->mappings + (j++));
+        if (err != 0)
+        {
+            printk(KERN_ERR "nvidia_p2p_dma_map_pages() failed for nvme%u: %d\n", j-1, err);
+            return err;
+        }
+        for (i = 0; i < map->n_addrs; ++i)
+        {
+
+            printk("device : %u\tpaddr: %llx\n", (j-1), (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
+        }
+        if (j == 1) {
+            for (i = 0; i < map->n_addrs; ++i)
+            {
+                map->addrs[i] = gd->mappings[0]->dma_addresses[i];
+                printk("paddr: %llx\n", (uint64_t) map->addrs[i]);
+            }
+        }
+        element = list_next(element);
     }
+
+
+
 
     if (map->n_addrs != gd->pages->entries)
     {
@@ -314,11 +382,7 @@ int map_gpu_memory(struct map* map)
     }
 
     map->n_addrs = gd->pages->entries;
-    for (i = 0; i < map->n_addrs; ++i)
-    {
-        map->addrs[i] = gd->mappings->dma_addresses[i];
-        printk("paddr: %llx\n", (uint64_t) map->addrs[i]);
-    }
+
     printk("vaddr: %llx\n", (uint64_t) map->vaddr);
     
     return 0;
@@ -328,7 +392,7 @@ int map_gpu_memory(struct map* map)
 
 
 #ifdef _CUDA
-struct map* map_device_memory(struct list* list, const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages)
+struct map* map_device_memory(struct list* list, const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages, struct list* ctrl_list)
 {
     int err;
     struct map* md = NULL;
@@ -345,8 +409,8 @@ struct map* map_device_memory(struct list* list, const struct ctrl* ctrl, u64 va
     }
 
     md->page_size = GPU_PAGE_SIZE;
-
-    err = map_gpu_memory(md);
+    md->ctrl_list = ctrl_list;
+    err = map_gpu_memory(md, ctrl_list);
     if (err != 0)
     {
         unmap_and_release(md);
