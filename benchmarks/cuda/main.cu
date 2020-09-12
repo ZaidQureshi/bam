@@ -43,7 +43,7 @@ __device__ uint get_smid(void) {
 
 }
 uint32_t n_ctrls = 1;
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
+const char* const ctrls_paths[] = {"/dev/libnvm1", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_byte, const uint64_t num_bytes, const unsigned long long pc_entry) {
     uint64_t starting_lba = starting_byte >> qp->block_size_log;
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
 
         uint64_t total_cache_size = (4ULL*1024ULL*1024ULL*1024ULL);
-        uint64_t page_size = 4*1024;
+        uint64_t page_size = 64*1024;
         uint64_t n_pages = total_cache_size/page_size;
 
         uint32_t b_size = 1024;
