@@ -32,6 +32,16 @@ using error = std::runtime_error;
 using std::string;
 
 
+__device__ uint get_smid(void) {
+
+     uint ret;
+
+     asm("mov.u32 %0, %smid;" : "=r"(ret) );
+
+     return ret;
+
+}
+
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_byte, const uint64_t num_bytes, const unsigned long long pc_entry) {
     uint64_t starting_lba = starting_byte >> qp->block_size_log;
@@ -71,20 +81,24 @@ void new_kernel() {
     printf("in threads\n");
 }
 __global__
-void access_kernel(QueuePair* qp, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count) {
+void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count) {
     printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
     unsigned long long v = atomicAdd(req_count, 1);
 
     if (v < n_reqs) {
-
-        read_data(pc, qp, v*4096, 4096, v);
+        uint32_t smid = get_smid();
+        uint32_t bid = blockIdx.x;
+        read_data(pc, (ctrls[bid].d_qps)+smid, v*req_size, req_size, v);
         printf("vaddr: %p\n", pc->base_addr);
 
     }
 
 }
+
+uint32_t n_ctrls = 4;
+char* ctrls_paths[] = ["/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"];
 
 int main(int argc, char** argv) {
 
@@ -110,6 +124,10 @@ int main(int argc, char** argv) {
 
     try {
         Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
+
+        Controller* ctrls[n_ctrls];
+        for (size_t i = 0 ; i < n_ctrls; i++)
+            ctrls[i] = new Controller(ctrls_path[i], settings.nvmNamespace, settings.cudaDevice);
         
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 
@@ -119,8 +137,15 @@ int main(int argc, char** argv) {
         //std::memset(&h_qp, 0, sizeof(QueuePair));
         //prepareQueuePair(h_qp, ctrl, settings, 1);
         //const uint32_t ps, const uint64_t np, const uint64_t c_ps, const Settings& settings, const Controller& ctrl)
-        uint64_t page_size = 8192;
-        uint64_t n_pages = 2;
+        //
+        Controller* d_ctrls;
+        cuda_err_chk(cudaMalloc(&d_ctrls, n_ctrls*sizeof(Controller)));
+        for (size_t i = 0; i < n_ctrls; i++)
+            cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
+
+        uint64_t total_cache_size = (8ULL*1024ULL*1024ULL*1024ULL);
+        uint64_t page_size = 512;
+        uint64_t n_pages = total_cache_size/page_size;
         page_cache_t h_pc(page_size, n_pages, settings, ctrl);
 
         //QueuePair* d_qp;
@@ -133,19 +158,23 @@ int main(int argc, char** argv) {
         //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
-
+        uint32_t b_size = 1024;
+        uint32_t g_size = 1024;
+        uint64_t n_threads = b_size * g_size;
 
 
         unsigned long long* d_req_count;
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
-        access_kernel<<<1, 2>>>(ctrl.d_qps, d_pc, 4096, 64, d_req_count);
+        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count);
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
         cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
-        hexdump(ret_array, n_pages*page_size);
+        for (size_t i = 0 ; i < n_ctrls; i++)
+            delete ctrls[i];
+        //hexdump(ret_array, n_pages*page_size);
 /*
         cudaFree(d_qp);
         cudaFree(d_pc);

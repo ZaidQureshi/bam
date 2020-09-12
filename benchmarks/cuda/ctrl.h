@@ -28,7 +28,7 @@
 #include "queue.h"
 
 
-#define MAX_QUEUES 2
+#define MAX_QUEUES 1024
 
 
 struct Controller
@@ -148,9 +148,9 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice)
         throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
     }
     page_size = ctrl->page_size;
-    reserveQueues(1,1);
+    reserveQueues(MAX_QUEUES,MAX_QUEUES);
     n_qps = std::min(n_sqs, n_cqs);
-    n_qps = std::min(n_qps, (uint16_t)1);
+    //n_qps = std::min(n_qps, (uint16_t)1);
     printf("SQs: %llu\tCQs: %llu\tn_qps: %llu\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc(&d_qps, sizeof(QueuePair)*n_qps));

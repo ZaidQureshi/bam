@@ -8,8 +8,18 @@
 #include "settings.h"
 #include <iostream>
 
-/*
 
+// enum locality {HIGH_SPATIAL, LOW_SPATIAL, MEDIUM_SPATIAL};
+// template <typname T>
+// stryct array_t {
+//   range_t<T>* ranges;
+//   uint32_t n_ranges;
+
+//   void add_range(start_idx, end_idx, locality l )
+//   {
+//   ranges.push_back(new range(star))
+//   }
+// }
 enum page_state {USE = 1, USE_DIRTY = ((1 << 63) | 1), VALID_DIRTY = (1 << 63), VALID = 0, INVALID = (UINT_MAX & 0x7fffffffffffffff), BUSY = ((UINT_MAX & 0x7fffffffffffffff)-1)};
 
 template <typname T>
@@ -124,7 +134,7 @@ struct range_t {
                         while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                             __nanosleep(100);
                         ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex] = val;
-                        page_states[index].store(VALID, simt::memory_order_release);
+                        page_states[index].store(VALID_DIRTY, simt::memory_order_release);
                         fail = false;
                     }
                     else {
