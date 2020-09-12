@@ -175,10 +175,11 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
 
         double elapsed = after - before;
-        uint64_t ios = g_size*b_size/1000;
-        uint64_t data = ios*page_size/1000;
-        double iops = ios/elapsed;
-        double bandwidth = data/elapsed;
+        uint64_t ios = g_size*b_size;
+        uint64_t data = ios*page_size;
+        double iops = ios/elapsed/1000000;
+        double bandwidth = data/elapsed/1000000;
+        std::cout << "Elapsed: " << elpased << "\tIOS: "<< ios << "\tData: " << data << std::endl;
         std::cout << "IOPs: " << iops << "\tBandwidth: " << bandwidth << std::endl;
         for (size_t i = 0 ; i < n_ctrls; i++)
             delete ctrls[i];
