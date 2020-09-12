@@ -166,11 +166,20 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
+        Event before;
         access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls);
+        Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
         cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
+
+        double elapsed = after - before;
+        uint64_t ios = g_size*b_size/1000;
+        uint64_t data = ios*page_size/1000;
+        double iops = ios/elapsed;
+        double bandwidth = data/elapsed;
+        std::cout << "IOPs: " << iops << "\tBandwidth: " << bandwidth << std::endl;
         for (size_t i = 0 ; i < n_ctrls; i++)
             delete ctrls[i];
         //hexdump(ret_array, n_pages*page_size);
