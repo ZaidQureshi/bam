@@ -263,7 +263,7 @@ struct page_cache_t {
                 temp1[i] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one]);
                 temp2[i] = ((uint64_t) this->prp_list_dma.get()->ioaddrs[i]);
                 for(size_t j = 0; j < (how_many_in_one-1); j++) {
-                    temp3[i*uints_per_page + j] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one + j + 1])
+                    temp3[i*uints_per_page + j] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one + j + 1]);
                 }
             }
             /*
