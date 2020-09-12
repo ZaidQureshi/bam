@@ -260,8 +260,8 @@ struct page_cache_t {
             const uint32_t uints_per_page = this->pages_dma.get()->page_size / sizeof(uint64_t);
             uint32_t how_many_in_one = ps/this->pages_dma.get()->page_size;
             for (size_t i = 0; i < this->pages_dma.get()->n_ioaddrs; i+=how_many_in_one) {
-                temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]);
-                temp2[i] = ((uint64_t)this->prp_list_dma.get()->ioaddrs[i]);
+                temp1[i/how_many_in_one] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]);
+                temp2[i/how_many_in_one] = ((uint64_t)this->prp_list_dma.get()->ioaddrs[i]);
                 for (size_t j = 0; j < (how_many_in_one-1); j++) {
 
                     temp3[(i/how_many_in_one)*uints_per_page + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i+1+j]);
