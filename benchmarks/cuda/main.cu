@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
 
         Controller* ctrls[n_ctrls];
         for (size_t i = 0 ; i < n_ctrls; i++)
-            ctrls[i] = new Controller(ctrls_path[i], settings.nvmNamespace, settings.cudaDevice);
+            ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice);
         
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 
