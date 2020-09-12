@@ -181,7 +181,7 @@ struct page_cache_t {
     uint64_t* prp2;                  //len = num of pages in cache if page_size = ctrl.page_size *2
     //uint64_t* prp_list;              //len = num of pages in cache if page_size > ctrl.page_size *2
     uint64_t    ctrl_page_size;
-    range_t*   ranges;
+    //range_t*   ranges;
     uint64_t n_ranges;
     uint64_t n_range_bits;
     uint64_t n_ranges_mask;
