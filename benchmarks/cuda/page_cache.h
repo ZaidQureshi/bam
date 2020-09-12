@@ -205,6 +205,9 @@ struct page_cache_t {
         base_addr = (uint8_t*) this->pages_dma.get()->vaddr;
         std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
         std::cout << "HEREN\n";
+        const uint32_t uints_per_page = ctrl.ctrl->page_size / sizeof(uint64_t);
+        if (page_size > (ctrl.ns.lba_data_size * uints_per_page))
+            throw error(string("page_cache_t: Can't have such big io reqs"));
         if (ps <= this->pages_dma.get()->page_size) {
             uint64_t how_many_in_one = this->pages_dma.get()->page_size/ps;
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
@@ -257,7 +260,7 @@ struct page_cache_t {
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp3 = (uint64_t*) malloc(prp_list_size);
-            const uint32_t uints_per_page = this->pages_dma.get()->page_size / sizeof(uint64_t);
+
             uint32_t how_many_in_one = ps / this->pages_dma.get()->page_size;
             for (size_t i = 0; i < np; i++) {
                 temp1[i] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one]);
