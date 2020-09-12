@@ -143,8 +143,13 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
 
         uint64_t total_cache_size = (8ULL*1024ULL*1024ULL*1024ULL);
-        uint64_t page_size = 512;
+        uint64_t page_size = 64*1024;
         uint64_t n_pages = total_cache_size/page_size;
+
+        uint32_t b_size = 1024;
+        uint32_t g_size = 1;
+        uint64_t n_threads = b_size * g_size;
+
         page_cache_t h_pc(page_size, n_pages, settings, ctrl);
 
         //QueuePair* d_qp;
@@ -157,9 +162,7 @@ int main(int argc, char** argv) {
         //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
-        uint32_t b_size = 1024;
-        uint32_t g_size = 1;
-        uint64_t n_threads = b_size * g_size;
+
 
 
         unsigned long long* d_req_count;
