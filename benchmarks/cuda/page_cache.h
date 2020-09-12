@@ -215,9 +215,9 @@ struct page_cache_t {
             uint64_t* temp = new uint64_t[how_many_in_one *  this->pages_dma.get()->n_ioaddrs];
             if (temp == NULL)
                 std::cout << "NULL\n";
-            size_t fined = 0;
-            for (size_t i = 0; (i < this->pages_dma.get()->n_ioaddrs) && (fined < np); i++) {
-                for (size_t j = 0; (j < how_many_in_one)  && (fined < np); j++) {
+
+            for (size_t i = 0; (i < this->pages_dma.get()->n_ioaddrs) ; i++) {
+                for (size_t j = 0; (j < how_many_in_one); j++) {
                     temp[i*how_many_in_one + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps;
                 }
             }
@@ -236,9 +236,9 @@ struct page_cache_t {
             prp2 = (uint64_t*) this->prp2_buf.get();
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
-            for (size_t i = 0; i < this->pages_dma.get()->n_ioaddrs; i+=2) {
-                temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]);
-                temp2[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i+1]);
+            for (size_t i = 0; i < np; i++) {
+                temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2]);
+                temp2[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2+1]);
             }
             cuda_err_chk(cudaMemcpy(prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
@@ -258,7 +258,15 @@ struct page_cache_t {
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp3 = (uint64_t*) malloc(prp_list_size);
             const uint32_t uints_per_page = this->pages_dma.get()->page_size / sizeof(uint64_t);
-            uint32_t how_many_in_one = ps/this->pages_dma.get()->page_size;
+            uint32_t how_many_in_one = ps / this->pages_dma.get()->page_size;
+            for (size_t i = 0; i < np; i++) {
+                temp1[i] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one]);
+                temp2[i] = ((uint64_t) this->prp_list_dma.get()->ioaddrs[i]);
+                for(size_t j = 0; j < (how_many_in_one-1); j++) {
+                    temp3[i*uints_per_page + j] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one + j + 1])
+                }
+            }
+            /*
             for (size_t i = 0; i < this->pages_dma.get()->n_ioaddrs; i+=how_many_in_one) {
                 temp1[i/how_many_in_one] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]);
                 temp2[i/how_many_in_one] = ((uint64_t)this->prp_list_dma.get()->ioaddrs[i]);
@@ -267,6 +275,9 @@ struct page_cache_t {
                     temp3[(i/how_many_in_one)*uints_per_page + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i+1+j]);
                 }
             }
+            */
+
+            std::cout << "Done creating PRP\n";
             cuda_err_chk(cudaMemcpy(prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(this->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
