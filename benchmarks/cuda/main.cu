@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
         //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
-        uint32_t b_size = 1024;
+        uint32_t b_size = 32;
         uint32_t g_size = 1;
         uint64_t n_threads = b_size * g_size;
 
