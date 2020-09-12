@@ -93,7 +93,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint32_t smid = get_smid();
         uint32_t bid = blockIdx.x;
         read_data(pc, (ctrls[bid & (num_ctrls - 1)].d_qps)+(smid & (ctrls[bid & (num_ctrls - 1)].n_qps - 1)), v*req_size, req_size, v);
-        //printf("vaddr: %p\n", pc->base_addr);
+        printf("tid: %llu finished\n", (unsigned long long) v);
 
     }
 
