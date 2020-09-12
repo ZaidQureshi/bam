@@ -206,7 +206,7 @@ struct page_cache_t {
         std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
         std::cout << "HEREN\n";
         const uint32_t uints_per_page = ctrl.ctrl->page_size / sizeof(uint64_t);
-        if (page_size > (ctrl.ns.lba_data_size * uints_per_page))
+        if ((page_size > (ctrl.ns.lba_data_size * uints_per_page)) || (np == 0))
             throw error(string("page_cache_t: Can't have such big io reqs"));
         if (ps <= this->pages_dma.get()->page_size) {
             uint64_t how_many_in_one = this->pages_dma.get()->page_size/ps;
