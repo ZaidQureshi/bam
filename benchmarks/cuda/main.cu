@@ -24,6 +24,7 @@
 #include "page_cache.h"
 #include "util.h"
 #include <iostream>
+#include <fstream>
 #ifdef __DIS_CLUSTER__
 #include <sisci_api.h>
 #endif
