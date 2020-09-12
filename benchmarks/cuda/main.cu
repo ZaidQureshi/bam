@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
         std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
         std::ofstream ofile("data", std::ios::binary | std::ios::trunc);
-        ofile.write(ret_array, data);
+        ofile.write((char*)ret_array, data);
         ofile.close();
 
         for (size_t i = 0 ; i < n_ctrls; i++)
