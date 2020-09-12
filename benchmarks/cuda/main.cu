@@ -83,7 +83,7 @@ void new_kernel() {
 }
 __global__
 void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls) {
-    printf("in threads\n");
+    //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
     unsigned long long v = atomicAdd(req_count, 1);
@@ -92,7 +92,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint32_t smid = get_smid();
         uint32_t bid = blockIdx.x;
         read_data(pc, (ctrls[bid & (num_ctrls - 1)].d_qps)+(smid & (ctrls[bid & (num_ctrls - 1)].n_qps - 1)), v*req_size, req_size, v);
-        printf("vaddr: %p\n", pc->base_addr);
+        //printf("vaddr: %p\n", pc->base_addr);
 
     }
 
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
         uint32_t b_size = 1024;
-        uint32_t g_size = 1024;
+        uint32_t g_size = 1;
         uint64_t n_threads = b_size * g_size;
 
 
