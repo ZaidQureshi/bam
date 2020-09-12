@@ -41,7 +41,8 @@ __device__ uint get_smid(void) {
      return ret;
 
 }
-
+uint32_t n_ctrls = 1;
+char* ctrls_paths[] = ["/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"];
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_byte, const uint64_t num_bytes, const unsigned long long pc_entry) {
     uint64_t starting_lba = starting_byte >> qp->block_size_log;
@@ -81,7 +82,7 @@ void new_kernel() {
     printf("in threads\n");
 }
 __global__
-void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count) {
+void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls) {
     printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -90,15 +91,13 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
     if (v < n_reqs) {
         uint32_t smid = get_smid();
         uint32_t bid = blockIdx.x;
-        read_data(pc, (ctrls[bid].d_qps)+smid, v*req_size, req_size, v);
+        read_data(pc, (ctrls[bid & (num_ctrls - 1)].d_qps)+(smid & (ctrls[bid & (num_ctrls - 1)].n_qps - 1)), v*req_size, req_size, v);
         printf("vaddr: %p\n", pc->base_addr);
 
     }
 
 }
 
-uint32_t n_ctrls = 4;
-char* ctrls_paths[] = ["/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"];
 
 int main(int argc, char** argv) {
 
@@ -167,7 +166,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
-        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count);
+        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls);
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
