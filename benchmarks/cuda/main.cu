@@ -179,8 +179,8 @@ int main(int argc, char** argv) {
         uint64_t data = ios*page_size;
         double iops = ios/elapsed/1000000;
         double bandwidth = data/elapsed/1000000;
-        std::cout << "Elapsed: " << elapsed << "\tIOS: "<< ios << "\tData: " << data << std::endl;
-        std::cout << "IOPs: " << iops << "\tBandwidth: " << bandwidth << std::endl;
+        std::cout << std::dec << "Elapsed: " << elapsed << "\tIOS: "<< ios << "\tData: " << data << std::endl;
+        std::cout << std::dec << "IOPs: " << iops << "\tBandwidth: " << bandwidth << std::endl;
         for (size_t i = 0 ; i < n_ctrls; i++)
             delete ctrls[i];
         //hexdump(ret_array, n_pages*page_size);
