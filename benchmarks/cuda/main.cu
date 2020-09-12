@@ -184,6 +184,7 @@ int main(int argc, char** argv) {
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
         std::cout << std::dec << "Elapsed: " << elapsed << "\tIOS: "<< ios << "\tData: " << data << std::endl;
         std::cout << std::dec << "IOPs: " << iops << "\tBandwidth(GB/S): " << bandwidth << std::endl;
+        std::cout << std::dec << ctrls[0]->ctrl.ns.lba_data_size << std::endl;
         for (size_t i = 0 ; i < n_ctrls; i++)
             delete ctrls[i];
         //hexdump(ret_array, n_pages*page_size);
@@ -193,6 +194,7 @@ int main(int argc, char** argv) {
         cudaFree(d_req_count);
         free(ret_array);
 */
+
         std::cout << "END\n";
 
     }
