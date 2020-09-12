@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
         uint64_t n_pages = total_cache_size/page_size;
 
         uint32_t b_size = 1024;
-        uint32_t g_size = 1;
+        uint32_t g_size = 1024;
         uint64_t n_threads = b_size * g_size;
 
         page_cache_t h_pc(page_size, n_pages, settings, ctrl);
