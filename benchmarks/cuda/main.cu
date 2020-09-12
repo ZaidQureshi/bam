@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
         //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
-        uint32_t b_size = 32;
+        uint32_t b_size = 1024;
         uint32_t g_size = 1;
         uint64_t n_threads = b_size * g_size;
 
@@ -178,9 +178,9 @@ int main(int argc, char** argv) {
         uint64_t ios = g_size*b_size;
         uint64_t data = ios*page_size;
         double iops = ((double)ios)/(elapsed/1000000);
-        double bandwidth = ((double)data)/(elapsed/1000000);
+        double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
         std::cout << std::dec << "Elapsed: " << elapsed << "\tIOS: "<< ios << "\tData: " << data << std::endl;
-        std::cout << std::dec << "IOPs: " << iops << "\tBandwidth(B/S): " << bandwidth << std::endl;
+        std::cout << std::dec << "IOPs: " << iops << "\tBandwidth(GB/S): " << bandwidth << std::endl;
         for (size_t i = 0 ; i < n_ctrls; i++)
             delete ctrls[i];
         //hexdump(ret_array, n_pages*page_size);
