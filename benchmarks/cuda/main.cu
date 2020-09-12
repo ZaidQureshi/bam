@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
         //cuda_err_chk(cudaMalloc(&d_qp, sizeof(QueuePair)));
         cuda_err_chk(cudaMalloc(&d_pc, sizeof(page_cache_t)));
         std::cout << "cuda malloced\n";
-        
+
 
         //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
 
@@ -177,6 +177,8 @@ int main(int argc, char** argv) {
 
         cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
 
+
+
         double elapsed = after - before;
         uint64_t ios = g_size*b_size;
         uint64_t data = ios*page_size;
@@ -185,6 +187,11 @@ int main(int argc, char** argv) {
         std::cout << std::dec << "Elapsed: " << elapsed << "\tIOS: "<< ios << "\tData: " << data << std::endl;
         std::cout << std::dec << "IOPs: " << iops << "\tBandwidth(GB/S): " << bandwidth << std::endl;
         std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
+
+        std::ofstream ofile("data", std::ios::binary | std::ios::trunc);
+        ofile.write(ret_array, data);
+        ofile.close();
+
         for (size_t i = 0 ; i < n_ctrls; i++)
             delete ctrls[i];
         //hexdump(ret_array, n_pages*page_size);
