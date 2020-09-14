@@ -97,8 +97,8 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint64_t start_block = assignment[tid]*req_size/ ctrls[ctrl].ns.lba_data_size;
         uint64_t n_blocks = req_size/ ctrls[ctrl].ns.lba_data_size;;
        
-        read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_block, tid);
-        printf("tid: %llu finished\n", (unsigned long long) v);
+        read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
+        //printf("tid: %llu finished\n", (unsigned long long) v);
 
     }
 
