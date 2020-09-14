@@ -256,7 +256,7 @@ struct page_cache_t {
         else {
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
             prp1 = (uint64_t*) this->prp1_buf.get();
-            uint32_t prp_list_size = this->pages_dma.get()->page_size * np;
+            uint32_t prp_list_size =  ctrl.ctrl->page_size  * np;
             this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
             this->prp2_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
             prp2 = (uint64_t*) this->prp2_buf.get();
@@ -266,7 +266,7 @@ struct page_cache_t {
             std::memset(temp1, 0, np * sizeof(uint64_t));
             std::memset(temp2, 0, np * sizeof(uint64_t));
             std::memset(temp3, 0, prp_list_size);
-            uint32_t how_many_in_one = ps / this->pages_dma.get()->page_size;
+            uint32_t how_many_in_one = ps /  ctrl.ctrl->page_size ;
             for (size_t i = 0; i < np; i++) {
                 temp1[i] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one]);
                 temp2[i] = ((uint64_t) this->prp_list_dma.get()->ioaddrs[i]);

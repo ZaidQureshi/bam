@@ -45,12 +45,12 @@ __device__ uint get_smid(void) {
 uint32_t n_ctrls = 1;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
 
-__device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_byte, const uint64_t num_bytes, const unsigned long long pc_entry) {
-    uint64_t starting_lba = starting_byte >> qp->block_size_log;
+__device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
-    uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
+    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
 
 
 
@@ -83,7 +83,7 @@ void new_kernel() {
     printf("in threads\n");
 }
 __global__
-void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls) {
+void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -92,12 +92,12 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
     uint32_t ctrl = bid & (num_ctrls-1);
     uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
 
-    unsigned long long v = atomicAdd(req_count, 1);
 
-    if (v < n_reqs) {
-
+    if (tid < n_reqs) {
+        uint64_t start_block = assignment[tid]*req_size/ ctrls[ctrl].ns.lba_data_size;
+        uint64_t n_blocks = req_size/ ctrls[ctrl].ns.lba_data_size;;
        
-        read_data(pc, (ctrls[ctrl].d_qps)+(queue), v*req_size, req_size, v);
+        read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_block, tid);
         printf("tid: %llu finished\n", (unsigned long long) v);
 
     }
@@ -147,14 +147,15 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_ctrls, n_ctrls*sizeof(Controller)));
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
+        uint32_t b_size = 1024;
+        uint32_t g_size = 160;
+        uint64_t n_threads = b_size * g_size;
 
-        uint64_t total_cache_size = (4ULL*1024ULL*1024ULL*1024ULL);
-        uint64_t page_size = 128*1024;
+
+        uint64_t page_size = 4096;
+        uint64_t total_cache_size = (page_size * n_threads);
         uint64_t n_pages = total_cache_size/page_size;
 
-        uint32_t b_size = 1024;
-        uint32_t g_size = 80;
-        uint64_t n_threads = b_size * g_size;
 
         page_cache_t h_pc(page_size, n_pages, settings, ctrl);
 
@@ -169,6 +170,13 @@ int main(int argc, char** argv) {
 
         cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
 
+        uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
+        for (size_t i = 0; i< n_threads; i++)
+            assignment[i] = rand() % 10000000;
+
+        uint64_t* d_assignment;
+        cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
+        cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
 
 
         unsigned long long* d_req_count;
@@ -176,7 +184,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
         Event before;
-        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_pages, d_req_count, n_ctrls);
+        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
