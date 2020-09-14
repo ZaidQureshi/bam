@@ -216,6 +216,7 @@ struct page_cache_t {
 
             std::cout << np << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma.get()->n_ioaddrs <<std::endl;
             uint64_t* temp = new uint64_t[how_many_in_one *  this->pages_dma.get()->n_ioaddrs];
+            std::memset(temp, 0, how_many_in_one *  this->pages_dma.get()->n_ioaddrs);
             if (temp == NULL)
                 std::cout << "NULL\n";
 
@@ -238,7 +239,9 @@ struct page_cache_t {
             this->prp2_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
             prp2 = (uint64_t*) this->prp2_buf.get();
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
+            std::memset(temp1, 0, np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
+            std::memset(temp2, 0, np * sizeof(uint64_t));
             for (size_t i = 0; i < np; i++) {
                 temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2]);
                 temp2[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2+1]);
@@ -260,7 +263,9 @@ struct page_cache_t {
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp3 = (uint64_t*) malloc(prp_list_size);
-
+            std::memset(temp1, 0, np * sizeof(uint64_t));
+            std::memset(temp2, 0, np * sizeof(uint64_t));
+            std::memset(temp3, 0, prp_list_size);
             uint32_t how_many_in_one = ps / this->pages_dma.get()->page_size;
             for (size_t i = 0; i < np; i++) {
                 temp1[i] = ((uint64_t) this->pages_dma.get()->ioaddrs[i*how_many_in_one]);

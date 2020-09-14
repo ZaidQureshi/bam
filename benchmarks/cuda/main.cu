@@ -86,12 +86,17 @@ __global__
 void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t bid = blockIdx.x;
+    uint32_t smid = get_smid();
+
+    uint32_t ctrl = bid & (num_ctrls-1);
+    uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
 
     unsigned long long v = atomicAdd(req_count, 1);
 
     if (v < n_reqs) {
-        uint32_t smid = get_smid();
-        uint32_t bid = blockIdx.x;
+
+       
         read_data(pc, (ctrls[bid & (num_ctrls - 1)].d_qps)+(smid & (ctrls[bid & (num_ctrls - 1)].n_qps - 1)), v*req_size, req_size, v);
         printf("tid: %llu finished\n", (unsigned long long) v);
 
@@ -148,7 +153,7 @@ int main(int argc, char** argv) {
         uint64_t n_pages = total_cache_size/page_size;
 
         uint32_t b_size = 1024;
-        uint32_t g_size = 1024;
+        uint32_t g_size = 80;
         uint64_t n_threads = b_size * g_size;
 
         page_cache_t h_pc(page_size, n_pages, settings, ctrl);
@@ -171,7 +176,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
         Event before;
-        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls);
+        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_pages, d_req_count, n_ctrls);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
