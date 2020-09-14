@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
+        //Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
 
         Controller* ctrls[n_ctrls];
         for (size_t i = 0 ; i < n_ctrls; i++)
@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
         uint64_t n_pages = total_cache_size/page_size;
 
 
-        page_cache_t h_pc(page_size, n_pages, settings, ctrl);
+        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0]);
 
         //QueuePair* d_qp;
         page_cache_t* d_pc;
