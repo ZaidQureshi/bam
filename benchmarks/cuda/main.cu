@@ -43,7 +43,7 @@ __device__ uint get_smid(void) {
 
 }
 uint32_t n_ctrls = 1;
-const char* const ctrls_paths[] = {"/dev/libnvm1", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_byte, const uint64_t num_bytes, const unsigned long long pc_entry) {
     uint64_t starting_lba = starting_byte >> qp->block_size_log;
@@ -97,7 +97,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
     if (v < n_reqs) {
 
        
-        read_data(pc, (ctrls[bid & (num_ctrls - 1)].d_qps)+(smid & (ctrls[bid & (num_ctrls - 1)].n_qps - 1)), v*req_size, req_size, v);
+        read_data(pc, (ctrls[ctrl].d_qps)+(queue), v*req_size, req_size, v);
         printf("tid: %llu finished\n", (unsigned long long) v);
 
     }
