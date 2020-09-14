@@ -98,7 +98,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint64_t n_blocks = req_size/ ctrls[ctrl].ns.lba_data_size;;
        
         read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
-        printf("tid: %llu finished\n", (unsigned long long) tid);
+        //printf("tid: %llu finished\n", (unsigned long long) tid);
 
     }
 
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
         Controller* ctrls[n_ctrls];
         for (size_t i = 0 ; i < n_ctrls; i++)
             ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice);
-        
+
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 
         //std::cout << dma.get()->vaddr << std::endl;
