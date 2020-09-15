@@ -95,7 +95,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
 
 
     if (tid < n_reqs) {
-        uint64_t start_block = tid;//*req_size/ ctrls[ctrl].ns.lba_data_size;
+        uint64_t start_block = assignment[tid];//*req_size/ ctrls[ctrl].ns.lba_data_size;
         uint64_t n_blocks = 1;//req_size/ ctrls[ctrl].ns.lba_data_size;;
        
         read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
@@ -175,7 +175,7 @@ int main(int argc, char** argv) {
 
         uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
         for (size_t i = 0; i< n_threads; i++)
-            assignment[i] = rand() % 1048576;
+            assignment[i] = rand() % (2*1048576);
 
         uint64_t* d_assignment;
         cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
