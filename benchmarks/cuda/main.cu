@@ -50,7 +50,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
-    uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
+    uint16_t n_blocks = num_bytes/qp->block_size;
 
 
 
