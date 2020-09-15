@@ -100,7 +100,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                    (unsigned long long)ticket, (unsigned long long)id, (unsigned long long) (sq->tickets[pos].val.load(simt::memory_order_acquire)),
                    (unsigned long long)(sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1)), (unsigned long long)(sq->tail.load(simt::memory_order_acquire) & (sq->qs_minus_1)));
         }*/
-        __nanosleep(100);
+        __nanosleep(1000);
     }
 
     volatile nvm_cmd_t* queue_loc = ((volatile nvm_cmd_t*)(sq->vaddr)) + pos;
@@ -203,7 +203,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
         }
         j++;
 
-        __nanosleep(100);
+        __nanosleep(1000);
     }
 }
 
