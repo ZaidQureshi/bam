@@ -83,7 +83,7 @@ void new_kernel() {
     printf("in threads\n");
 }
 __global__
-__launch_bounds__(1024, 2)
+//__launch_bounds__(1024, 2)
 void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
         uint64_t b_size = 1024;
-        uint64_t g_size = 160;
+        uint64_t g_size = 80;
         uint64_t n_threads = b_size * g_size;
 
 
