@@ -99,6 +99,8 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint64_t n_blocks = req_size/ ctrls[ctrl].ns.lba_data_size;;
        
         read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
+        __syncthreads();
+        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
         //printf("tid: %llu finished\n", (unsigned long long) tid);
 
     }
@@ -149,7 +151,7 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
         uint64_t b_size = 32;
-        uint64_t g_size = 1024*32;
+        uint64_t g_size = 160*32;
         uint64_t n_threads = b_size * g_size;
 
 
