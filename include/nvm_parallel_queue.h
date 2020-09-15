@@ -181,7 +181,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
     while (true) {
         uint32_t head = cq->head.load(simt::memory_order_acquire);
 
-        for (size_t i = 0; i < cq->qs_minus_1; i++) {
+        for (size_t i = 0; i < cq->qs; i++) {
             uint32_t cur_head = head + i;
             bool search_phase = ((~(head >> cq->qs_log2)) & 0x01);
             uint32_t loc = cur_head & (cq->qs_minus_1);
