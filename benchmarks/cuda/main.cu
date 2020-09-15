@@ -50,7 +50,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
-    uint16_t n_blocks = 1; num_bytes/qp->block_size;
+    uint16_t n_blocks = num_bytes/qp->block_size;
 
 
 
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
 
 
-        uint32_t b_size = 1024;
+        uint32_t b_size = 1;
         uint32_t g_size = 1;
         uint64_t n_threads = b_size * g_size;
         uint64_t page_size = 128*1024;
