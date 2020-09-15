@@ -151,11 +151,11 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
         uint64_t b_size = 64;
-        uint64_t g_size = 80*16;
+        uint64_t g_size = 160*16;
         uint64_t n_threads = b_size * g_size;
 
 
-        uint64_t page_size = 4*1024;
+        uint64_t page_size = 512;
         uint64_t total_cache_size = (page_size * n_threads);
         uint64_t n_pages = total_cache_size/page_size;
 
