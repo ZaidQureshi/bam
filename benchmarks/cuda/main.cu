@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
 
         uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
         for (size_t i = 0; i< n_threads; i++)
-            assignment[i] = rand() % 10000000;
+            assignment[i] = rand() % 1048576;
 
         uint64_t* d_assignment;
         cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
