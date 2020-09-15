@@ -77,19 +77,17 @@ uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, uint32_t pos, bool is_sq) 
 __device__
 uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
-    /* uint32_t mask = __activemask(); */
-    /* uint32_t active_count = __popc(mask); */
-    /* uint32_t leader = __ffs(mask) - 1; */
-    /* uint32_t lane = lane_id(); */
+    uint32_t mask = __activemask();
+    uint32_t active_count = __popc(mask);
+    uint32_t leader = __ffs(mask) - 1;
+    uint32_t lane = lane_id();
     uint32_t ticket;
-    /* if (lane == leader) { */
-    /*     ticket = sq->in_ticket.fetch_add(active_count, simt::memory_order_acquire); */
-    /* } */
+    if (lane == leader) {
+        ticket = sq->in_ticket.fetch_add(active_count, simt::memory_order_acquire);
+    }
 
-    /* ticket = __shfl_sync(mask, ticket, leader); */
-    /* ticket += __popc(mask & ((1 << lane) - 1)); */
-
-    ticket = sq->in_ticket.fetch_add(1, simt::memory_order_acquire);
+    ticket = __shfl_sync(mask, ticket, leader);
+    ticket += __popc(mask & ((1 << lane) - 1));
 
     uint32_t pos = ticket & (sq->qs_minus_1);
     uint64_t id = get_id(ticket, sq->qs_log2);
@@ -102,7 +100,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                    (unsigned long long)ticket, (unsigned long long)id, (unsigned long long) (sq->tickets[pos].val.load(simt::memory_order_acquire)),
                    (unsigned long long)(sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1)), (unsigned long long)(sq->tail.load(simt::memory_order_acquire) & (sq->qs_minus_1)));
         }*/
-        __nanosleep(1000);
+        __nanosleep(100);
     }
 
     volatile nvm_cmd_t* queue_loc = ((volatile nvm_cmd_t*)(sq->vaddr)) + pos;
@@ -205,7 +203,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
         }
         j++;
 
-        __nanosleep(1000);
+        __nanosleep(100);
     }
 }
 
