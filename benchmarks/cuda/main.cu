@@ -43,7 +43,7 @@ __device__ uint get_smid(void) {
 
 }
 uint32_t n_ctrls = 1;
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
+const char* const ctrls_paths[] = {"/dev/libnvm1", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
