@@ -209,7 +209,8 @@ struct page_cache_t {
         if ((page_size > (ctrl.ns.lba_data_size * uints_per_page)) || (np == 0))
             throw error(string("page_cache_t: Can't have such big io reqs"));
         if (ps <= this->pages_dma.get()->page_size) {
-            uint64_t how_many_in_one = this->pages_dma.get()->page_size/ps;
+            std::cout << "Cond1\n";
+            uint64_t how_many_in_one = ctrl.ctrl->page_size/ps;
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
             prp1 = (uint64_t*) this->prp1_buf.get();
 
