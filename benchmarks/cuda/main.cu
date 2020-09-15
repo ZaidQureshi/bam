@@ -42,7 +42,7 @@ __device__ uint get_smid(void) {
      return ret;
 
 }
-uint32_t n_ctrls = 1;
+uint32_t n_ctrls = 4;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3"};
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
@@ -95,8 +95,8 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
 
 
     if (tid < n_reqs) {
-        uint64_t start_block = assignment[tid]*req_size/ ctrls[ctrl].ns.lba_data_size;
-        uint64_t n_blocks = req_size/ ctrls[ctrl].ns.lba_data_size;;
+        uint64_t start_block = assignment[tid];*req_size/ ctrls[ctrl].ns.lba_data_size;
+        uint64_t n_blocks = 1;req_size/ ctrls[ctrl].ns.lba_data_size;;
        
         read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
         //__syncthreads();
