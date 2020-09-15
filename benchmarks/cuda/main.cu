@@ -50,7 +50,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
-    uint16_t n_blocks =  num_bytes/qp->block_size;
+    uint16_t n_blocks = 1; num_bytes/qp->block_size;
 
 
 
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
 
     try {
         //Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
-
+        cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         Controller* ctrls[n_ctrls];
         for (size_t i = 0 ; i < n_ctrls; i++)
             ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice);
@@ -178,6 +178,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
         std::cout << "atlaunch kernel\n";
+        cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         Event before;
         access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_pages, d_req_count, n_ctrls);
         Event after;
