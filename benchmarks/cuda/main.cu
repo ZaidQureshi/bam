@@ -42,7 +42,7 @@ __device__ uint get_smid(void) {
      return ret;
 
 }
-uint32_t n_ctrls = 5;
+uint32_t n_ctrls = 4;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4"};
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
         uint64_t n_threads = b_size * g_size;
 
 
-        uint64_t page_size = 512;
+        uint64_t page_size = 409;
         uint64_t total_cache_size = (page_size * n_threads);
         uint64_t n_pages = total_cache_size/page_size;
 
