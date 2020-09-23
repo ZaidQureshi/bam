@@ -45,7 +45,7 @@ struct range_t {
         uint64_t subindex = (i * sizeof(T)) & (cache->page_size_minus_1);
         uint64_t expected_state = VALID;
         uint64_t new_state = USE;
-        uint64_t global_address = (index << cache->n_range_bits) | range_id;
+        uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
         bool fail = true;
         T ret;
         do {
@@ -110,7 +110,7 @@ p                        //fill in
         uint64_t subindex = (i * sizeof(T)) & (cache->page_size_minus_1);
         uint64_t expected_state = VALID;
         uint64_t new_state = USE_DIRTY;
-        uint64_t global_address = (index << cache->n_range_bits) | range_id;
+        uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
         bool fail = true;
         T ret;
         do {
@@ -311,7 +311,7 @@ struct page_cache_t {
     uint64_t find_slot(uint64_t address, uint64_t range_id) {
         bool fail = true;
         uint64_t count = 0;
-        uint64_t global_address = (address << n_range_bits) | range_id;
+        uint64_t global_address = (address << n_ranges_bits) | range_id;
         do {
             uint64_t page = this->page_ticket.val.fetch_add(1, simt::memory_order_acquire)  & (this->n_pages_minus_1);
             uint64_t unlocked = UNLOCKED;
