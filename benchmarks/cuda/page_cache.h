@@ -8,7 +8,7 @@
 #include "settings.h"
 #include <iostream>
 
-
+#define FREE 2
 // enum locality {HIGH_SPATIAL, LOW_SPATIAL, MEDIUM_SPATIAL};
 // template <typname T>
 // stryct array_t {
@@ -316,11 +316,20 @@ struct page_cache_t {
         bool fail = true;
         uint64_t count = 0;
         uint64_t global_address = (address << n_ranges_bits) | range_id;
+        uint64_t page = 0;
         do {
-            uint64_t page = this->page_ticket.val.fetch_add(1, simt::memory_order_acquire)  & (this->n_pages_minus_1);
+            page = this->page_ticket.val.fetch_add(1, simt::memory_order_acquire)  & (this->n_pages_minus_1);
             uint64_t unlocked = UNLOCKED;
             bool lock = this->page_take_lock[page].val.compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
-            if ( lock ) {
+            if ( unlocked == FREE ) {
+                lock = this->page_take_lock[page].val.compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
+                if ( lock ) {
+                    this->page_translation[page].val.store(global_address, simt::memory_order_release);
+                    this->page_take_lock[page].val.store(UNLOCKED, simt::memory_order_release);
+                    fail = false;
+                }
+            }
+            else if ( lock ) {
                 uint64_t previous_global_address = this->page_translation[page].val.load(simt::memory_order_acquire);
                 uint64_t previous_range = previous_global_address & n_ranges_mask;
                 uint64_t previous_address = previous_global_address >> n_ranges_bits;
@@ -374,6 +383,7 @@ struct page_cache_t {
 
 
         } while(fail);
+        return page;
     }
 
 
