@@ -321,6 +321,7 @@ struct page_cache_t {
             page = this->page_ticket.val.fetch_add(1, simt::memory_order_acquire)  & (this->n_pages_minus_1);
             uint64_t unlocked = UNLOCKED;
             bool lock = this->page_take_lock[page].val.compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
+            //not assigned to anyone yet
             if ( unlocked == FREE ) {
                 lock = this->page_take_lock[page].val.compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
                 if ( lock ) {
@@ -329,6 +330,7 @@ struct page_cache_t {
                     fail = false;
                 }
             }
+            //assigned to someone and was able to take lock
             else if ( lock ) {
                 uint64_t previous_global_address = this->page_translation[page].val.load(simt::memory_order_acquire);
                 uint64_t previous_range = previous_global_address & n_ranges_mask;
