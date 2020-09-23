@@ -27,7 +27,7 @@ struct page_cache_t;
 
 struct range_states_t {
     padded_struct* page_states;
-}
+};
 
 template <typename T>
 struct range_t {
