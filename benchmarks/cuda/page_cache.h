@@ -25,9 +25,6 @@ enum page_state {USE = 1ULL, USE_DIRTY = ((1ULL << 63) | 1), VALID_DIRTY = (1ULL
 
 struct page_cache_t;
 
-struct range_states_t {
-    padded_struct* page_states;
-};
 
 template <typename T>
 struct range_t {
@@ -37,7 +34,7 @@ struct range_t {
     uint64_t blk_start;
     uint64_t blk_end;
     page_cache_t* cache;
-    range_states_t*  page_states;
+    padded_struct*  page_states;
     padded_struct* page_addresses;
     //padded_struct* page_vals;  //len = num of pages for data
     //
@@ -53,14 +50,14 @@ struct range_t {
         bool fail = true;
         T ret;
         do {
-            bool pass = page_states->page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+            bool pass = page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
             switch (expected_state) {
                 case VALID:
                     uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                     // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
                     ret = ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex];
-                    page_states->page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                    page_states[index].val.fetch_sub(1, simt::memory_order_release);
                     fail = false;
                     break;
                 case BUSY:
@@ -68,7 +65,7 @@ struct range_t {
                     new_state = USE;
                     break;
                 case INVALID:
-                    pass = page_states->page_states[index].val.compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass) {
                         cache->find_slot(index, range_id);
                         //fill in
@@ -76,7 +73,7 @@ struct range_t {
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ret = ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex];
-                        page_states->page_states[index].val.store(VALID, simt::memory_order_release);
+                        page_states[index].val.store(VALID, simt::memory_order_release);
                         fail = false;
                     }
                     else {
@@ -88,13 +85,13 @@ struct range_t {
                     break;
                 default:
                     new_state = expected_state + 1;
-                    pass = page_states->page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ret = ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex];
-                        page_states->page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                        page_states[index].val.fetch_sub(1, simt::memory_order_release);
                         fail = false;
                     }
                     else {
@@ -118,14 +115,14 @@ struct range_t {
         bool fail = true;
         T ret;
         do {
-            bool pass = page_states->page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+            bool pass = page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
             switch (expected_state) {
                 case VALID:
                     uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                     // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
                     ret = ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex];
-                    page_states->page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                    page_states[index].val.fetch_sub(1, simt::memory_order_release);
                     fail = false;
                     break;
                 case BUSY:
@@ -133,7 +130,7 @@ struct range_t {
                     new_state = USE;
                     break;
                 case INVALID:
-                    pass = page_states->page_states[index].val.compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass) {
                         cache->find_slot(index, range_id);
                         //fill in
@@ -141,7 +138,7 @@ struct range_t {
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex] = val;
-                        page_states->page_states[index].val.store(VALID, simt::memory_order_release);
+                        page_states[index].val.store(VALID, simt::memory_order_release);
                         fail = false;
                     }
                     else {
@@ -153,13 +150,13 @@ struct range_t {
                     break;
                 default:
                     new_state = expected_state + 1;
-                    pass = page_states->page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ((T*)(cache->base_addr+(page_trans * cache->page_size)))[subindex] = val;
-                        page_states->page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                        page_states[index].val.fetch_sub(1, simt::memory_order_release);
                         fail = false;
                     }
                     else {
@@ -190,7 +187,7 @@ struct page_cache_t {
     uint64_t* prp2;                  //len = num of pages in cache if page_size = ctrl.page_size *2
     //uint64_t* prp_list;              //len = num of pages in cache if page_size > ctrl.page_size *2
     uint64_t    ctrl_page_size;
-    range_states_t**   ranges;
+    padded_struct**   ranges;
     uint64_t n_ranges;
     uint64_t n_ranges_bits;
     uint64_t n_ranges_mask;
@@ -337,17 +334,17 @@ struct page_cache_t {
                 uint64_t previous_address = previous_global_address >> n_ranges_bits;
                 uint64_t expected_state = VALID;
                 uint64_t new_state = BUSY;
-                bool pass = this->ranges[previous_range]->page_states[previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                bool pass = this->ranges[previous_range][previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
 
                 switch(expected_state) {
                     case VALID:
-                        this->ranges[previous_range]->page_states[previous_address].val.store(INVALID, simt::memory_order_release);
+                        this->ranges[previous_range][previous_address].val.store(INVALID, simt::memory_order_release);
                         fail = false;
                         break;
                     case INVALID:
-                        pass =  this->ranges[previous_range]->page_states[previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                        pass =  this->ranges[previous_range][previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                         if (pass) {
-                            this->ranges[previous_range]->page_states[previous_address].val.store(INVALID, simt::memory_order_release);
+                            this->ranges[previous_range][previous_address].val.store(INVALID, simt::memory_order_release);
                             fail = false;
                         }
                         break;
@@ -355,12 +352,12 @@ struct page_cache_t {
 
 
                         //if ((count > this->n_pages)) {
-                        pass =  this->ranges[previous_range]->page_states[previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                        pass =  this->ranges[previous_range][previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                         if  (pass) {
                             //if ((this->page_dirty_start[page].load(simt::memory_order_acquire) == this->page_dirty_end[page].load(simt::memory_order_acquire))) {
 
                             //writeback
-                            this->ranges[previous_range]->page_states[previous_address].val.store(INVALID, simt::memory_order_release);
+                            this->ranges[previous_range][previous_address].val.store(INVALID, simt::memory_order_release);
 
                             fail = false;
                             //}
