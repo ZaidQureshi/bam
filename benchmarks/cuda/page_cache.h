@@ -24,22 +24,54 @@
 enum page_state {USE = 1ULL, USE_DIRTY = ((1ULL << 63) | 1), VALID_DIRTY = (1ULL << 63), VALID = 0ULL, INVALID = (ULLONG_MAX & 0x7fffffffffffffff), BUSY = ((ULLONG_MAX & 0x7fffffffffffffff)-1)};
 
 struct page_cache_t;
-
+typedef padded_struct* page_states;
 
 template <typename T>
 struct range_t {
     uint64_t index_start;
     uint64_t index_end;
     uint64_t range_id;
+    uint64_t blk_size;
     uint64_t blk_start;
     uint64_t blk_end;
     page_cache_t* cache;
-    padded_struct*  page_states;
+    page_states page_states;
     padded_struct* page_addresses;
     //padded_struct* page_vals;  //len = num of pages for data
     //
 
+    BufferPtr page_states_buff;
+    BufferPtr page_addresses_buff;
 
+    BufferPtr range_buff;
+
+    void* d_range_ptr;
+
+
+    range_t(uint64_t is, uint64_t ie, uint64_t bs, uint64_t be, uint64_t block_size, page_cache_t* c_h) {
+        index_start = is;
+        index_end = ie;
+        range_id = instance_cout++;
+        blk_start = bs;
+        blk_end = be;
+        blk_size = block_size;
+        size_t s = (blk_end-blk_start)*blk_size / c_h->page_size;
+
+        cache = (page_cache_t*) c_h->d_pc;
+        page_states_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
+        pages_states = (pages_states) page_states_buff->get();
+
+        page_addresses_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
+        pages_addresses = (padded_struct*) page_addresses_buff->get();
+
+        range_buff = createBuffer(sizeof(range_t<T>), settings.cudaDevice);
+        d_range_ptr = range_buff.get();
+
+        cuda_err_chk(cudaMemcpy(d_range_ptr, this, sizeof(range_t<T>), cudaMemcpyHostToDevice));
+
+        c_h->add_range(this);
+
+    }
     __device__
     T operator[](size_t i) const {
         uint64_t index = (i * sizeof(T)) >> (cache->page_size_log);
@@ -181,16 +213,18 @@ struct page_cache_t {
     uint64_t n_pages_minus_1;
     padded_struct* page_translation;         //len = num of pages in cache
     padded_struct* page_take_lock;      //len = num of pages in cache
-    padded_struct* page_use_end;      //len = num of pages in cache
     padded_struct page_ticket;
     uint64_t* prp1;                  //len = num of pages in cache
     uint64_t* prp2;                  //len = num of pages in cache if page_size = ctrl.page_size *2
     //uint64_t* prp_list;              //len = num of pages in cache if page_size > ctrl.page_size *2
     uint64_t    ctrl_page_size;
-    padded_struct**   ranges;
+    uint64_t  range_cap;
+    page_states*   ranges;
     uint64_t n_ranges;
     uint64_t n_ranges_bits;
     uint64_t n_ranges_mask;
+
+    void* d_pc;
 
     //BufferPtr prp2_list_buf;
     bool prps;
@@ -198,12 +232,19 @@ struct page_cache_t {
     DmaPtr prp_list_dma;
     BufferPtr prp1_buf;
     BufferPtr prp2_buf;
+    BufferPtr page_translation_buf;
+    BufferPtr page_take_lock_buf;
+    BufferPtr ranges_buf;
 
 
+    uint64_t add_range(range_t* range) {
 
+    }
 
-    page_cache_t(const uint32_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl)
+    page_cache_t(const uint32_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl, const uint64_t max_range)
         : page_size(ps), n_pages(np), ctrl_page_size(ctrl.ctrl->page_size) {
+
+        range_cap = max_range;
 
         page_ticket.val = 0;
         uint64_t cache_size = ps*np;
