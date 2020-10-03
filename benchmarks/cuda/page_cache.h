@@ -260,7 +260,8 @@ struct page_cache_t {
 
     void* d_pc_ptr;
 
-    uint64_t add_range(range_t* range) {
+    template <typename T>
+    uint64_t add_range(range_t<T>* range) {
         range->range_id = n_ranges++;
         h_ranges[range->range_id] = range->page_states;
         cuda_err_chk(cudaMemcpy(ranges, h_ranges, max_range* sizeof(page_states), cudaMemcpyHostToDevice));
@@ -277,14 +278,14 @@ struct page_cache_t {
         page_ticket.val = 0;
 
         ranges_buf = createBuffer(max_range * sizeof(page_states), settings.cudaDevice);
-        ranges = ranges_buf.get();
+        ranges = (page_states*)ranges_buf.get();
         h_ranges = new page_states[max_range];
 
         page_translation_buf = createBuffer(np * sizeof(padded_struct), settings.cudaDevice);
-        page_translation = page_translation_buf.get();
+        page_translation = (padded_struct*)page_translation_buf.get();
 
         page_take_lock_buf = createBuffer(np * sizeof(padded_struct), settings.cudaDevice);
-        page_take_lock = page_take_lock_buf.get();
+        page_take_lock =  (padded_struct*)page_take_lock_buf.get();
 
         padded_struct* tps = new padded_struct[np];
         for (size_t i = 0; i < np; i++)
@@ -394,7 +395,7 @@ struct page_cache_t {
 
 
         pc_buff = createBuffer(sizeof(page_cache_t), settings.cudaDevice);
-        d_pc_ptr = pc_buff->get();
+        d_pc_ptr = pc_buff.get();
         cuda_err_chk(cudaMemcpy(d_pc_ptr, this, sizeof(page_cache_t), cudaMemcpyHostToDevice));
         std::cout << "Finish Making Page Cache\n";
 
