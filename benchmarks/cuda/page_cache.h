@@ -81,6 +81,7 @@ struct range_t {
 
         range_buff = createBuffer(sizeof(range_t<T>), settings.cudaDevice);
         d_range_ptr = range_buff.get();
+        range_id  = c_h->n_ranges++;
 
         cuda_err_chk(cudaMemcpy(d_range_ptr, this, sizeof(range_t<T>), cudaMemcpyHostToDevice));
 
@@ -350,9 +351,10 @@ struct page_cache_t {
 
     template <typename T>
     void add_range(range_t<T>* range) {
-        range->range_id = n_ranges++;
+
         h_ranges[range->range_id] = range->page_states;
         cuda_err_chk(cudaMemcpy(ranges, h_ranges, n_ranges* sizeof(page_states_t), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(d_pc_ptr, this, sizeof(page_cache_t), cudaMemcpyHostToDevice));
 
     }
 
