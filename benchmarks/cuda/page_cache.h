@@ -355,7 +355,7 @@ struct page_cache_t {
     }
 
     page_cache_t(const uint64_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl, const uint64_t max_range)
-        : page_size(ps), page_size_minus_1(ps-1), n_pages(np), ctrl_page_size(ctrl.ctrl->page_size) {
+        : page_size(ps), page_size_minus_1(ps-1), n_pages(np), n_pages_minus_1(np-1), ctrl_page_size(ctrl.ctrl->page_size) {
 
         range_cap = max_range;
         n_ranges = 0;
