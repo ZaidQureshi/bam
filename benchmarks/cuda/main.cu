@@ -255,6 +255,8 @@ int main(int argc, char** argv) {
 
         std::cout << "END\n";
 
+        std::cout << RAND_MAX << std::endl;
+
     }
     catch (const error& e) {
         fprintf(stderr, "Unexpected error: %s\n", e.what());
