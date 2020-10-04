@@ -31,7 +31,7 @@ enum page_state {USE = 1ULL, USE_DIRTY = ((1ULL << 63) | 1), VALID_DIRTY = (1ULL
 #define BUSY ((ULLONG_MAX & 0x7fffffffffffffff)-1)
 
 struct page_cache_t;
-typedef padded_struct* page_states;
+typedef padded_struct* page_states_t;
 
 template <typename T>
 struct range_t {
@@ -43,7 +43,7 @@ struct range_t {
     uint64_t page_start;
     uint64_t page_end;
     page_cache_t* cache;
-    page_states page_states;
+    page_states_t page_states;
     padded_struct* page_addresses;
     //padded_struct* page_vals;  //len = num of pages for data
     //
@@ -68,7 +68,7 @@ struct range_t {
 
         cache = (page_cache_t*) c_h->d_pc_ptr;
         page_states_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
-        pages_states = (pages_states) page_states_buff.get();
+        pages_states = (pages_states_t) page_states_buff.get();
 
         padded_struct* ts = new padded_struct[s];
         for (size_t i = 0; i < s; i++)
@@ -239,8 +239,9 @@ struct range_t {
 
 struct page_cache_t {
     uint8_t* base_addr;
-    uint32_t page_size;
-    uint32_t page_size_log;
+    uint64_t page_size;
+    uint64_t page_size_minus_1;
+    uint64_t page_size_log;
     uint64_t n_pages;
     uint64_t n_pages_minus_1;
     padded_struct* page_translation;         //len = num of pages in cache
@@ -252,8 +253,8 @@ struct page_cache_t {
     uint64_t    ctrl_page_size;
     uint64_t  range_cap;
     //uint64_t  range_count;
-    page_states*   ranges;
-    page_states*   h_ranges;
+    page_states_t*   ranges;
+    page_states_t*   h_ranges;
     uint64_t n_ranges;
     uint64_t n_ranges_bits;
     uint64_t n_ranges_mask;
@@ -277,12 +278,12 @@ struct page_cache_t {
     uint64_t add_range(range_t<T>* range) {
         range->range_id = n_ranges++;
         h_ranges[range->range_id] = range->page_states;
-        cuda_err_chk(cudaMemcpy(ranges, h_ranges, max_range* sizeof(page_states), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(ranges, h_ranges, max_range* sizeof(page_states_t), cudaMemcpyHostToDevice));
 
     }
 
-    page_cache_t(const uint32_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl, const uint64_t max_range)
-        : page_size(ps), n_pages(np), ctrl_page_size(ctrl.ctrl->page_size) {
+    page_cache_t(const uint64_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl, const uint64_t max_range)
+        : page_size(ps), page_size_minus_1(ps-1), n_pages(np), ctrl_page_size(ctrl.ctrl->page_size) {
 
         range_cap = max_range;
         n_ranges = 0;
@@ -290,9 +291,9 @@ struct page_cache_t {
         n_ranges_mask = max_range-1;
         page_ticket.val = 0;
 
-        ranges_buf = createBuffer(max_range * sizeof(page_states), settings.cudaDevice);
-        ranges = (page_states*)ranges_buf.get();
-        h_ranges = new page_states[max_range];
+        ranges_buf = createBuffer(max_range * sizeof(page_states_t), settings.cudaDevice);
+        ranges = (page_states_t*)ranges_buf.get();
+        h_ranges = new page_states_t[max_range];
 
         page_translation_buf = createBuffer(np * sizeof(padded_struct), settings.cudaDevice);
         page_translation = (padded_struct*)page_translation_buf.get();
