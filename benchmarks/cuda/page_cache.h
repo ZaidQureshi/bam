@@ -524,7 +524,10 @@ struct page_cache_t {
                     uint64_t expected_state = VALID;
                     uint64_t new_state = BUSY;
                     bool pass = false;
+                    if ((previous_range >= range_cap) || (previous_address >= n_pages))
+                        printf("prev_ga: %llu\tprev_range: %llu\tprev_add: %llu\n", (unsigned long long) previous_global_address, (unsigned long long) previous_range, (unsigned long long) previous_address);
                     expected_state = this->ranges[previous_range][previous_address].val.load(simt::memory_order_acquire);
+
                     //this->ranges[previous_range][previous_address].val.compare_exchange_strong(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
 
                     switch(expected_state) {
