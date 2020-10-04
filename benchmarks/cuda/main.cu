@@ -21,6 +21,7 @@
 #include "event.h"
 #include "queue.h"
 #include "nvm_parallel_queue.h"
+#include "nvm_io.h"
 #include "page_cache.h"
 #include "util.h"
 #include <iostream>
@@ -66,7 +67,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
        
-        read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
         //__syncthreads();
         //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
         //printf("tid: %llu finished\n", (unsigned long long) tid);
@@ -118,32 +119,30 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_ctrls, n_ctrls*sizeof(Controller)));
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
-        uint64_t b_size = 1;//64;
-        uint64_t g_size = 1;//80*16;
+        uint64_t b_size = 32;//64;
+        uint64_t g_size = 1024;//80*16;
         uint64_t n_threads = b_size * g_size;
 
 
         uint64_t page_size = 512;
-        uint64_t total_cache_size = (page_size * n_threads);
-        uint64_t n_pages = total_cache_size/page_size;
+        uint64_t n_pages = 1024;
+        uint64_t total_cache_size = (page_size * n_pages);
+        //uint64_t n_pages = total_cache_size/page_size;
 
 
         page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0]);
 
         //QueuePair* d_qp;
-        page_cache_t* d_pc;
-        //cuda_err_chk(cudaMalloc(&d_qp, sizeof(QueuePair)));
-        cuda_err_chk(cudaMalloc(&d_pc, sizeof(page_cache_t)));
-        std::cout << "cuda malloced\n";
-
-
-        //cuda_err_chk(cudaMemcpy(d_qp, &h_qp, sizeof(QueuePair), cudaMemcpyHostToDevice));
-
-        cuda_err_chk(cudaMemcpy(d_pc, &h_pc, sizeof(page_cache_t), cudaMemcpyHostToDevice));
+        page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
+        #define TYPE uint64_t
+        uint64_t n_elems = (1024ULL)*(1024ULL);
+        uint64_t t_size = n_elems * sizeof(TYPE);
+        range_t<uint64_t> h_range(0, n_elems, 0, t_size/page_size, 0, page_size, h_pc);
+        range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
 
         uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
         for (size_t i = 0; i< n_threads; i++)
-            assignment[i] = rand() % ((1024)*1048576ULL);
+            assignment[i] = rand() % (n_elems);
 
         uint64_t* d_assignment;
         cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
@@ -159,7 +158,8 @@ int main(int argc, char** argv) {
         std::cout << st << std::endl;
 
         Event before;
-        access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls, d_assignment);
+        //access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls, d_assignment);
+        access_kernel<<<g_size, b_size>>>(d_range, n_threads, d_req_count, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);

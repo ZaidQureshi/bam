@@ -291,7 +291,7 @@ struct page_cache_t {
         for (size_t i = 0; i < np; i++)
             tps[i].val = FREE;
         cuda_err_chk(cudaMemcpy(page_take_lock, tps, np*sizeof(padded_struct), cudaMemcpyHostToDevice));
-        free tps;
+        delete tps;
 
 
 
