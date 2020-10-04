@@ -110,7 +110,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
 
 }
 __global__
-__launch_bounds__(64, 32)
+//__launch_bounds__(64, 32)
 void access_kernel(range_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
