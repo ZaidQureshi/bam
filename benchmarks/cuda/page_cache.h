@@ -495,7 +495,7 @@ struct page_cache_t {
         uint64_t global_address = (address << n_ranges_bits) | range_id;
         uint64_t page = 0;
         do {
-            if (count < this->n_pages)
+            //if (count < this->n_pages)
                 page = this->page_ticket.val.fetch_add(1, simt::memory_order_acquire)  & (this->n_pages_minus_1);
             uint64_t unlocked = UNLOCKED;
             bool lock = false;
