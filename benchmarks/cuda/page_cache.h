@@ -362,7 +362,7 @@ struct page_cache_t {
         n_ranges_bits = std::log2(max_range);
         n_ranges_mask = max_range-1;
         page_ticket.val = 0;
-
+        page_size_log = std::log2(ps);
         ranges_buf = createBuffer(max_range * sizeof(page_states_t), settings.cudaDevice);
         ranges = (page_states_t*)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
