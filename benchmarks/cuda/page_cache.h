@@ -73,7 +73,7 @@ struct range_t {
         padded_struct* ts = new padded_struct[s];
         for (size_t i = 0; i < s; i++)
             ts[i].val = INVALID;
-        cuda_err_chk(cudaMemcpy(pages_states, ts, s * sizeof(padded_struct), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(page_states, ts, s * sizeof(padded_struct), cudaMemcpyHostToDevice));
         delete ts;
 
         page_addresses_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
