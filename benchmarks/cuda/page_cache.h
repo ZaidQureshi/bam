@@ -91,8 +91,8 @@ struct range_t {
     T access(size_t i) const {
         uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
         uint64_t subindex = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
-        printf("tid: %llu\ti: %llu\tindex: %llu\tsubindex: %llu\n", (unsigned long long) (blockIdx.x * blockDim.x + threadIdx.x), (unsigned long long) i,
-               (unsigned long long) index, (unsigned long long) subindex);
+        printf("tid: %llu\ti: %llu\tindex: %llu\tsubindex: %llu\tpage_size_log: %llu\tpage_size_minus_1: %llu\n", (unsigned long long) (blockIdx.x * blockDim.x + threadIdx.x), (unsigned long long) i,
+               (unsigned long long) index, (unsigned long long) subindex, (unsigned long long) cache->page_size_log, (unsigned long long) cache->page_size_minus_1);
         uint64_t expected_state = VALID;
         uint64_t new_state = USE;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
