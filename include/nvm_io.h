@@ -1,6 +1,8 @@
 #ifndef __NVM_IO_H__
 #define __NVM_IO_H__
-
+#include "page_cache.h"
+#include "queue.h"
+#include "cuda.h"
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;

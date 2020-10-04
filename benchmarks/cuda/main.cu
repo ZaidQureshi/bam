@@ -75,7 +75,32 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
     }
 
 }
+d_range, n_threads, d_req_count, d_assignment
+__global__
+__launch_bounds__(64, 32)
+void access_kernel(range_t<uint64_t>* dr, uint32_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
+    //printf("in threads\n");
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    //uint32_t bid = blockIdx.x;
+    //uint32_t smid = get_smid();
 
+    //uint32_t ctrl = bid & (num_ctrls-1);
+    //uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
+
+
+    if (tid < n_reqs) {
+        req_count += (*dr)[tid];
+        //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
+        //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
+
+        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
+        //__syncthreads();
+        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
+        //printf("tid: %llu finished\n", (unsigned long long) tid);
+
+    }
+
+}
 
 int main(int argc, char** argv) {
 
@@ -119,7 +144,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc(&d_ctrls, n_ctrls*sizeof(Controller)));
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
-        uint64_t b_size = 32;//64;
+        uint64_t b_size = 64;//64;
         uint64_t g_size = 1024;//80*16;
         uint64_t n_threads = b_size * g_size;
 

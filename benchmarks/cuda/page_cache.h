@@ -23,6 +23,13 @@
 
 enum page_state {USE = 1ULL, USE_DIRTY = ((1ULL << 63) | 1), VALID_DIRTY = (1ULL << 63), VALID = 0ULL, INVALID = (ULLONG_MAX & 0x7fffffffffffffff), BUSY = ((ULLONG_MAX & 0x7fffffffffffffff)-1)};
 
+#define USE (1ULL)
+#define USE_DIRTY ((1ULL << 63) | 1)
+#define VALID_DIRTY (1ULL << 63)
+#define VALID (0ULL)
+#define INVALID (ULLONG_MAX & 0x7fffffffffffffff)
+#define BUSY ((ULLONG_MAX & 0x7fffffffffffffff)-1)
+
 struct page_cache_t;
 typedef padded_struct* page_states;
 
@@ -61,7 +68,13 @@ struct range_t {
 
         cache = (page_cache_t*) c_h->d_pc_ptr;
         page_states_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
-        pages_states = (pages_states) page_states_buff->get();
+        pages_states = (pages_states) page_states_buff.get();
+
+        padded_struct* ts = new padded_struct[s];
+        for (size_t i = 0; i < s; i++)
+            ts[i].val = INVALID;
+        cuda_err_chk(cudaMemcpy(pages_states, ts, s * sizeof(padded_struct), cudaMemcpyHostToDevice));
+        delete ts;
 
         page_addresses_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
         pages_addresses = (padded_struct*) page_addresses_buff->get();
