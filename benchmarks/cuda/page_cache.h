@@ -68,7 +68,7 @@ struct range_t {
 
         cache = (page_cache_t*) c_h->d_pc_ptr;
         page_states_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
-        pages_states = (pages_states_t) page_states_buff.get();
+        page_states = (page_states_t) page_states_buff.get();
 
         padded_struct* ts = new padded_struct[s];
         for (size_t i = 0; i < s; i++)
