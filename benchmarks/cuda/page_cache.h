@@ -101,7 +101,7 @@ struct range_t {
             expected_state = page_states[index].val.load(simt::memory_order_acquire);
             switch (expected_state) {
                 case VALID:
-                    pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, USE, simt::memory_order_release, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -173,7 +173,7 @@ struct range_t {
             expected_state = page_states[index].val.load(simt::memory_order_acquire);
             switch (expected_state) {
                 case VALID:
-                    pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, USE, simt::memory_order_release, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -246,7 +246,7 @@ struct range_t {
             expected_state = page_states[index].val.load(simt::memory_order_acquire);
             switch (expected_state) {
                 case VALID:
-                    pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, USE_DIRTY, simt::memory_order_release, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
