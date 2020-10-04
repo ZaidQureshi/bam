@@ -171,7 +171,7 @@ struct range_t {
         T ret;
         do {
             bool pass = false;
-            expected_state = page_states[index].val.load(simt:memory_order_acquire);
+            expected_state = page_states[index].val.load(simt::memory_order_acquire);
             switch (expected_state) {
                 case VALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
