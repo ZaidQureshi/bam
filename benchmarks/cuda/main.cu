@@ -188,14 +188,14 @@ int main(int argc, char** argv) {
         //uint64_t n_pages = total_cache_size/page_size;
 
 
-        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0]);
+        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64);
 
         //QueuePair* d_qp;
         page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
         #define TYPE uint64_t
         uint64_t n_elems = (1024ULL)*(1024ULL);
         uint64_t t_size = n_elems * sizeof(TYPE);
-        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, (uint64_t)h_pc);
+        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, (uint64_t)h_pc, settings);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
 
         uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));

@@ -56,7 +56,7 @@ struct range_t {
     void* d_range_ptr;
 
 
-    range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h) {
+    range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, const Settings& settings) {
         index_start = is;
         index_end = ie;
         //range_id = (c_h->range_count)++;
@@ -77,7 +77,7 @@ struct range_t {
         delete ts;
 
         page_addresses_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
-        pages_addresses = (padded_struct*) page_addresses_buff->get();
+        page_addresses = (padded_struct*) page_addresses_buff.get();
 
         range_buff = createBuffer(sizeof(range_t<T>), settings.cudaDevice);
         d_range_ptr = range_buff.get();
@@ -98,7 +98,7 @@ struct range_t {
         T ret;
         do {
             bool pass = false;
-            expected_state = page_states[index].val.load(simt:memory_order_acquire);
+            expected_state = page_states[index].val.load(simt::memory_order_acquire);
             switch (expected_state) {
                 case VALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
@@ -275,10 +275,10 @@ struct page_cache_t {
     void* d_pc_ptr;
 
     template <typename T>
-    uint64_t add_range(range_t<T>* range) {
+    void add_range(range_t<T>* range) {
         range->range_id = n_ranges++;
         h_ranges[range->range_id] = range->page_states;
-        cuda_err_chk(cudaMemcpy(ranges, h_ranges, max_range* sizeof(page_states_t), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(ranges, h_ranges, n_ranges* sizeof(page_states_t), cudaMemcpyHostToDevice));
 
     }
 
