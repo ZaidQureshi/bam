@@ -126,7 +126,7 @@ static void getDeviceMemory2(int device, void*& bufferPtr, size_t size, void*& o
 static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
 {
     void* notUsed = nullptr;
-    getDeviceMemory(device, bufferPtr, notUsed, size);
+    getDeviceMemory(device, bufferPtr, notUsed, size, notUsed);
 }
 
 /*
