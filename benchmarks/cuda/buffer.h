@@ -46,7 +46,7 @@ BufferPtr createBuffer(size_t size);
 
 BufferPtr createBuffer(size_t size, int cudaDevice);
 
-static void getDeviceMemory(int device, void*& bufferPtr, void*& devicePtr, size_t size)
+static void getDeviceMemory(int device, void*& bufferPtr, void*& devicePtr, size_t size, void*& origPtr)
 {
     bufferPtr = nullptr;
     devicePtr = nullptr;
@@ -78,12 +78,14 @@ static void getDeviceMemory(int device, void*& bufferPtr, void*& devicePtr, size
         cudaFree(bufferPtr);
         throw error(string("Failed to get pointer attributes: ") + cudaGetErrorString(err));
     }
+
+    origPtr = bufferPtr
     //devicePtr = (void*) (((uint64_t)attrs.devicePointer));
     devicePtr = (void*) ((((uint64_t)attrs.devicePointer) + (64*1024)) & 0xffffffffff0000);
     bufferPtr = (void*) ((((uint64_t)bufferPtr) + (64*1024))  & 0xffffffffff0000);
 }
 
-static void getDeviceMemory2(int device, void*& bufferPtr, size_t size)
+static void getDeviceMemory2(int device, void*& bufferPtr, size_t size, void*& origPtr)
 {
     bufferPtr = nullptr;
     //devicePtr = nullptr;
@@ -116,6 +118,7 @@ static void getDeviceMemory2(int device, void*& bufferPtr, size_t size)
 
     devicePtr = (void*) (((uint64_t)attrs.devicePointer));
 */
+    origPtr = bufferPtr;
     bufferPtr = (void*) ((((uint64_t)bufferPtr) + (128))  & 0xffffffffffffe0);
     //std::cout << "getdeviceMemory: " << std::hex << bufferPtr <<  std::endl;
 }
@@ -173,8 +176,9 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
     nvm_dma_t* dma = nullptr;
     void* bufferPtr = nullptr;
     void* devicePtr = nullptr;
+    void* origPtr = nullptr;
 
-    getDeviceMemory(cudaDevice, bufferPtr, devicePtr, size);
+    getDeviceMemory(cudaDevice, bufferPtr, devicePtr, size, origPtr);
     //std::cout << "Got Device mem\n";
     int status = nvm_dma_map_device(&dma, ctrl, devicePtr, size);
     //std::cout << "Got dma_map_devce\n";
@@ -187,9 +191,9 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
 
     dma->vaddr = bufferPtr;
 
-    return DmaPtr(dma, [bufferPtr](nvm_dma_t* dma) {
+    return DmaPtr(dma, [bufferPtr, origPtr](nvm_dma_t* dma) {
         nvm_dma_unmap(dma);
-        cudaFree(bufferPtr);
+        cudaFree(origPtr);
         //std::cout << "Deleting DMA\n";
     });
 }
@@ -221,12 +225,13 @@ BufferPtr createBuffer(size_t size, int cudaDevice)
     }
 
     void* bufferPtr = nullptr;
+    void* origPtr = nullptr;
 
-    getDeviceMemory2(cudaDevice, bufferPtr, size);
+    getDeviceMemory2(cudaDevice, bufferPtr, size, origPtr);
     //std::cout << "createbuffer: " << std::hex << bufferPtr <<  std::endl;
 
-    return BufferPtr(bufferPtr, [](void* ptr) {
-        cudaFree(ptr);
+    return BufferPtr(bufferPtr, [origPtr](void* ptr) {
+        cudaFree(origPtr);
         //std::cout << "Deleting Buffer\n";
     });
 }
