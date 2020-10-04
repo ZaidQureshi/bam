@@ -518,6 +518,7 @@ struct page_cache_t {
             }
             //assigned to someone and was able to take lock
             else if ( v == UNLOCKED ) {
+                printf("here\n");
                 lock = this->page_take_lock[page].val.compare_exchange_strong(v, LOCKED, simt::memory_order_release, simt::memory_order_relaxed);
                 if (lock) {
                     uint64_t previous_global_address = this->page_translation[page].val.load(simt::memory_order_acquire);
@@ -568,7 +569,7 @@ struct page_cache_t {
                             //}
                             break;
                         default:
-                            printf("here\n");
+
                             break;
 
                     }
