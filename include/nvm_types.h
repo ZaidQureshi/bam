@@ -75,11 +75,11 @@ typedef struct __align__(32)
 
 
 
-typedef struct __align__(8)
+typedef struct __align__(32)
 {
     simt::atomic<uint64_t, simt::thread_scope_device>  val;
-    //uint8_t pad[32-8];
-} __attribute__((aligned (8))) padded_struct;
+    uint8_t pad[32-8];
+} __attribute__((aligned (32))) padded_struct;
 
 /* 
  * NVM queue descriptor.
