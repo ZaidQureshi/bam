@@ -64,7 +64,7 @@ struct range_t {
         page_end = pe;
         page_size = p_size;
         page_start_offset = pso;
-        size_t s = (page_end-page_start)*page_size / c_h->page_size;
+        size_t s = (page_end-page_start);//*page_size / c_h->page_size;
 
         cache = (page_cache_t*) c_h->d_pc_ptr;
         page_states_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
