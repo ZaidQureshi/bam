@@ -109,7 +109,6 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
     }
 
 }
-d_range, n_threads, d_req_count, d_assignment
 __global__
 __launch_bounds__(64, 32)
 void access_kernel(range_t<uint64_t>* dr, uint32_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
