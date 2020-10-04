@@ -189,6 +189,7 @@ int main(int argc, char** argv) {
 
 
         page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64);
+        std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
         page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
@@ -197,6 +198,7 @@ int main(int argc, char** argv) {
         uint64_t t_size = n_elems * sizeof(TYPE);
         range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
+        std::cout << "finished creating range\n";
 
         uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
         for (size_t i = 0; i< n_threads; i++)
