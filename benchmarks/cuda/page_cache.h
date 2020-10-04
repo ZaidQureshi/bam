@@ -88,7 +88,7 @@ struct range_t {
 
     }
     __device__
-    static T access(size_t i) const {
+    T access(size_t i) const {
         uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
         uint64_t subindex = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
         uint64_t expected_state = VALID;
