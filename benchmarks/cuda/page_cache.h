@@ -88,6 +88,78 @@ struct range_t {
 
     }
     __device__
+    static T access(size_t i) const {
+        uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
+        uint64_t subindex = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
+        uint64_t expected_state = VALID;
+        uint64_t new_state = USE;
+        uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
+        bool fail = true;
+        T ret;
+        do {
+            bool pass = false;
+            expected_state = page_states[index].val.load(simt::memory_order_acquire);
+            switch (expected_state) {
+                case VALID:
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
+                    if (pass) {
+                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
+                        //     __nanosleep(100);
+                        ret = ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0];
+                        page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                        fail = false;
+                    }
+                    //else {
+                    //    expected_state = VALID;
+                    //    new_state = USE;
+                    //}
+                    break;
+                case BUSY:
+                    //expected_state = VALID;
+                    //new_state = USE;
+                    break;
+                case INVALID:
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_release, simt::memory_order_relaxed);
+                    if (pass) {
+                        uint64_t page_trans = cache->find_slot(index, range_id);
+                        //fill in
+                        page_addresses[index].val.store(page_trans, simt::memory_order_release);
+                        // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
+                        //     __nanosleep(100);
+                        ret = ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0];
+                        page_states[index].val.store(VALID, simt::memory_order_release);
+                        fail = false;
+                    }
+                    //else {
+                    //    expected_state = INVALID;
+                    //    new_state = BUSY;
+                    //}
+
+
+                    break;
+                default:
+                    new_state = expected_state + 1;
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_release, simt::memory_order_relaxed);
+                    if (pass) {
+                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
+                        //     __nanosleep(100);
+                        ret = ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0];
+                        page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                        fail = false;
+                    }
+                    //else {
+                    //    expected_state = VALID;
+                    //    new_state = USE;
+                    //}
+                    break;
+            }
+
+        } while (fail);
+        return ret;
+    }
+    __device__
     T operator[](size_t i) const {
         uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
         uint64_t subindex = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
