@@ -45,6 +45,9 @@ struct Controller
     QueuePair**             h_qps;
     QueuePair*              d_qps;
     uint32_t page_size;
+
+    void* d_ctrl_ptr;
+    BufferPtr d_ctrl_buff;
 #ifdef __DIS_CLUSTER__
     Controller(uint64_t controllerId, uint32_t nvmNamespace, uint32_t adapter, uint32_t segmentId);
 #endif
@@ -164,6 +167,10 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice)
 
 
     close(fd);
+
+    d_ctrl_buff = createBuffer(sizeof(Controller), settings.cudaDevice);
+    d_ctrl_ptr = d_ctrl_buff.get();
+    cuda_err_chk(cudaMemcpy(d_ctrl_ptr, this, sizeof(Controller), cudaMemcpyHostToDevice));
 }
 
 

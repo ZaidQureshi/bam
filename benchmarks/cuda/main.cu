@@ -122,7 +122,7 @@ void access_kernel(range_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* r
 
 
     if (tid < n_reqs) {
-        req_count += dr->access(tid);
+        req_count += (*dr)[(tid)];
         //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
@@ -174,10 +174,12 @@ int main(int argc, char** argv) {
         //prepareQueuePair(h_qp, ctrl, settings, 1);
         //const uint32_t ps, const uint64_t np, const uint64_t c_ps, const Settings& settings, const Controller& ctrl)
         //
-        Controller* d_ctrls;
-        cuda_err_chk(cudaMalloc(&d_ctrls, n_ctrls*sizeof(Controller)));
+        /*
+        Controller** d_ctrls;
+        cuda_err_chk(cudaMalloc(&d_ctrls, n_ctrls*sizeof(Controller*)));
         for (size_t i = 0; i < n_ctrls; i++)
-            cuda_err_chk(cudaMemcpy(d_ctrls+i, ctrls[i], sizeof(Controller), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(d_ctrls+i, &(ctrls[i]->d_ctrl), sizeof(Controller*), cudaMemcpyHostToDevice));
+        */
         uint64_t b_size = 64;//64;
         uint64_t g_size = 80*16;//80*16;
         uint64_t n_threads = b_size * g_size;
@@ -189,7 +191,7 @@ int main(int argc, char** argv) {
         //uint64_t n_pages = total_cache_size/page_size;
 
 
-        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64);
+        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64, d_ctrls);
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
@@ -200,6 +202,8 @@ int main(int argc, char** argv) {
 
         range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
+
+
         std::cout << "finished creating range\n";
 
         uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
