@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
         //uint64_t n_pages = total_cache_size/page_size;
 
 
-        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64, d_ctrls);
+        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64, ctrls);
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
