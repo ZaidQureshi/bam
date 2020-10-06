@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
         //Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
         
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
-        Controller* ctrls[n_ctrls];
+        std::vector<Controller*> ctrls(n_ctrls);
         for (size_t i = 0 ; i < n_ctrls; i++)
             ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice);
 
