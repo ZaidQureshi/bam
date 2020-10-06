@@ -168,7 +168,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice)
 
     close(fd);
 
-    d_ctrl_buff = createBuffer(sizeof(Controller), settings.cudaDevice);
+    d_ctrl_buff = createBuffer(sizeof(Controller), cudaDevice);
     d_ctrl_ptr = d_ctrl_buff.get();
     cuda_err_chk(cudaMemcpy(d_ctrl_ptr, this, sizeof(Controller), cudaMemcpyHostToDevice));
 }

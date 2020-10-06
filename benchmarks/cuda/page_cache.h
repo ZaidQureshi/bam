@@ -357,10 +357,10 @@ struct page_cache_t {
     page_cache_t(const uint64_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls)
         : page_size(ps), page_size_minus_1(ps-1), n_pages(np), n_pages_minus_1(np-1), ctrl_page_size(ctrl.ctrl->page_size) {
         n_ctrls = ctrls.size();
-        d_ctrls_buff = creatBuffer(n_ctrls * sizeof(Controller*), settings.cudaDevice);
+        d_ctrls_buff = createBuffer(n_ctrls * sizeof(Controller*), settings.cudaDevice);
         d_ctrls = (Controller**) d_ctrls_buff.get();
         for (size_t k = 0; k < n_ctrls; k++)
-            cuda_err_chk(cudaMemcpy(d_ctrls+k, &(ctrls[k]->d_ctrl), sizeof(Controller*), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
 
         range_cap = max_range;
         n_ranges = 0;
