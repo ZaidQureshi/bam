@@ -265,7 +265,7 @@ struct array_t {
         d_ranges_buff = createBuffer(n_ranges * sizeof(range_t<T>*), settings.cudaDevice);
         d_ranges = (range_t<T>**) d_ranges_buff.get();
         for (size_t k = 0; k < n_ranges; k++)
-            cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range<T>*), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range_t<T>*), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_array_ptr, this, sizeof(array_t<T>), cudaMemcpyHostToDevice));
     }
