@@ -262,14 +262,14 @@ struct array_t {
         d_array_buff = createBuffer(sizeof(array_t<T>), settings.cudaDevice);
         d_array_ptr = (array_t<T>*) d_array_buff.get();
 
-        d_ranges_buff = creatBuffer(n_ctrls * sizeof(range<T>*), settings.cudaDevice);
+        d_ranges_buff = createBuffer(n_ranges * sizeof(range_t<T>*), settings.cudaDevice);
         d_ranges = (range<T>**) d_ranges_buff.get();
         for (size_t k = 0; k < n_ranges; k++)
             cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range<T>*), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_array_ptr, this, sizeof(array_t<T>), cudaMemcpyHostToDevice));
     }
-
+    __device__
     T operator[](size_t i) const {
         size_t k = 0;
         bool found = false;
@@ -283,7 +283,7 @@ struct array_t {
         if (found)
             return ((*(d_ranges[k]))[i-d_ranges[k]->index_start]);
     }
-
+    __device__
     void operator()(size_t i, T val) const {
         size_t k = 0;
         bool found = false;
