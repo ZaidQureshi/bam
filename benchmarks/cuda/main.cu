@@ -111,7 +111,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
 }
 __global__
 __launch_bounds__(64, 32)
-void access_kernel(range_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
+void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     //uint32_t bid = blockIdx.x;
@@ -203,6 +203,11 @@ int main(int argc, char** argv) {
         range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
 
+        std::vector<range_t<uint64_t>*> vr(1);
+        vr[0] = & h_range;
+        //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
+        array_t<uint64_t> a(n_elems, 0, vr, settings);
+
 
         std::cout << "finished creating range\n";
 
@@ -225,7 +230,7 @@ int main(int argc, char** argv) {
 
         Event before;
         //access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls, d_assignment);
-        access_kernel<<<g_size, b_size>>>(d_range, n_threads, d_req_count, d_assignment);
+        access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
