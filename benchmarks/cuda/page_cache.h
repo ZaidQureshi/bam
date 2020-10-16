@@ -423,7 +423,7 @@ struct array_t {
             uint64_t base;
             uint32_t count = __popc(eq_mask);
             if (bef == 0) {
-                base = d_ranges[r]->acquire_page(page, 1, false);
+                base = d_ranges[r]->acquire_page(page, count, false);
                 base_master = base;
                 //printf("++tid: %llu\tbase: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master);
 
@@ -433,10 +433,10 @@ struct array_t {
                 //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T*)(base_master+subindex))[0];
-            __syncwarp(eq_mask);
-            if (bef == 0) {
+            //__syncwarp(eq_mask);
+            //if (bef == 0) {
                 d_ranges[r]->release_page(page);
-            }
+            //}
 
 
 
