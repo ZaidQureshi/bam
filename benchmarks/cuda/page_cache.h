@@ -110,7 +110,7 @@ struct range_t {
         page_states[index].val.fetch_sub(1, simt::memory_order_release);
     }
     __device__
-    uint64_t acquire_page(const size_t pg, const bool write) const {
+    uint64_t acquire_page(const size_t pg, const uint32_t count, const bool write) const {
         uint64_t index = pg;
         uint64_t expected_state = VALID;
         uint64_t new_state = USE;
@@ -122,7 +122,7 @@ struct range_t {
             expected_state = page_states[index].val.load(simt::memory_order_acquire);
             switch (expected_state) {
                 case VALID:
-                    new_state = (write) ? USE_DIRTY : USE;
+                    new_state = ((write) ? USE_DIRTY : USE) + count - 1;
                     pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
@@ -149,7 +149,7 @@ struct range_t {
                         page_addresses[index].val.store(page_trans, simt::memory_order_release);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
-                        new_state = (write) ? USE_DIRTY : USE;
+                        new_state = ((write) ? USE_DIRTY : USE) + count - 1;
                         page_states[index].val.store(new_state, simt::memory_order_release);
                         return ((uint64_t)((cache->base_addr+(page_trans * cache->page_size))));
 
@@ -163,7 +163,7 @@ struct range_t {
 
                     break;
                 default:
-                    new_state = expected_state + 1;
+                    new_state = expected_state + count;
                     if (write)
                         new_state |= VALID_DIRTY;
                     pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
@@ -416,17 +416,18 @@ struct array_t {
             
             uint64_t base_master;
             uint64_t base;
+            uint32_t count = __popc(eq_mask);
             if (bef == 0) {
-                base = d_ranges[r]->acquire_page(page, false);
+                base = d_ranges[r]->acquire_page(page, count, false);
                 base_master = base;
 
             }
             base_master = __shfl_sync(eq_mask, base, master);
             ret = ((T*)(base_master+subindex))[0];
-            __syncwarp(eq_mask);
-            if (bef == 0) {
+            //__syncwarp(eq_mask);
+            //if (bef == 0) {
                 d_ranges[r]->release_page(page);
-            }
+            //}
 
 
 
@@ -472,17 +473,18 @@ struct array_t {
 
             uint64_t base_master;
             uint64_t base;
+            uint32_t count = __popc(eq_mask);
             if (bef == 0) {
-                base = d_ranges[r]->acquire_page(page, true);
+                base = d_ranges[r]->acquire_page(page, count, true);
                 base_master = base;
 
             }
             base_master = __shfl_sync(eq_mask, base, master);
             ((T*)(base_master+subindex))[0] = val;
-            __syncwarp(eq_mask);
-            if (bef == 0) {
+            //__syncwarp(eq_mask);
+            //if (bef == 0) {
                 d_ranges[r]->release_page(page);
-            }
+            //}
 
 
 
