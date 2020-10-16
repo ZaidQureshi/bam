@@ -425,7 +425,7 @@ void Settings::parseArguments(int argc, char** argv)
     }
 
     verifyCudaDevice(cudaDevice);
-    verifyNumberOfThreads(numThreads);
+    //verifyNumberOfThreads(numThreads);
 
     setBDF(*this);
 }
