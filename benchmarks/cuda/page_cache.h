@@ -399,7 +399,7 @@ struct array_t {
             uint64_t gaddr = d_ranges[r]->get_global_address(page);
 
             uint64_t master = lane;
-            #pragma unroll
+            //#pragma unroll
             for (size_t k = 0; k < 32; k++) {
                 uint32_t b_m = 1 << k;
                 if ((mask & b_m) != 0) {
@@ -428,7 +428,7 @@ struct array_t {
                 //printf("++tid: %llu\tbase: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master);
 
             }
-            base_master = (uint64_t)__shfl_sync(eq_mask, (unsigned long long) base_master, master);
+            base_master = __shfl_sync(eq_mask,  base_master, master);
             //if (threadIdx.x == 63) {
                 //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
