@@ -407,13 +407,13 @@ struct array_t {
                     if ((o_ga == gaddr) && (k < lane)) {
                         bef++;
                         eq_mask |= 1 << k;
-                        if (master < k)
+                        if (master > k)
                             master = k;
                     }
                     else if ((o_ga == gaddr) && (k > lane)) {
                         aft++;
                         eq_mask |= 1 << k;
-                        if (master < k)
+                        if (master > k)
                             master = k;
                     }
                 }
