@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <getopt.h>
+#include <limits>
 
 
 struct Settings
@@ -360,7 +361,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
         {'n', OptionPtr(new Range(numChunks, 1, 0, "chunks", "number of chunks per thread", "32"))},
         {'p', OptionPtr(new Range(numPages, 1, 0, "pages", "number of pages per chunk", "1"))},
-        {'t', OptionPtr(new Range(numThreads, 1, 32, "threads", "number of CUDA threads", "32"))},
+        {'t', OptionPtr(new Range(numThreads, 1, std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "32"))},
         {'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         {'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         {'b', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
