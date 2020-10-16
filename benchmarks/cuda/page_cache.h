@@ -425,12 +425,12 @@ struct array_t {
             if (bef == 0) {
                 base = d_ranges[r]->acquire_page(page, count, false);
                 base_master = base;
-                printf("++tid: %llu\tbase: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master);
+                //printf("++tid: %llu\tbase: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master);
 
             }
             base_master = (uint64_t)__shfl_sync(eq_mask, (unsigned long long) base_master, master);
             //if (threadIdx.x == 63) {
-                printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+                //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T*)(base_master+subindex))[0];
             //__syncwarp(eq_mask);
