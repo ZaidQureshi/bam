@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, &(ctrls[i]->d_ctrl), sizeof(Controller*), cudaMemcpyHostToDevice));
         */
-        uint64_t b_size = 1;//64;//64;
+        uint64_t b_size = 64;//64;
         uint64_t g_size = 1;//80*16;//80*16;
         uint64_t n_threads = b_size * g_size;
 
