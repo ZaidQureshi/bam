@@ -122,8 +122,8 @@ void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* r
 
 
     if (tid < n_reqs) {
-        req_count += (*dr)[tid];
-        //req_count += dr->seq_read(tid);
+        //req_count += (*dr)[tid];
+        req_count += dr->seq_read(tid);
         //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
