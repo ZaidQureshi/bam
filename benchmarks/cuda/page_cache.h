@@ -194,6 +194,9 @@ struct range_t {
         uint64_t expected_state = VALID;
         uint64_t new_state = USE;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
+        if (threadIdx.x == 63) {
+                printf("page: %llu\tsubindex: %llu\n", (unsigned long long) page, (unsigned long long) subindex);
+        }
         bool fail = true;
         T ret;
         do {
@@ -393,6 +396,9 @@ struct array_t {
             uint64_t page = d_ranges[r]->get_page(i);
             uint64_t subindex = d_ranges[r]->get_subindex(i);
             uint64_t gaddr = d_ranges[r]->get_global_address(page);
+            if (threadIdx.x == 63) {
+                printf("page: %llu\tsubindex: %llu\n", (unsigned long long) page, (unsigned long long) subindex);
+            }
             uint64_t master = lane;
             #pragma unroll
             for (size_t k = 0; k < 32; k++) {
