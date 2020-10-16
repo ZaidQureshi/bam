@@ -195,7 +195,7 @@ struct range_t {
         uint64_t new_state = USE;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
         if (threadIdx.x == 63) {
-                printf("page: %llu\tsubindex: %llu\n", (unsigned long long) page, (unsigned long long) subindex);
+                printf("page: %llu\tsubindex: %llu\n", (unsigned long long) index, (unsigned long long) subindex);
         }
         bool fail = true;
         T ret;
