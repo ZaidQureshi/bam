@@ -91,9 +91,104 @@ struct range_t {
 
     }
     __device__
-    T operator[](size_t i) const {
-                uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
-        uint64_t subindex = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
+    uint64_t get_page(const size_t i) const {
+        uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
+        return index;
+    }
+    __device__
+    uint64_t get_subindex(const size_t i) const {
+        uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
+        return index;
+    }
+    __device__
+    uint64_t get_global_address(const size_t page) const {
+        return ((page << cache->n_ranges_bits) | range_id);
+    }
+    __device__
+    void release_page(const size_t pg) const {
+        uint64_t index = pg;
+        page_states[index].val.fetch_sub(1, simt::memory_order_release);
+    }
+    __device__
+    uint64_t acquire_page(const size_t pg, const bool write) const {
+        uint64_t index = pg;
+        uint64_t expected_state = VALID;
+        uint64_t new_state = USE;
+        uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
+        bool fail = true;
+        T ret;
+        do {
+            bool pass = false;
+            expected_state = page_states[index].val.load(simt::memory_order_acquire);
+            switch (expected_state) {
+                case VALID:
+                    new_state = (write) ? USE_DIRTY : USE;
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
+                    if (pass) {
+                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
+                        //     __nanosleep(100);
+                        return ((uint64_t)((cache->base_addr+(page_trans * cache->page_size))));
+                        //page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                        fail = false;
+                    }
+                    //else {
+                    //    expected_state = VALID;
+                    //    new_state = USE;
+                    //}
+                    break;
+                case BUSY:
+                    //expected_state = VALID;
+                    //new_state = USE;
+                    break;
+                case INVALID:
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acq_rel, simt::memory_order_relaxed);
+                    if (pass) {
+                        uint64_t page_trans = cache->find_slot(index, range_id);
+                        //fill in
+                        page_addresses[index].val.store(page_trans, simt::memory_order_release);
+                        // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
+                        //     __nanosleep(100);
+                        new_state = (write) ? USE_DIRTY : USE;
+                        page_states[index].val.store(new_state, simt::memory_order_release);
+                        return ((uint64_t)((cache->base_addr+(page_trans * cache->page_size))));
+
+                        fail = false;
+                    }
+                    //else {
+                    //    expected_state = INVALID;
+                    //    new_state = BUSY;
+                    //}
+
+
+                    break;
+                default:
+                    new_state = expected_state + 1;
+                    if (write)
+                        new_state |= VALID_DIRTY;
+                    pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
+                    if (pass) {
+                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
+                        //     __nanosleep(100);
+                        return ((uint64_t)((cache->base_addr+(page_trans * cache->page_size))));
+                        //page_states[index].val.fetch_sub(1, simt::memory_order_release);
+                        fail = false;
+                    }
+                    //else {
+                    //    expected_state = VALID;
+                    //    new_state = USE;
+                    //}
+                    break;
+            }
+
+        } while (fail);
+        //return ret;
+    }
+    __device__
+    T operator[](const size_t i) const {
+        uint64_t index = get_page(i);
+        uint64_t subindex = get_subindex(i);
         //printf("tid: %llu\ti: %llu\tindex: %llu\tsubindex: %llu\tpage_size_log: %llu\tpage_size_minus_1: %llu\n", (unsigned long long) (blockIdx.x * blockDim.x + threadIdx.x), (unsigned long long) i,
         //       (unsigned long long) index, (unsigned long long) subindex, (unsigned long long) cache->page_size_log, (unsigned long long) cache->page_size_minus_1);
         uint64_t expected_state = VALID;
@@ -166,9 +261,9 @@ struct range_t {
     }
 
     __device__
-    void operator()(size_t i, T val) {
-                uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
-        uint64_t subindex = ((index_start + i) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
+    void operator()(const size_t i, const T val) {
+        uint64_t index = get_page(i);
+        uint64_t subindex = get_subindex(i);
         //printf("tid: %llu\ti: %llu\tindex: %llu\tsubindex: %llu\tpage_size_log: %llu\tpage_size_minus_1: %llu\n", (unsigned long long) (blockIdx.x * blockDim.x + threadIdx.x), (unsigned long long) i,
         //       (unsigned long long) index, (unsigned long long) subindex, (unsigned long long) cache->page_size_log, (unsigned long long) cache->page_size_minus_1);
         uint64_t expected_state = VALID;
@@ -242,6 +337,12 @@ struct range_t {
     }
 };
 
+__forceinline__ __device__ unsigned lane_id()
+{
+    unsigned ret;
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+    return ret;
+}
 
 template<typename T>
 struct array_t {
@@ -268,6 +369,130 @@ struct array_t {
             cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range_t<T>*), cudaMemcpyHostToDevice));
 
         cuda_err_chk(cudaMemcpy(d_array_ptr, this, sizeof(array_t<T>), cudaMemcpyHostToDevice));
+    }
+    __device__
+    int64_t find_range(const size_t i) const {
+        int64_t range = -1;
+        int64_t k = 0;
+        for (; k < n_ranges; k++) {
+            if ((d_ranges[k]->index_start <= i) && (d_ranges[k]->index_end > i)) {;
+                range = k;
+                break;
+            }
+
+        }
+        return range;
+    }
+    __device__
+    T seq_read(const size_t i) const {
+        uint32_t lane = lane_id();
+        int64_t r = find_range(i);
+        T ret;
+
+        if (r != -1) {
+            uint32_t mask == __activemask();
+            uint32_t active_cnt = __popc(mask);
+            uint32_t eq_mask = 1 << lane;
+            uint32_t bef = 0;
+            uint32_t aft = 0;
+            uint32_t mask_copy = mask;
+            uint64_t page = d_ranges[r]->get_page(i);
+            uint64_t subindex = d_ranges[r]->get_subindex(i);
+            uint64_t gaddr = d_ranges[r]->get_global_address(page);
+            uint64_t master = lane;
+            #pragma unroll
+            for (size_t k = 0; k < 32; k++) {
+                uint32_t b_m = 1 << k;
+                if ((mask & b_m) != 0) {
+                    uint64_t o_ga = __shfl_sync(mask, gaddr, k);
+                    if ((o_ga == gaddr) && (k < lane)) {
+                        bef++;
+                        eq_mask |= 1 << k;
+                        if (master < k)
+                            master = k;
+                    }
+                    else if ((o_ga == gaddr) && (k > lane)) {
+                        aft++;
+                        eq_mask |= 1 << k;
+                        if (master < k)
+                            master = k;
+                    }
+                }
+            }
+            
+            uint64_t base_master;
+            uint64_t base;
+            if (bef == 0) {
+                base = d_ranges[r]->acquire_page(page, false);
+                base_master = base;
+
+            }
+            base_master = __shfl_sync(eq_mask, base, master);
+            ret = ((T*)(base_master+subindex))[0];
+            __syncwarp(eq_mask);
+            if (bef == 0) {
+                d_ranges[r]->release_page(page);
+            }
+
+
+
+        }
+        return ret;
+
+    }
+    __device__
+    void seq_write(const size_t i, const T val) const {
+        uint32_t lane = lane_id();
+        int64_t r = find_range(i);
+
+        if (r != -1) {
+            uint32_t mask == __activemask();
+            uint32_t active_cnt = __popc(mask);
+            uint32_t eq_mask = 1 << lane;
+            uint32_t bef = 0;
+            uint32_t aft = 0;
+            uint32_t mask_copy = mask;
+            uint64_t page = d_ranges[r]->get_page(i);
+            uint64_t subindex = d_ranges[r]->get_subindex(i);
+            uint64_t gaddr = d_ranges[r]->get_global_address(page);
+            uint64_t master = lane;
+            #pragma unroll
+            for (size_t k = 0; k < 32; k++) {
+                uint32_t b_m = 1 << k;
+                if ((mask & b_m) != 0) {
+                    uint64_t o_ga = __shfl_sync(mask, gaddr, k);
+                    if ((o_ga == gaddr) && (k < lane)) {
+                        bef++;
+                        eq_mask |= 1 << k;
+                        if (master < k)
+                            master = k;
+                    }
+                    else if ((o_ga == gaddr) && (k > lane)) {
+                        aft++;
+                        eq_mask |= 1 << k;
+                        if (master < k)
+                            master = k;
+                    }
+                }
+            }
+
+            uint64_t base_master;
+            uint64_t base;
+            if (bef == 0) {
+                base = d_ranges[r]->acquire_page(page, true);
+                base_master = base;
+
+            }
+            base_master = __shfl_sync(eq_mask, base, master);
+            ((T*)(base_master+subindex))[0] = val;
+            __syncwarp(eq_mask);
+            if (bef == 0) {
+                d_ranges[r]->release_page(page);
+            }
+
+
+
+        }
     }
     __device__
     T operator[](size_t i) const {
