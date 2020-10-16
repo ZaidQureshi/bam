@@ -111,7 +111,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
 }
 __global__
 __launch_bounds__(64, 32)
-void access_kernel(range_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
+void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     //uint32_t bid = blockIdx.x;
@@ -122,7 +122,8 @@ void access_kernel(range_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* r
 
 
     if (tid < n_reqs) {
-        req_count += (*dr)[assignment[tid]];
+        //req_count += (*dr)[assignment[tid]];
+        req_count += (*dr)[tid];
         //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
@@ -230,7 +231,7 @@ int main(int argc, char** argv) {
 
         Event before;
         //access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls, d_assignment);
-        access_kernel<<<g_size, b_size>>>(d_range, n_threads, d_req_count, d_assignment);
+        access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
