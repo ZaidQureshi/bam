@@ -337,12 +337,6 @@ struct range_t {
     }
 };
 
-__forceinline__ __device__ unsigned lane_id()
-{
-    unsigned ret;
-    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
-    return ret;
-}
 
 template<typename T>
 struct array_t {
