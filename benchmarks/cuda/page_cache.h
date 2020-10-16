@@ -423,7 +423,7 @@ struct array_t {
             uint64_t base;
             uint32_t count = __popc(eq_mask);
             if (bef == 0) {
-                base = d_ranges[r]->acquire_page(page, count, false);
+                base = d_ranges[r]->acquire_page(page, 1, false);
                 base_master = base;
                 //printf("++tid: %llu\tbase: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master);
 
