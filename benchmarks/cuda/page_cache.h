@@ -429,7 +429,7 @@ struct array_t {
             }
             base_master = (uint64_t)__shfl_sync(eq_mask, (unsigned long long) base_master, master);
             //if (threadIdx.x == 63) {
-                printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %llx\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned long long) eq_mask);
+                printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask);
             //}
             ret = ((T*)(base_master+subindex))[0];
             //__syncwarp(eq_mask);
