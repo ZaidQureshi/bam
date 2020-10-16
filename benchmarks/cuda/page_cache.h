@@ -378,7 +378,7 @@ struct array_t {
         return range;
     }
     __device__
-    T seq_read(const size_t i) const {
+    T seq_read(const size_t i) {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
         T ret;
