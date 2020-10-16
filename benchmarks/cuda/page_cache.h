@@ -383,7 +383,7 @@ struct array_t {
         int64_t r = find_range(i);
         T ret;
 
-        if (r != -1) {
+        if (r != (-1)) {
             uint32_t mask == __activemask();
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = 1 << lane;
@@ -435,11 +435,11 @@ struct array_t {
 
     }
     __device__
-    void seq_write(const size_t i, const T val) const {
+    void seq_write(const size_t i, const T val)  {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
 
-        if (r != -1) {
+        if (r != (-1)) {
             uint32_t mask == __activemask();
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = 1 << lane;
