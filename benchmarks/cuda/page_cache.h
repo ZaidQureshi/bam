@@ -427,7 +427,7 @@ struct array_t {
                 printf("++tid: %llu\tbase: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master);
 
             }
-            base_master = __shfl_sync(eq_mask, base_master, master);
+            base_master = (uint64_t)__shfl_sync(eq_mask, (unsigned long long) base_master, master);
             //if (threadIdx.x == 63) {
                 printf("--page: %llu\tsubindex: %llu\tbase_master: %llu\n", (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master);
             //}
