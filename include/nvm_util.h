@@ -278,7 +278,7 @@ __forceinline__ __device__ uint32_t lane_id()
 
 __device__ uint get_smid(void) {
      uint ret;
-     asm("mov.u32 %0, %smid;" : "=r"(ret) );
+     asm ("mov.u32 %0, %smid;" : "=r"(ret) );
      return ret;
 }
 
