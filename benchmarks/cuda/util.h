@@ -69,8 +69,8 @@ void hexdump(void *mem, unsigned int len)
 
 
 /*warp memcpy, assumes alignment at type T and num is a count in type T*/
-__device__
 template <typename T>
+__device__
 void warp_memcpy(T* dest, const T* src, size_t num) {
         uint32_t mask = __activemask();
         uint32_t active_cnt = __popc(mask);
