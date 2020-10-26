@@ -4,6 +4,7 @@
 #include <nvm_types.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <cuda.h>
 
 #ifdef __DIS_CLUSTER__
 #include <sisci_types.h>
@@ -268,5 +269,17 @@ uint32_t nvm_dis_node_from_ctrl(const nvm_ctrl_t* ctrl);
 #endif
 #endif
 
+__forceinline__ __device__ uint32_t lane_id()
+{
+    uint32_t ret;
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+    return ret;
+}
+
+__device__ uint get_smid(void) {
+     uint ret;
+     asm("mov.u32 %0, %smid;" : "=r"(ret) );
+     return ret;
+}
 
 #endif /* __NVM_UTIL_H__ */

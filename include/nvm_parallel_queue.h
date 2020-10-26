@@ -2,6 +2,7 @@
 #define __NVM_PARALLEL_QUEUE_H_
 
 #include "nvm_types.h"
+#include "nvm_util.h"
 #include <simt/atomic>
 #define LOCKED   1
 #define UNLOCKED 0
@@ -10,12 +11,7 @@ __forceinline__ __device__ uint64_t get_id(uint64_t x, uint64_t y) {
     return (x >> y) * 2;  // (x/2^y) *2
 }
 
-__forceinline__ __device__ uint32_t lane_id()
-{
-    uint32_t ret;
-    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
-    return ret;
-}
+
 
 __device__
 uint16_t get_cid(nvm_queue_t* sq) {

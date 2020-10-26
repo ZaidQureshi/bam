@@ -3,6 +3,7 @@
 
 #include "util.h"
 #include <nvm_types.h>
+#include <nvm_util.h>
 #include "buffer.h"
 #include "ctrl.h"
 #include "settings.h"
@@ -146,6 +147,13 @@ struct range_t {
                     if (pass) {
                         uint64_t page_trans = cache->find_slot(index, range_id);
                         //fill in
+                        uint32_t bid = blockIdx.x;
+                        uint32_t smid = get_smid();
+
+                        uint32_t ctrl = bid & (num_ctrls-1);
+                        uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
+                        Controller* c = cache->d_ctrls[ctrl];
+                        read_data(cache, (c->d_qps)+queue, index, cache->page_size >> c->blk_size_log, page_trans);
                         page_addresses[index].val.store(page_trans, simt::memory_order_release);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);

@@ -34,23 +34,17 @@ using error = std::runtime_error;
 using std::string;
 
 
-__device__ uint get_smid(void) {
 
-     uint ret;
-
-     asm("mov.u32 %0, %smid;" : "=r"(ret) );
-
-     return ret;
-
-}
 uint32_t n_ctrls = 1;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4"};
 
 
 __global__
-void new_kernel() {
-    printf("in threads\n");
+void new_kernel(ulonglong4* dst, ulonglong4* src, size_t num) {
+    warp_memcpy<ulonglong4>(dst, src, num);
+
 }
+/*
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
@@ -85,6 +79,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 }
 
+*/
 __global__
 __launch_bounds__(64, 32)
 void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment) {

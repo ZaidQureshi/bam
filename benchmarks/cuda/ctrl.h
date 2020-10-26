@@ -45,6 +45,9 @@ struct Controller
     QueuePair**             h_qps;
     QueuePair*              d_qps;
     uint32_t page_size;
+    uint32_t blk_size;
+    uint32_t blk_size_log;
+
 
     void* d_ctrl_ptr;
     BufferPtr d_ctrl_buff;
@@ -151,6 +154,8 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice)
         throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
     }
     page_size = ctrl->page_size;
+    blk_size = this->ns.lba_data_size;
+    blk_size_log = std::log2(blk_size);
     reserveQueues(MAX_QUEUES,MAX_QUEUES);
     n_qps = std::min(n_sqs, n_cqs);
     //n_qps = std::min(n_qps, (uint16_t)64);
