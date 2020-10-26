@@ -153,7 +153,7 @@ struct range_t {
                         uint32_t bid = blockIdx.x;
                         uint32_t smid = get_smid();
 
-                        uint32_t ctrl = bid & (num_ctrls-1);
+                        uint32_t ctrl = bid & ((cache->num_ctrls)-1);
                         uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
                         Controller* c = cache->d_ctrls[ctrl];
                         read_data(cache, (c->d_qps)+queue, index, cache->page_size >> c->blk_size_log, page_trans);
