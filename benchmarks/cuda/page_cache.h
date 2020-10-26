@@ -206,9 +206,9 @@ struct range_t {
         uint64_t expected_state = VALID;
         uint64_t new_state = USE;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
-        if (threadIdx.x == 63) {
-                printf("page: %llu\tsubindex: %llu\n", (unsigned long long) index, (unsigned long long) subindex);
-        }
+        //if (threadIdx.x == 63) {
+        //printf("page: %llu\tsubindex: %llu\n", (unsigned long long) index, (unsigned long long) subindex);
+        //}
         bool fail = true;
         T ret;
 
@@ -240,6 +240,14 @@ struct range_t {
                     if (pass) {
                         uint64_t page_trans = cache->find_slot(index, range_id);
                         //fill in
+                        uint32_t bid = blockIdx.x;
+                        uint32_t smid = get_smid();
+
+                        uint32_t ctrl = bid & ((cache->n_ctrls)-1);
+                        Controller* c = cache->d_ctrls[ctrl];
+                        uint32_t queue = smid & (c->n_qps-1);
+
+                        read_data(cache, (c->d_qps)+queue, index, cache->page_size >> c->blk_size_log, page_trans);
                         page_addresses[index].val.store(page_trans, simt::memory_order_release);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
