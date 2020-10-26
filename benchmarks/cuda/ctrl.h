@@ -158,7 +158,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice)
     blk_size_log = std::log2(blk_size);
     reserveQueues(MAX_QUEUES,MAX_QUEUES);
     n_qps = std::min(n_sqs, n_cqs);
-    //n_qps = std::min(n_qps, (uint16_t)64);
+    n_qps = std::min(n_qps, (uint16_t)80);
     printf("SQs: %llu\tCQs: %llu\tn_qps: %llu\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc(&d_qps, sizeof(QueuePair)*n_qps));
