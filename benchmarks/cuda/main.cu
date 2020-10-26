@@ -96,7 +96,7 @@ void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint
         uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
        
-        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
+        read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
         //__syncthreads();
         //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
         //printf("tid: %llu finished\n", (unsigned long long) tid);
@@ -118,7 +118,7 @@ void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* r
 
     if (tid < n_reqs) {
         //req_count += (*dr)[tid];
-        req_count += dr->seq_read(assignment[tid]);
+        req_count += (*dr)(assignment[tid]);
         //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
@@ -225,8 +225,8 @@ int main(int argc, char** argv) {
         std::cout << st << std::endl;
 
         Event before;
-        //access_kernel<<<g_size, b_size>>>(d_ctrls, d_pc, page_size, n_threads, d_req_count, n_ctrls, d_assignment);
-        access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
+        access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment);
+        //access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
