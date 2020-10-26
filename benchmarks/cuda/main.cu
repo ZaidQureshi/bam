@@ -35,8 +35,8 @@ using std::string;
 
 
 
-uint32_t n_ctrls = 1;
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4"};
+//uint32_t n_ctrls = 1;
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 
 
 __global__
@@ -118,7 +118,7 @@ void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* r
 
     if (tid < n_reqs) {
         //req_count += (*dr)[tid];
-        req_count += dr->seq_read(tid);
+        req_count += dr->seq_read(assignment[tid]);
         //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
@@ -157,8 +157,8 @@ int main(int argc, char** argv) {
         //Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
         
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
-        std::vector<Controller*> ctrls(n_ctrls);
-        for (size_t i = 0 ; i < n_ctrls; i++)
+        std::vector<Controller*> ctrls(settings.n_ctrls);
+        for (size_t i = 0 ; i < settings.n_ctrls; i++)
             ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice);
 
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
         ofile.write((char*)ret_array, data);
         ofile.close();
 
-        for (size_t i = 0 ; i < n_ctrls; i++)
+        for (size_t i = 0 ; i < settings.n_ctrls; i++)
             delete ctrls[i];
         //hexdump(ret_array, n_pages*page_size);
 /*
