@@ -82,21 +82,21 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 */
 __global__
 __launch_bounds__(64, 32)
-void access_kernel(Controller* ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment) {
+void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
     uint32_t ctrl = bid & (num_ctrls-1);
-    uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
+    uint32_t queue = smid & (ctrls[ctrl]->n_qps-1);
 
 
     if (tid < n_reqs) {
-        uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
-        uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
+        uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+        uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
        
-        read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
+        read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
         //__syncthreads();
         //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
         //printf("tid: %llu finished\n", (unsigned long long) tid);
