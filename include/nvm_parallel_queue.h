@@ -194,8 +194,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
                 /*     printf("NVM Error!!!\n"); */
                 return loc;
             }
-             if (phase != search_phase) 
-                 break;
+            if (phase != search_phase)
+                break;
         }
         j++;
 

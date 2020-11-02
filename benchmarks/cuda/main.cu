@@ -118,7 +118,7 @@ void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* r
 
     if (tid < n_reqs) {
         //req_count += (*dr)[tid];
-        req_count += (*dr)[(assignment[tid])];
+        req_count += dr->seq_read(tid*(512/sizeof(uint64_t)))
         //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
         //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
@@ -225,8 +225,8 @@ int main(int argc, char** argv) {
         std::cout << st << std::endl;
 
         Event before;
-        access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment);
-        //access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
+        //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment);
+        access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
