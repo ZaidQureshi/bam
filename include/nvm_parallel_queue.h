@@ -63,8 +63,12 @@ uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, uint32_t pos, bool is_sq) 
     while (pass) {
         uint64_t loc = (cur_head+count++)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.fetch_and(UNLOCKED, simt::memory_order_acquire)) == LOCKED;
-        if (pass && is_sq)
+        if (pass && is_sq) {
             q->tickets[loc].val.fetch_add(1, simt::memory_order_release);
+            nvm_cmd_t* queue_loc = ((nvm_cmd_t*)(q->vaddr)) + loc;
+            uint16_t cid = queue_loc->dword[0] >> 16;
+            put_cid(q, cid);
+        }
 
     }
     return (count-1);
