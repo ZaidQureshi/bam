@@ -32,7 +32,7 @@ struct Settings
     uint32_t        segmentId;
     uint32_t        nvmNamespace;
     bool            doubleBuffered;
-    size_t          numChunks;
+    size_t          numReqs;
     size_t          numPages;
     size_t          startBlock;
     bool            stats;
@@ -361,7 +361,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
         {'B', OptionPtr(new Option<bool>(doubleBuffered, "bool", "double-buffer", "double buffer disk reads", "false"))},
         {'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
-        {'n', OptionPtr(new Range(numChunks, 1, 0, "chunks", "number of chunks per thread", "32"))},
+        {'n', OptionPtr(new Range(numReqs, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "reqs", "number of reqs per thread", "1"))},
         {'p', OptionPtr(new Range(numPages, 1, 0, "pages", "number of pages per chunk", "1"))},
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "64"))},
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "block size", "64"))},
@@ -445,7 +445,7 @@ Settings::Settings()
     segmentId = 0;
     nvmNamespace = 1;
     doubleBuffered = false;
-    numChunks = 32;
+    numReqs = 1;
     numPages = 1;
     startBlock = 0;
     stats = false;

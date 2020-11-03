@@ -81,7 +81,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 */
 __global__
-void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment) {
+void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -94,11 +94,11 @@ void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uin
     if (tid < n_reqs) {
         uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
         uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-       
-        read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        for (size_t i = 0; i < reqs_per_thread; i++)
+            read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
         //__syncthreads();
         //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
         //printf("tid: %llu finished\n", (unsigned long long) tid);
@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
         std::cout << st << std::endl;
 
         Event before;
-        access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment);
+        access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
         //access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
