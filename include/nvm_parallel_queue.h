@@ -73,17 +73,18 @@ uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, uint32_t pos, bool is_sq) 
 __device__
 uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
-    uint32_t mask = __activemask();
-    uint32_t active_count = __popc(mask);
-    uint32_t leader = __ffs(mask) - 1;
-    uint32_t lane = lane_id();
+    //uint32_t mask = __activemask();
+    //uint32_t active_count = __popc(mask);
+    //uint32_t leader = __ffs(mask) - 1;
+    //uint32_t lane = lane_id();
     uint32_t ticket;
-    if (lane == leader) {
-        ticket = sq->in_ticket.fetch_add(active_count, simt::memory_order_acquire);
-    }
+    ticket = sq->in_ticket.fetch_add(1, simt::memory_order_acquire);
+    /* if (lane == leader) { */
+    /*     ticket = sq->in_ticket.fetch_add(active_count, simt::memory_order_acquire); */
+    /* } */
 
-    ticket = __shfl_sync(mask, ticket, leader);
-    ticket += __popc(mask & ((1 << lane) - 1));
+    /* ticket = __shfl_sync(mask, ticket, leader); */
+    /* ticket += __popc(mask & ((1 << lane) - 1)); */
 
     uint32_t pos = ticket & (sq->qs_minus_1);
     uint64_t id = get_id(ticket, sq->qs_log2);
@@ -102,6 +103,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     volatile nvm_cmd_t* queue_loc = ((volatile nvm_cmd_t*)(sq->vaddr)) + pos;
 
     //printf("sq->loc: %p\n", queue_loc);
+#pragma unroll
     for (uint32_t i = 0; i < 16; i++) {
         queue_loc->dword[i] = cmd->dword[i];
     }
