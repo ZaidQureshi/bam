@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
 
 
         uint64_t page_size = 512;
-        uint64_t n_pages = settings.numChunks;
+        uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
         //uint64_t n_pages = total_cache_size/page_size;
 
