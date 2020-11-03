@@ -76,7 +76,7 @@ struct QueuePair
 
 
 
-    QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id)
+    QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint32_t queueDepth)
     {
         //this->this = (QueuePairThis*) malloc(sizeof(QueuePairThis));
 
@@ -84,16 +84,19 @@ struct QueuePair
         std::cout << "HERE\n";
         uint64_t cap = ((volatile uint64_t*) ctrl->mm_ptr)[0];
         bool cqr = (cap & 0x0000000000010000) == 0x0000000000010000;
-        uint64_t sq_size = 16;
-        uint64_t cq_size = 16;
+        //uint64_t sq_size = 16;
+        //uint64_t cq_size = 16;
 
-        // uint64_t sq_size = (cqr) ?
-        //     ((MAX_SQ_ENTRIES_64K <= ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) )) ? MAX_SQ_ENTRIES_64K :  ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) ) ) :
-        //     ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) );
-        // uint64_t cq_size = (cqr) ?
-        //     ((MAX_CQ_ENTRIES_64K <= ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) )) ? MAX_CQ_ENTRIES_64K :  ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) ) ) :
-        //     ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) );
+        uint64_t sq_size = (cqr) ?
+            ((MAX_SQ_ENTRIES_64K <= ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) )) ? MAX_SQ_ENTRIES_64K :  ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) ) ) :
+            ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) );
+        uint64_t cq_size = (cqr) ?
+            ((MAX_CQ_ENTRIES_64K <= ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) )) ? MAX_CQ_ENTRIES_64K :  ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) ) ) :
+            ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) );
+        sq_size = std::min(queueDepth, sq_size);
+        cq_size = std::min(queueDepth, cq_size);
 
+        printf("sq_size: %llu\tcq_size: %llu\n", sq_size, cq_size);
         bool sq_need_prp = false;//(!cqr) || (sq_size > MAX_SQ_ENTRIES_64K);
         bool cq_need_prp = false;// (!cqr) || (cq_size > MAX_CQ_ENTRIES_64K);
 

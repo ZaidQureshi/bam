@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         std::vector<Controller*> ctrls(settings.n_ctrls);
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
-            ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice);
+            ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth);
 
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 
@@ -237,7 +237,7 @@ int main(int argc, char** argv) {
 
 
         double elapsed = after - before;
-        uint64_t ios = g_size*b_size;
+        uint64_t ios = g_size*b_size*settings.numReqs;
         uint64_t data = ios*page_size;
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
