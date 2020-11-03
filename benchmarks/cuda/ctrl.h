@@ -164,7 +164,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, ui
     cuda_err_chk(cudaMalloc(&d_qps, sizeof(QueuePair)*n_qps));
     for (size_t i = 0; i < n_qps; i++) {
         printf("started creating qp\n");
-        h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1);
+        h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
         printf("finished creating qp\n");
         cuda_err_chk(cudaMemcpy(d_qps+i, h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
     }
