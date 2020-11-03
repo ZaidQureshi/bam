@@ -55,7 +55,7 @@ struct Controller
     Controller(uint64_t controllerId, uint32_t nvmNamespace, uint32_t adapter, uint32_t segmentId);
 #endif
 
-    Controller(const char* path, uint32_t nvmNamespace, uint32_t cudaDevice, uitn32_t queueDepth);
+    Controller(const char* path, uint32_t nvmNamespace, uint32_t cudaDevice, uint32_t queueDepth);
 
     void reserveQueues();
 
