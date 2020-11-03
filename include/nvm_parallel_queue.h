@@ -203,7 +203,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             }
             if (phase != search_phase)
                 break;
-            __nanosleep(100);
+            __nanosleep(1000);
         }
         j++;
 
