@@ -42,6 +42,7 @@ struct Settings
     uint32_t        bus;
     uint32_t        devfn;
     uint32_t n_ctrls;
+    size_t blkSize;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -362,10 +363,11 @@ void Settings::parseArguments(int argc, char** argv)
         {'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
         {'n', OptionPtr(new Range(numChunks, 1, 0, "chunks", "number of chunks per thread", "32"))},
         {'p', OptionPtr(new Range(numPages, 1, 0, "pages", "number of pages per chunk", "1"))},
-        {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "32"))},
+        {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "64"))},
+        {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "block size", "64"))},
         {'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         {'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
-        {'b', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
+        {'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
     };
 
     string optionString;
@@ -448,7 +450,8 @@ Settings::Settings()
     startBlock = 0;
     stats = false;
     output = nullptr;
-    numThreads = 32;
+    numThreads = 64;
+    blkSize = 64
     domain = 0;
     bus = 0;
     devfn = 0;
