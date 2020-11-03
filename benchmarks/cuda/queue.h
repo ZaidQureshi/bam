@@ -77,7 +77,7 @@ struct QueuePair
 
 
 
-    QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint32_t queueDepth)
+    QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth)
     {
         //this->this = (QueuePairThis*) malloc(sizeof(QueuePairThis));
 
