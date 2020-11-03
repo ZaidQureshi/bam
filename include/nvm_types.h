@@ -77,7 +77,7 @@ typedef struct __align__(32)
 
 typedef struct __align__(32)
 {
-    simt::atomic<uint64_t, simt::thread_scope_device>  val;
+    simt::atomic<uint64_t, simt::thread_scope_system>  val;
     uint8_t pad[32-8];
 } __attribute__((aligned (32))) padded_struct;
 
