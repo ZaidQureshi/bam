@@ -363,7 +363,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'B', OptionPtr(new Option<bool>(doubleBuffered, "bool", "double-buffer", "double buffer disk reads", "false"))},
         {'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
         {'n', OptionPtr(new Range(numReqs, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "reqs", "number of reqs per thread", "1"))},
-        {'p', OptionPtr(new Range(numPages, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "pages", "number of pages per req", "1"))},
+        {'p', OptionPtr(new Range(numPages, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "pages", "number of pages in cache", "1"))},
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "64"))},
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "block size", "64"))},
         {'q', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth", "16"))},
