@@ -1,6 +1,7 @@
 #ifndef __BENCHMARK_QUEUEPAIR_H__
 #define __BENCHMARK_QUEUEPAIR_H__
 
+#include <algorithm>
 #include <nvm_types.h>
 #include <cstdint>
 #include "buffer.h"
