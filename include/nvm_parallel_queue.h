@@ -180,6 +180,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 __device__
 uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
     uint64_t j = 0;
+    uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     while (true) {
         uint32_t head = cq->head.load(simt::memory_order_acquire);
 
@@ -197,7 +198,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             /*            (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase); */
             if ((cid == search_cid) && (phase == search_phase)){
                  if ((cpl_entry >> 17) != 0)
-                     printf("NVM Error: %llx\n", (unsigned long long) (cpl_entry >> 17));
+                     printf("NVM Error: %llx\ttid: %llu\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) tid, (unsigned long long) search_cid);
                 return loc;
             }
             if (phase != search_phase)
