@@ -197,7 +197,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             /*            (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase); */
             if ((cid == search_cid) && (phase == search_phase)){
                  if ((cpl_entry >> 17) != 0)
-                     printf("NVM Error!!!\n");
+                     printf("NVM Error: %llx\n", (unsigned long long) (cpl_entry >> 17));
                 return loc;
             }
             if (phase != search_phase)
