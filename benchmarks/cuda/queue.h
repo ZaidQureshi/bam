@@ -111,10 +111,10 @@ struct QueuePair
         std::cout << "Started creating DMA\n";
         // qmem->vaddr will be already a device pointer after the following call
         this->sq_mem = createDma(ctrl, NVM_PAGE_ALIGN(sq_mem_size, 1UL << 16), cudaDevice);
-        std::cout << "Finished creating sq dma vaddr: " << this->sq_mem.get()->vaddr << "\tioaddr: " << this->sq_mem.get()->ioaddrs[0] << std::endl;
+        std::cout << "Finished creating sq dma vaddr: " << this->sq_mem.get()->vaddr << "\tioaddr: " << std::hex<< this->sq_mem.get()->ioaddrs[0] << std::dec << std::endl;
         this->cq_mem = createDma(ctrl, NVM_PAGE_ALIGN(cq_mem_size, 1UL << 16), cudaDevice);
         //this->prp_mem = createDma(ctrl, NVM_PAGE_ALIGN(prp_mem_size, 1UL << 16), cudaDevice, adapter, segmentId);
-        std::cout << "Finished creating cq dma  " << this->cq_mem.get()->vaddr << "\tioaddr: " << this->cq_mem.get()->ioaddrs[0] << std::endl;
+        std::cout << "Finished creating cq dma  " << this->cq_mem.get()->vaddr << "\tioaddr: " << std::hex << this->cq_mem.get()->ioaddrs[0] << std::dec << std::endl;
 
         // Set members
         this->pageSize = info.page_size;
