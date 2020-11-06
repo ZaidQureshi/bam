@@ -152,7 +152,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
         */
 
         *(sq->db) = new_db;
-        printf("wrote sq_db: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
+        //printf("wrote sq_db: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
         sq->tail.store(new_tail, simt::memory_order_release);
     }
 
@@ -229,7 +229,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
         uint32_t new_db = (new_head) & (cq->qs_minus_1);
 
         *(cq->db) = new_db;
-        printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
+        //printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
         cq->head.store(new_head, simt::memory_order_release);
     }
 
