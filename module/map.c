@@ -384,6 +384,8 @@ int map_gpu_memory(struct map* map, struct list* list)
     map->n_addrs = gd->pages->entries;
 
     printk("vaddr: %llx\n", (uint64_t) map->vaddr);
+    for (j = 0; j < map->n_addrs; j++)
+        printk("\tpaddr: %llx\n", (uint64_t) map->addrs[i]);
     
     return 0;
 }
