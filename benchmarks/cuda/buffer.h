@@ -63,13 +63,14 @@ static void getDeviceMemory(int device, void*& bufferPtr, void*& devicePtr, size
     {
         throw error(string("Failed to allocate device memory: ") + cudaGetErrorString(err));
     }
-
+    /*
     err = cudaMemset(bufferPtr, 0, size);
     if (err != cudaSuccess)
     {
         cudaFree(bufferPtr);
         throw error(string("Failed to clear device memory: ") + cudaGetErrorString(err));
     }
+    */
 
     cudaPointerAttributes attrs;
     err = cudaPointerGetAttributes(&attrs, bufferPtr);
@@ -179,8 +180,9 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
     void* origPtr = nullptr;
 
     getDeviceMemory(cudaDevice, bufferPtr, devicePtr, size, origPtr);
+
     //std::cout << "Got Device mem\n";
-    int status = nvm_dma_map_device(&dma, ctrl, devicePtr, size);
+    int status = nvm_dma_map_device(&dma, ctrl, bufferPtr, size);
     //std::cout << "Got dma_map_devce\n";
     if (!nvm_ok(status))
     {
@@ -188,7 +190,12 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
         //cudaFree(bufferPtr);
         throw error(string("Failed to map device memory: ") + nvm_strerror(status));
     }
-
+    cudaError_t err = cudaMemset(bufferPtr, 0, size);
+    if (err != cudaSuccess)
+    {
+        cudaFree(bufferPtr);
+        throw error(string("Failed to clear device memory: ") + cudaGetErrorString(err));
+    }
     dma->vaddr = bufferPtr;
 
     return DmaPtr(dma, [bufferPtr, origPtr](nvm_dma_t* dma) {
