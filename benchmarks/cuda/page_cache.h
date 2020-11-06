@@ -662,7 +662,7 @@ struct page_cache_t {
             for (size_t i = 0; (i < this->pages_dma.get()->n_ioaddrs) ; i++) {
                 for (size_t j = 0; (j < how_many_in_one); j++) {
                     temp[i*how_many_in_one + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps;
-                    std::cout << std::dec << (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps) << std::dec << std::endl;
+                    std::cout << std::dec << "\ti: " << i << "\tj: " << j << (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps) << std::dec << std::endl;
                 }
             }
             cuda_err_chk(cudaMemcpy(prp1, temp, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
