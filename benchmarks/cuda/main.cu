@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
         std::cout << std::dec << "IOPs: " << iops << "\tBandwidth(GB/S): " << bandwidth << std::endl;
         std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
-        std::ofstream ofile("data", std::ios::binary | std::ios::trunc);
+        std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
         ofile.write((char*)ret_array, data);
         ofile.close();
 
