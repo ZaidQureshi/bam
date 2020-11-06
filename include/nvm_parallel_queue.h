@@ -182,7 +182,7 @@ __device__
 uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
     uint64_t j = 0;
     uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
-    printf("+++tid: %llu\tcid: %llu\tcq_start: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (search_cid), (uint64_t) cq->vaddr);
+    printf("---tid: %llu\tcid: %llu\tcq_start: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (search_cid), (uint64_t) cq->vaddr);
     while (true) {
         uint32_t head = cq->head.load(simt::memory_order_acquire);
 
