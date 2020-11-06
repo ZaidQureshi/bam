@@ -105,6 +105,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     }
 
     volatile nvm_cmd_t* queue_loc = ((volatile nvm_cmd_t*)(sq->vaddr)) + pos;
+    printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
     //printf("sq->loc: %p\n", queue_loc);
 #pragma unroll
@@ -181,6 +182,7 @@ __device__
 uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
     uint64_t j = 0;
     uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+    printf("+++tid: %llu\tcid: %llu\tcq_start: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (search_cid), (uint64_t) cq->vaddr);
     while (true) {
         uint32_t head = cq->head.load(simt::memory_order_acquire);
 
