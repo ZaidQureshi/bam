@@ -134,7 +134,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
     bool cont = true;
     while(cont) {
-        cont = sq->tail_mark[pos].val.load(simt::memory_order_acquire) ==LOCKED;
+        cont = sq->tail_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
             cont = sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
             if(!cont) {
@@ -198,7 +198,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
 
         for (size_t i = 0; i < cq->qs_minus_1; i++) {
             uint32_t cur_head = head + i;
-            bool search_phase = ((~(head >> cq->qs_log2)) & 0x01);
+            bool search_phase = ((~(cur_head >> cq->qs_log2)) & 0x01);
             uint32_t loc = cur_head & (cq->qs_minus_1);
             uint32_t cpl_entry = ((volatile nvm_cpl_t*)cq->vaddr)[loc].dword[3];
             uint32_t cid = (cpl_entry & 0x0000ffff);
@@ -216,8 +216,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
                      printf("NVM Error: %llx\ttid: %llu\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) tid, (unsigned long long) search_cid);
                 return loc;
             }
-            if (phase != search_phase)
-                break;
+            /* if (phase != search_phase) */
+            /*     break; */
             //__nanosleep(1000);
         }
         j++;
