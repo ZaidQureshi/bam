@@ -209,7 +209,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
                        (unsigned long long) cq->qs_log2,
                        (unsigned long long)head, (unsigned long long) cur_head, (unsigned long long) search_cid, (unsigned long long) search_phase, ((volatile nvm_cpl_t*)cq->vaddr)+loc,
                        (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase,
-                       (unsigned long long) cq->head_mark[loc].load(simt::memory_order_acquire));
+                       (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire));
 
             if ((cid == search_cid) && (phase == search_phase)){
                  if ((cpl_entry >> 17) != 0)
