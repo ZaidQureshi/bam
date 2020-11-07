@@ -179,7 +179,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 /*     //printf("sq new_head: %llu\n", (unsigned long long) new_head); */
                 /*     sq->head.store(new_head, simt::memory_order_release); */
                 /* } */
-                sq->head_lock.store(UNLOCKED, simt::memory_release);
+                sq->head_lock.store(UNLOCKED, simt::memory_order release);
             }
         }
     }
@@ -230,7 +230,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
 
     //uint32_t pos = cq_poll(cq, cid);
 
-    cq->head_mark[post].val.store(LOCKED, simt::memory_order_release);
+    cq->head_mark[pos].val.store(LOCKED, simt::memory_order_release);
     bool cont = true;
     while (cont) {
         cont - cq->head_mark[pos].val.load(simt::memory_order_acquire);
