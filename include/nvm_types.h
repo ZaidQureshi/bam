@@ -93,6 +93,10 @@ typedef struct __align__(32)
  */
 typedef struct __align__(64) 
 {
+    simt::atomic<uint8_t, simt::thread_scope_system> head_lock;
+    uint8_t pad0[127];
+    simt::atomic<uint32_t, simt::thread_scope_system> tail_lock;
+    uint8_t pad1[127];
     simt::atomic<uint32_t, simt::thread_scope_system> head;
     uint8_t pad0[124];
     simt::atomic<uint32_t, simt::thread_scope_system> tail;
@@ -108,6 +112,7 @@ typedef struct __align__(64)
     padded_struct* head_mark;
     padded_struct* tail_mark;
     padded_struct* cid;
+
     uint32_t qs_minus_1;
     uint32_t qs_log2;
     uint16_t                no;             // Queue number (must be unique per SQ/CQ pair)
