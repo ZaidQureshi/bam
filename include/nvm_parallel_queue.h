@@ -204,7 +204,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             uint32_t cid = (cpl_entry & 0x0000ffff);
             bool phase = (cpl_entry & 0x00010000) >> 16;
             if (j % 100 == 0)
-
+            
                 printf("qs_log2: %llu\thead: %llu\tcur_head: %llu\tsearch_cid: %llu\tsearch_phase: %llu\tcq->loc: %p\tcq->qs: %llu\ti: %llu\tj: %llu\tcid: %llu\tphase:%llu\n",
                        (unsigned long long) cq->qs_log2,
                        (unsigned long long)head, (unsigned long long) cur_head, (unsigned long long) search_cid, (unsigned long long) search_phase, ((volatile nvm_cpl_t*)cq->vaddr)+loc,
@@ -233,7 +233,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
     cq->head_mark[pos].val.store(LOCKED, simt::memory_order_release);
     bool cont = true;
     while (cont) {
-        cont - cq->head_mark[pos].val.load(simt::memory_order_acquire);
+        cont = cq->head_mark[pos].val.load(simt::memory_order_acquire);
         if (cont) {
             cont = cq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
             if (!cont) {
