@@ -93,10 +93,10 @@ typedef struct __align__(32)
  */
 typedef struct __align__(64) 
 {
-    simt::atomic<uint8_t, simt::thread_scope_system> head_lock;
-    uint8_t pad0[127];
+    simt::atomic<uint32_t, simt::thread_scope_system> head_lock;
+    uint8_t pad0[124];
     simt::atomic<uint32_t, simt::thread_scope_system> tail_lock;
-    uint8_t pad1[127];
+    uint8_t pad1[124];
     simt::atomic<uint32_t, simt::thread_scope_system> head;
     uint8_t pad2[124];
     simt::atomic<uint32_t, simt::thread_scope_system> tail;
