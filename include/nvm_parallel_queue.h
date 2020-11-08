@@ -60,7 +60,7 @@ uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, bool is_sq) {
 
 
     bool pass = true;
-    uint32_t old_head
+    uint32_t old_head;
     while (pass) {
         uint64_t loc = (cur_head+count++)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.fetch_and(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
