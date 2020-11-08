@@ -45,7 +45,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 
 
     bool pass = true;
-    while (pass && (count <= q->qs_minus_1)) {
+    while (pass ) {
         pass = (q->tail_mark[(cur_tail+count++)&q->qs_minus_1].val.fetch_and(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
 
     }
