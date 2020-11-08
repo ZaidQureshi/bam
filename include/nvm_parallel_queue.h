@@ -53,7 +53,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 }
 
 __device__
-uint32_t move_head(nvm_queue_t* q, bool is_sq) {
+uint32_t move_head(nvm_queue_t* q, uint32_t* ret_c_head,  bool is_sq) {
     uint32_t count = 0;
 
     uint32_t cur_head = 0;
@@ -64,6 +64,8 @@ uint32_t move_head(nvm_queue_t* q, bool is_sq) {
     while (pass) {
         count++;
         cur_head = q->head.load(simt::memory_order_acquire);
+        if (count == 1)
+            *ret_c_head = cur_head;
         uint64_t loc = (cur_head)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
         if (pass && is_sq) {
@@ -178,8 +180,8 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
             /* cont = sq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED; */
             /* if (!cont){ */
                 //uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
-
-                uint32_t head_move_count = move_head(sq, true);
+                uint32_t cur_head;
+                uint32_t head_move_count = move_head(sq, &cur_head, true);
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
                 /* if (head_move_count) { */
                 /*     uint32_t new_head = cur_head + head_move_count; */
@@ -245,9 +247,9 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
         if (cont) {
             /* cont = cq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED; */
             /* if (!cont) { */
-                uint32_t cur_head = cq->head.load(simt::memory_order_acquire);;
-
-                uint32_t head_move_count = move_head(cq, cur_head, false);
+                //uint32_t cur_head = cq->head.load(simt::memory_order_acquire);;
+                uint32_t cur_head;
+                uint32_t head_move_count = move_head(cq, &cur_head, false);
                 //printf("cq head_move_count: %llu\n", (unsigned long long) head_move_count);
 
                 if (head_move_count) {
