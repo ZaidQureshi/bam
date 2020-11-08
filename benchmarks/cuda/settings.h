@@ -368,7 +368,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "64"))},
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "block size", "64"))},
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth", "16"))},
-        {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queueh", "number of queues per controller", "1"))},
+        {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         {'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         {'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
