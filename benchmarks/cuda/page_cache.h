@@ -874,7 +874,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 
 
-    //put_cid(&qp->sq, cid);
+    put_cid(&qp->sq, cid);
 
 
 }
