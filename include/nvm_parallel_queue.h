@@ -53,7 +53,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 }
 
 __device__
-uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, bool is_sq) {
+uint32_t move_head(nvm_queue_t* q, bool is_sq) {
     uint32_t count = 0;
 
     uint32_t cur_head = 0;
@@ -62,7 +62,8 @@ uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, bool is_sq) {
     bool pass = true;
     uint32_t old_head;
     while (pass) {
-        cur = sq->head.load(simt::memory_order_acquire);
+        count++;
+        cur_head = q->head.load(simt::memory_order_acquire);
         uint64_t loc = (cur_head)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
         if (pass && is_sq) {
