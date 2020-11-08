@@ -53,7 +53,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 }
 
 __device__
-uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, bool is_sq) {
+uint32_t move_head(nvm_queue_t* q, uint32_t cur_head, bool is_sq) {
     uint32_t count = 0;
 
 
@@ -62,7 +62,11 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, bool is_sq) {
     while (pass) {
         uint64_t loc = (cur_head+count++)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
+        if (pass && is_sq) {
+            old_head = q->head.fetch_add(1, simt::memory_order_acq_rel);
+            q->tickets[loc].val.fetch_add(2, simt::memory_order_release);
 
+        }
         
 
     }
@@ -191,11 +195,11 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
     while (cont) {
         cont = sq->head_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
-            //cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
-            //if (!cont){
+            cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
+            if (!cont){
                 uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
 
-                uint32_t head_move_count = move_head_sq(sq, cur_head, true);
+                uint32_t head_move_count = move_head(sq, cur_head, true);
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
                 /* if (head_move_count) { */
                 /*     uint32_t new_head = cur_head + head_move_count; */
@@ -203,7 +207,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 /*     sq->head.store(new_head, simt::memory_order_release); */
                 /* } */
                 //sq->head_lock.store(UNLOCKED, simt::memory_order_release);
-            //}
+            }
         }
     }
 
@@ -263,7 +267,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
             /* if (!cont) { */
                 uint32_t cur_head = cq->head.load(simt::memory_order_acquire);;
 
-                uint32_t head_move_count = move_head_cq(cq, cur_head, false);
+                uint32_t head_move_count = move_head(cq, cur_head, false);
                 //printf("cq head_move_count: %llu\n", (unsigned long long) head_move_count);
 
                 if (head_move_count) {
