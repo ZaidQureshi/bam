@@ -209,13 +209,13 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             uint32_t cpl_entry = ((volatile nvm_cpl_t*)cq->vaddr)[loc].dword[3];
             uint32_t cid = (cpl_entry & 0x0000ffff);
             bool phase = (cpl_entry & 0x00010000) >> 16;
-            if (j % 100 == 0)
-            
-                printf("qs_log2: %llu\thead: %llu\tcur_head: %llu\tsearch_cid: %llu\tsearch_phase: %llu\tcq->loc: %p\tcq->qs: %llu\ti: %llu\tj: %llu\tcid: %llu\tphase:%llu\tmark: %llu\n",
-                       (unsigned long long) cq->qs_log2,
-                       (unsigned long long)head, (unsigned long long) cur_head, (unsigned long long) search_cid, (unsigned long long) search_phase, ((volatile nvm_cpl_t*)cq->vaddr)+loc,
-                       (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase,
-                       (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire));
+            /* if (j % 100 == 0) */
+
+            /*     printf("qs_log2: %llu\thead: %llu\tcur_head: %llu\tsearch_cid: %llu\tsearch_phase: %llu\tcq->loc: %p\tcq->qs: %llu\ti: %llu\tj: %llu\tcid: %llu\tphase:%llu\tmark: %llu\n", */
+            /*            (unsigned long long) cq->qs_log2, */
+            /*            (unsigned long long)head, (unsigned long long) cur_head, (unsigned long long) search_cid, (unsigned long long) search_phase, ((volatile nvm_cpl_t*)cq->vaddr)+loc, */
+            /*            (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase, */
+            /*            (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire)); */
 
             if ((cid == search_cid) && (phase == search_phase)){
                  if ((cpl_entry >> 17) != 0)
@@ -255,7 +255,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
                     uint32_t new_db = (new_head) & (cq->qs_minus_1);
 
                     *(cq->db) = new_db;
-                    printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
+                    //printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_release);
                 }
                 cq->head_lock.store(UNLOCKED, simt::memory_order_release);
