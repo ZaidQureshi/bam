@@ -92,9 +92,9 @@ void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uin
 
 
     if (tid < n_reqs) {
-        //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-        uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-        start_block = tid;
+        uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+        //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+        //start_block = tid;
         uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
         //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
 
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         std::vector<Controller*> ctrls(settings.n_ctrls);
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
-            ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth);
+            ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
 
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 

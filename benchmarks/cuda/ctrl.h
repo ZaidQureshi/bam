@@ -55,7 +55,7 @@ struct Controller
     Controller(uint64_t controllerId, uint32_t nvmNamespace, uint32_t adapter, uint32_t segmentId);
 #endif
 
-    Controller(const char* path, uint32_t nvmNamespace, uint32_t cudaDevice, uint64_t queueDepth);
+    Controller(const char* path, uint32_t nvmNamespace, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues);
 
     void reserveQueues();
 
@@ -126,7 +126,7 @@ Controller::Controller(uint64_t ctrl_id, uint32_t ns_id, uint32_t)
 
 
 
-Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth)
+Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues)
     : ctrl(nullptr)
     , aq_ref(nullptr)
     , deviceId(cudaDevice)
@@ -158,7 +158,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, ui
     blk_size_log = std::log2(blk_size);
     reserveQueues(MAX_QUEUES,MAX_QUEUES);
     n_qps = std::min(n_sqs, n_cqs);
-    n_qps = std::min(n_qps, (uint16_t)1);
+    n_qps = std::min(n_qps, (uint16_t)numQueues);
     printf("SQs: %llu\tCQs: %llu\tn_qps: %llu\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc(&d_qps, sizeof(QueuePair)*n_qps));
