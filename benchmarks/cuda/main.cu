@@ -88,8 +88,8 @@ void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uin
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = (bid) % (num_ctrls);
-    uint32_t queue = smid & (ctrls[ctrl]->n_qps-1);
+    uint32_t ctrl = (tid/32) % (num_ctrls);
+    uint32_t queue = bid & (ctrls[ctrl]->n_qps-1);
 
 
     if (tid < n_reqs) {
