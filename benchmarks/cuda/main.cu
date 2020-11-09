@@ -17,7 +17,7 @@
 #include <sys/mman.h>
 #include <ctrl.h>
 #include <buffer.h>
-#include <settings.h>
+#include "settings.h"
 #include <event.h>
 #include <queue.h>
 #include <nvm_parallel_queue.h>
