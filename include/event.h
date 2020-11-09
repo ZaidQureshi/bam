@@ -1,7 +1,7 @@
 #ifndef __BENCHMARK_EVENT_H__
 #define __BENCHMARK_EVENT_H__
 
-#include <cuda.h>
+#include "cuda.h"
 #include <string>
 #include <stdexcept>
 

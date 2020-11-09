@@ -1,8 +1,8 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 
-#include <cuda.h>
-#include <nvm_util.h>
+#include "cuda.h"
+#include "nvm_util.h"
 //#include <ctype>
 #include <cstdio>
 

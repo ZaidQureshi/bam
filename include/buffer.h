@@ -1,15 +1,15 @@
 #ifndef __BENCHMARK_BUFFER_H__
 #define __BENCHMARK_BUFFER_H__
 
-#include <nvm_types.h>
+
 #include <memory>
 #include <cstddef>
 #include <cstdint>
-#include <cuda.h>
-#include <nvm_types.h>
-#include <nvm_dma.h>
-#include <nvm_util.h>
-#include <nvm_error.h>
+#include "cuda.h"
+#include "nvm_types.h"
+#include "nvm_dma.h"
+#include "nvm_util.h"
+#include "nvm_error.h"
 #include <memory>
 #include <stdexcept>
 #include <string>

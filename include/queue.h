@@ -2,14 +2,14 @@
 #define __BENCHMARK_QUEUEPAIR_H__
 
 #include <algorithm>
-#include <nvm_types.h>
 #include <cstdint>
 #include "buffer.h"
 #include "ctrl.h"
-#include <cuda.h>
-#include <nvm_util.h>
-#include <nvm_error.h>
-#include <nvm_admin.h>
+#include "cuda.h"
+#include "nvm_types.h"
+#include "nvm_util.h"
+#include "nvm_error.h"
+#include "nvm_admin.h"
 #include <stdexcept>
 #include <string>
 #include <iostream>

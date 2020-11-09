@@ -2,15 +2,15 @@
 #ifndef __BENCHMARK_CTRL_H__
 #define __BENCHMARK_CTRL_H__
 
-#include <nvm_types.h>
+
 #include <cstdint>
 #include "buffer.h"
-#include <nvm_types.h>
-#include <nvm_ctrl.h>
-#include <nvm_aq.h>
-#include <nvm_admin.h>
-#include <nvm_util.h>
-#include <nvm_error.h>
+#include "nvm_types.h"
+#include "nvm_ctrl.h"
+#include "nvm_aq.h"
+#include "nvm_admin.h"
+#include "nvm_util.h"
+#include "nvm_error.h"
 #include <string>
 #include <memory>
 #include <vector>
