@@ -159,9 +159,9 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, ui
     reserveQueues(MAX_QUEUES,MAX_QUEUES);
     n_qps = std::min(n_sqs, n_cqs);
     n_qps = std::min(n_qps, (uint16_t)numQueues);
-    printf("SQs: %llu\tCQs: %llu\tn_qps: %llu\n", n_sqs, n_cqs, n_qps);
+    printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
-    cuda_err_chk(cudaMalloc(&d_qps, sizeof(QueuePair)*n_qps));
+    cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
     for (size_t i = 0; i < n_qps; i++) {
         printf("started creating qp\n");
         h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
