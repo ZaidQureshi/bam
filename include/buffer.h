@@ -218,6 +218,7 @@ BufferPtr createBuffer(size_t size)
     }
 
     return BufferPtr(buffer, [](void* ptr) {
+
         cudaFreeHost(ptr);
     });
 }
@@ -238,6 +239,7 @@ BufferPtr createBuffer(size_t size, int cudaDevice)
     //std::cout << "createbuffer: " << std::hex << bufferPtr <<  std::endl;
 
     return BufferPtr(bufferPtr, [origPtr](void* ptr) {
+        __ignore(ptr);
         cudaFree(origPtr);
         //std::cout << "Deleting Buffer\n";
     });

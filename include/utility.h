@@ -67,7 +67,9 @@ void hexdump(void *mem, unsigned int len)
         }
 }
 
-
+template <typename T>
+void __ignore(T &&)
+{ }
 /*warp memcpy, assumes alignment at type T and num is a count in type T*/
 // template <typename T>
 // __device__

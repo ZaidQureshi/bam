@@ -23,7 +23,7 @@
 #include <nvm_parallel_queue.h>
 #include <nvm_io.h>
 #include <page_cache.h>
-#include <util.h>
+#include <utility.h>
 #include <iostream>
 #include <fstream>
 #ifdef __DIS_CLUSTER__

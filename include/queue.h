@@ -14,7 +14,7 @@
 #include <string>
 #include <iostream>
 #include <cmath>
-#include "util.h"
+#include "utility.h"
 
 using error = std::runtime_error;
 using std::string;
@@ -96,7 +96,7 @@ struct QueuePair
         sq_size = std::min(queueDepth, sq_size);
         cq_size = std::min(queueDepth, cq_size);
 
-        printf("sq_size: %llu\tcq_size: %llu\n", sq_size, cq_size);
+        printf("sq_size: %d\tcq_size: %d\n", sq_size, cq_size);
         bool sq_need_prp = false;//(!cqr) || (sq_size > MAX_SQ_ENTRIES_64K);
         bool cq_need_prp = false;// (!cqr) || (cq_size > MAX_CQ_ENTRIES_64K);
 
