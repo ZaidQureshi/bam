@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
         //uint64_t n_pages = total_cache_size/page_size;
 
 
-        page_cache_t h_pc(page_size, n_pages, settings, ctrls[0][0], (uint64_t) 64, ctrls);
+        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
@@ -201,13 +201,13 @@ int main(int argc, char** argv) {
         uint64_t n_elems = (1024ULL)*(1024ULL)*(2);
         uint64_t t_size = n_elems * sizeof(TYPE);
 
-        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings);
+        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
 
         std::vector<range_t<uint64_t>*> vr(1);
         vr[0] = & h_range;
         //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
-        array_t<uint64_t> a(n_elems, 0, vr, settings);
+        array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
 
 
         std::cout << "finished creating range\n";

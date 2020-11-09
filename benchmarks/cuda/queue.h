@@ -5,7 +5,6 @@
 #include <nvm_types.h>
 #include <cstdint>
 #include "buffer.h"
-#include "settings.h"
 #include "ctrl.h"
 #include <cuda.h>
 #include <nvm_util.h>

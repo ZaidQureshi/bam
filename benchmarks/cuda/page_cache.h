@@ -6,7 +6,6 @@
 #include <nvm_util.h>
 #include "buffer.h"
 #include "ctrl.h"
-#include "settings.h"
 #include <iostream>
 
 #define FREE 2
@@ -62,7 +61,7 @@ struct range_t {
     void* d_range_ptr;
 
 
-    range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, const Settings& settings) {
+    range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice) {
         index_start = is;
         index_end = ie;
         //range_id = (c_h->range_count)++;
@@ -73,7 +72,7 @@ struct range_t {
         size_t s = (page_end-page_start);//*page_size / c_h->page_size;
 
         cache = (page_cache_t*) c_h->d_pc_ptr;
-        page_states_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
+        page_states_buff = createBuffer(s * sizeof(padded_struct), cudaDevice);
         page_states = (page_states_t) page_states_buff.get();
 
         padded_struct* ts = new padded_struct[s];
@@ -82,10 +81,10 @@ struct range_t {
         cuda_err_chk(cudaMemcpy(page_states, ts, s * sizeof(padded_struct), cudaMemcpyHostToDevice));
         delete ts;
 
-        page_addresses_buff = createBuffer(s * sizeof(padded_struct), settings.cudaDevice);
+        page_addresses_buff = createBuffer(s * sizeof(padded_struct), cudaDevice);
         page_addresses = (padded_struct*) page_addresses_buff.get();
 
-        range_buff = createBuffer(sizeof(range_t<T>), settings.cudaDevice);
+        range_buff = createBuffer(sizeof(range_t<T>), cudaDevice);
         d_range_ptr = range_buff.get();
         range_id  = c_h->n_ranges++;
 
@@ -373,15 +372,15 @@ struct array_t {
     BufferPtr d_array_buff;
     BufferPtr d_ranges_buff;
 
-    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings) {
+    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
         n_elems = num_elems;
         start_offset = disk_start_offset;
 
         n_ranges = ranges.size();
-        d_array_buff = createBuffer(sizeof(array_t<T>), settings.cudaDevice);
+        d_array_buff = createBuffer(sizeof(array_t<T>), cudaDevice);
         d_array_ptr = (array_t<T>*) d_array_buff.get();
 
-        d_ranges_buff = createBuffer(n_ranges * sizeof(range_t<T>*), settings.cudaDevice);
+        d_ranges_buff = createBuffer(n_ranges * sizeof(range_t<T>*), cudaDevice);
         d_ranges = (range_t<T>**) d_ranges_buff.get();
         for (size_t k = 0; k < n_ranges; k++)
             cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range_t<T>*), cudaMemcpyHostToDevice));
@@ -604,10 +603,10 @@ struct page_cache_t {
 
     }
 
-    page_cache_t(const uint64_t ps, const uint64_t np, const Settings& settings, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls)
+    page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls)
         : page_size(ps), page_size_minus_1(ps-1), n_pages(np), n_pages_minus_1(np-1), ctrl_page_size(ctrl.ctrl->page_size) {
         n_ctrls = ctrls.size();
-        d_ctrls_buff = createBuffer(n_ctrls * sizeof(Controller*), settings.cudaDevice);
+        d_ctrls_buff = createBuffer(n_ctrls * sizeof(Controller*), cudaDevice);
         d_ctrls = (Controller**) d_ctrls_buff.get();
         for (size_t k = 0; k < n_ctrls; k++)
             cuda_err_chk(cudaMemcpy(d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
@@ -620,14 +619,14 @@ struct page_cache_t {
         std::cout << "n_ranges_mask: " << std::dec << n_ranges_mask << std::endl;
         page_ticket.val = 0;
         page_size_log = std::log2(ps);
-        ranges_buf = createBuffer(max_range * sizeof(page_states_t), settings.cudaDevice);
+        ranges_buf = createBuffer(max_range * sizeof(page_states_t), cudaDevice);
         ranges = (page_states_t*)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
 
-        page_translation_buf = createBuffer(np * sizeof(padded_struct), settings.cudaDevice);
+        page_translation_buf = createBuffer(np * sizeof(padded_struct), cudaDevice);
         page_translation = (padded_struct*)page_translation_buf.get();
 
-        page_take_lock_buf = createBuffer(np * sizeof(padded_struct), settings.cudaDevice);
+        page_take_lock_buf = createBuffer(np * sizeof(padded_struct), cudaDevice);
         page_take_lock =  (padded_struct*)page_take_lock_buf.get();
 
         padded_struct* tps = new padded_struct[np];
@@ -639,7 +638,7 @@ struct page_cache_t {
 
 
         uint64_t cache_size = ps*np;
-        this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
+        this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
         base_addr = (uint8_t*) this->pages_dma.get()->vaddr;
         std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
         std::cout << "HEREN\n";
@@ -649,7 +648,7 @@ struct page_cache_t {
         if (ps <= this->pages_dma.get()->page_size) {
             std::cout << "Cond1\n";
             uint64_t how_many_in_one = ctrl.ctrl->page_size/ps;
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             prp1 = (uint64_t*) this->prp1_buf.get();
 
 
@@ -674,9 +673,9 @@ struct page_cache_t {
         }
 
         else if ((ps > this->pages_dma.get()->page_size) && (ps <= (this->pages_dma.get()->page_size * 2))) {
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             prp1 = (uint64_t*) this->prp1_buf.get();
-            this->prp2_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             prp2 = (uint64_t*) this->prp2_buf.get();
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             std::memset(temp1, 0, np * sizeof(uint64_t));
@@ -694,11 +693,11 @@ struct page_cache_t {
             prps = true;
         }
         else {
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             prp1 = (uint64_t*) this->prp1_buf.get();
             uint32_t prp_list_size =  ctrl.ctrl->page_size  * np;
-            this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
-            this->prp2_buf = createBuffer(np * sizeof(uint64_t), settings.cudaDevice);
+            this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cudaDevice);
+            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             prp2 = (uint64_t*) this->prp2_buf.get();
             uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
@@ -737,7 +736,7 @@ struct page_cache_t {
         }
 
 
-        pc_buff = createBuffer(sizeof(page_cache_t), settings.cudaDevice);
+        pc_buff = createBuffer(sizeof(page_cache_t), cudaDevice);
         d_pc_ptr = pc_buff.get();
         cuda_err_chk(cudaMemcpy(d_pc_ptr, this, sizeof(page_cache_t), cudaMemcpyHostToDevice));
         std::cout << "Finish Making Page Cache\n";

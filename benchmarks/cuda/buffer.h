@@ -243,79 +243,19 @@ BufferPtr createBuffer(size_t size, int cudaDevice)
     });
 }
 
+/*
 
-
-#ifdef __DIS_CLUSTER__
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, uint32_t, uint32_t)
-{
-    nvm_dma_t* dma = nullptr;
-
-    int status = nvm_dis_dma_create(&dma, ctrl, size, 0);
-    if (!nvm_ok(status))
-    {
-        throw error(string("Failed to create local segment: ") + nvm_strerror(status));
-    }
-
-    return DmaPtr(dma, nvm_dma_unmap);
-}
-#else
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, uint32_t, uint32_t)
+DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
 {
     return createDma(ctrl, size);
 }
-#endif
 
 
-#ifdef __DIS_CLUSTER__
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice, uint32_t, uint32_t)
-{
-    if (cudaDevice < 0)
-    {
-        return createDma(ctrl, size, 0, 0);
-    }
 
-    nvm_dma_t* dma = nullptr;
-    void* bufferPtr = nullptr;
-    void* devicePtr = nullptr;
-
-    getDeviceMemory(cudaDevice, bufferPtr, devicePtr, size);
-
-    int status = nvm_dis_dma_map_device(&dma, ctrl, devicePtr, size);
-    if (!nvm_ok(status))
-    {
-        throw error(string("Failed to create local segment: ") + nvm_strerror(status));
-    }
-
-    dma->vaddr = devicePtr;
-
-    return DmaPtr(dma, nvm_dma_unmap);
-}
-#else
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice, uint32_t, uint32_t)
+DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
 {
     return createDma(ctrl, size, cudaDevice);
 }
-#endif
 
-
-
-#ifdef __DIS_CLUSTER__
-DmaPtr createRemoteDma(const nvm_ctrl_t* ctrl, size_t size)
-{
-    nvm_dma_t* dma = nullptr;
-
-    int status = nvm_dis_dma_create(&dma, ctrl, size, SCI_MEMACCESS_HOST_WRITE | SCI_MEMACCESS_DEVICE_READ);
-    if (!nvm_ok(status))
-    {
-        throw error(string("Failed to create device segment: ") + nvm_strerror(status));
-    }
-
-    // TODO: implement this
-    //cudaError_t err = cudaHostRegister(
-
-    return DmaPtr(dma, nvm_dma_unmap);
-}
-#endif
-
-
+*/
 #endif
