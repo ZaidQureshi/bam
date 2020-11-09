@@ -81,13 +81,14 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 */
 __global__
+__launch_bounds__(64, 32)
 void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = (tid/32) % (num_ctrls);
+    uint32_t ctrl = (bid) % (num_ctrls);
     uint32_t queue = smid & (ctrls[ctrl]->n_qps-1);
 
 
