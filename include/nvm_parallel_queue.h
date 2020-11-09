@@ -179,8 +179,10 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     sq->tail.store(new_tail, simt::memory_order_release);
                 }
                 //sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
+                break;
             //}
         }
+        __nanosleep(100);
     }
 
 
@@ -209,8 +211,10 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 /*     sq->head.store(new_head, simt::memory_order_release); */
                 /* } */
                 sq->head_lock.store(UNLOCKED, simt::memory_order_release);
+                break;
             }
         }
+        __nanosleep(100);
     }
 
 
@@ -282,8 +286,10 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
                     cq->head.store(new_head, simt::memory_order_release);
                 }
                 //cq->head_lock.store(UNLOCKED, simt::memory_order_release);
+                break;
             //}
         }
+        __nanosleep(100);
     }
 
 
