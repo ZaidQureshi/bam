@@ -164,9 +164,9 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     bool cont = true;
     while(cont) {
         cont = sq->tail_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
-        /* if (cont) { */
-        /*     cont = sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED; */
-            if(!cont) {
+        if (cont) {
+            /* cont = sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED; */
+            /* if(!cont) { */
                 uint32_t cur_tail = sq->tail.load(simt::memory_order_acquire);
 
                 uint32_t tail_move_count = move_tail(sq, cur_tail);
@@ -180,8 +180,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                 }
                 //sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
                 //break;
-            }
-        //}
+            //}
+        }
         __nanosleep(100);
     }
 
