@@ -13,8 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "util.h"
-#include "ctrl.h"
+#include "lib_util.h"
+#include "lib_ctrl.h"
 #include "dma.h"
 #include "mutex.h"
 #include "dprintf.h"

@@ -12,7 +12,7 @@
 #include <errno.h>
 #include "rpc.h"
 #include "regs.h"
-#include "util.h"
+#include "lib_util.h"
 #include "dprintf.h"
 
 

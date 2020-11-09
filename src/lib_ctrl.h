@@ -3,7 +3,7 @@
 
 #include <nvm_types.h>
 #include "mutex.h"
-#include "util.h"
+#include "lib_util.h"
 
 
 /* 

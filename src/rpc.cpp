@@ -25,8 +25,8 @@
 #include <string.h>
 #include "mutex.h"
 #include "rpc.h"
-#include "ctrl.h"
-#include "util.h"
+#include "lib_ctrl.h"
+#include "lib_util.h"
 #include "dprintf.h"
 
 

@@ -16,7 +16,7 @@
 #include <new>
 #include <cstdlib>
 #include <iostream>
-
+#include "util.h"
 
 using error = std::runtime_error;
 using std::string;

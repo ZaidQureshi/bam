@@ -14,7 +14,7 @@
 #include <string>
 #include <iostream>
 #include <cmath>
-#include "utility.h"
+#include "util.h"
 
 using error = std::runtime_error;
 using std::string;
@@ -96,7 +96,7 @@ struct QueuePair
         sq_size = std::min(queueDepth, sq_size);
         cq_size = std::min(queueDepth, cq_size);
 
-        printf("sq_size: %d\tcq_size: %d\n", sq_size, cq_size);
+        printf("sq_size: %ld\tcq_size: %ld\n", sq_size, cq_size);
         bool sq_need_prp = false;//(!cqr) || (sq_size > MAX_SQ_ENTRIES_64K);
         bool cq_need_prp = false;// (!cqr) || (cq_size > MAX_CQ_ENTRIES_64K);
 
@@ -106,7 +106,7 @@ struct QueuePair
         std::cout << sq_size << "\t" << sq_mem_size << std::endl;
         //size_t queueMemSize = ctrl.info.page_size * 2;
         //size_t prpListSize = ctrl.info.page_size * numThreads * (doubleBuffered + 1);
-        size_t prp_mem_size = sq_size * (4096) * 2;
+        //size_t prp_mem_size = sq_size * (4096) * 2;
         std::cout << "Started creating DMA\n";
         // qmem->vaddr will be already a device pointer after the following call
         this->sq_mem = createDma(ctrl, NVM_PAGE_ALIGN(sq_mem_size, 1UL << 16), cudaDevice);

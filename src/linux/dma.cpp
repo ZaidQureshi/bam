@@ -17,8 +17,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include "util.h"
-#include "ctrl.h"
+#include "lib_util.h"
+#include "lib_ctrl.h"
 #include "dma.h"
 #include "linux/map.h"
 #include "dprintf.h"

@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include "linux/map.h"
 #include "linux/ioctl.h"
-#include "ctrl.h"
+#include "lib_ctrl.h"
 #include "dprintf.h"
 
 
