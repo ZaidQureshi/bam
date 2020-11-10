@@ -28,7 +28,7 @@ enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31
 #define VALID_DIRTY (1U << 31)
 #define VALID (0U)
 #define INVALID (UINT_MAX & 0x7fffffff)
-#define BUSY ((ULLONG_MAX & 0x7fffffff)-1)
+#define BUSY ((UINT_MAX & 0x7fffffff)-1)
 
 struct page_cache_t;
 
@@ -115,8 +115,8 @@ struct range_t {
     __device__
     uint64_t acquire_page(const size_t pg, const uint32_t count, const bool write) const {
         uint64_t index = pg;
-        uint64_t expected_state = VALID;
-        uint64_t new_state = USE;
+        uint32_t expected_state = VALID;
+        uint32_t new_state = USE;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
         bool fail = true;
         T ret;
@@ -128,7 +128,7 @@ struct range_t {
                     new_state = ((write) ? USE_DIRTY : USE) + count - 1;
                     pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        uint32_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         return ((uint64_t)((cache->base_addr+(page_trans * cache->page_size))));
@@ -147,7 +147,7 @@ struct range_t {
                 case INVALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = cache->find_slot(index, range_id);
+                        uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
                         uint32_t bid = blockIdx.x;
                         uint32_t smid = get_smid();
@@ -179,7 +179,7 @@ struct range_t {
                         new_state |= VALID_DIRTY;
                     pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        uint32_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         return ((uint64_t)((cache->base_addr+(page_trans * cache->page_size))));
@@ -202,8 +202,8 @@ struct range_t {
         uint64_t subindex = get_subindex(i);
         //printf("tid: %llu\ti: %llu\tindex: %llu\tsubindex: %llu\tpage_size_log: %llu\tpage_size_minus_1: %llu\n", (unsigned long long) (blockIdx.x * blockDim.x + threadIdx.x), (unsigned long long) i,
         //       (unsigned long long) index, (unsigned long long) subindex, (unsigned long long) cache->page_size_log, (unsigned long long) cache->page_size_minus_1);
-        uint64_t expected_state = VALID;
-        uint64_t new_state = USE;
+        uint32_t expected_state = VALID;
+        uint32_t new_state = USE;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
         //if (threadIdx.x == 63) {
         //printf("page: %llu\tsubindex: %llu\n", (unsigned long long) index, (unsigned long long) subindex);
@@ -218,7 +218,7 @@ struct range_t {
                 case VALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, USE, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        uint32_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ret = ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0];
@@ -237,7 +237,7 @@ struct range_t {
                 case INVALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = cache->find_slot(index, range_id);
+                        uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
                         uint32_t bid = blockIdx.x;
                         uint32_t smid = get_smid();
@@ -265,7 +265,7 @@ struct range_t {
                     new_state = expected_state + 1;
                     pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        uint32_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ret = ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0];
@@ -289,8 +289,8 @@ struct range_t {
         uint64_t subindex = get_subindex(i);
         //printf("tid: %llu\ti: %llu\tindex: %llu\tsubindex: %llu\tpage_size_log: %llu\tpage_size_minus_1: %llu\n", (unsigned long long) (blockIdx.x * blockDim.x + threadIdx.x), (unsigned long long) i,
         //       (unsigned long long) index, (unsigned long long) subindex, (unsigned long long) cache->page_size_log, (unsigned long long) cache->page_size_minus_1);
-        uint64_t expected_state = VALID;
-        uint64_t new_state = USE_DIRTY;
+        uint32_t expected_state = VALID;
+        uint32_t new_state = USE_DIRTY;
         uint64_t global_address = (index << cache->n_ranges_bits) | range_id;
         bool fail = true;
         T ret;
@@ -301,7 +301,7 @@ struct range_t {
                 case VALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, USE_DIRTY, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        uint32_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0] = val;
@@ -320,7 +320,7 @@ struct range_t {
                 case INVALID:
                     pass = page_states[index].val.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = cache->find_slot(index, range_id);
+                        uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
                         page_addresses[index].val.store(page_trans, simt::memory_order_release);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -340,7 +340,7 @@ struct range_t {
                     new_state = (expected_state + 1) | VALID_DIRTY;
                     pass = page_states[index].val.compare_exchange_weak(expected_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
                     if (pass) {
-                        uint64_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
+                        uint32_t page_trans = page_addresses[index].val.load(simt::memory_order_acquire);
                         // while (cache->page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                         //     __nanosleep(100);
                         ((T*)((cache->base_addr+(page_trans * cache->page_size)) + subindex))[0] = val;
@@ -748,14 +748,14 @@ struct page_cache_t {
     uint64_t find_slot(uint64_t address, uint64_t range_id) {
         bool fail = true;
         uint64_t count = 0;
-        uint64_t global_address = (address << n_ranges_bits) | range_id;
+        uint32_t global_address = (address << n_ranges_bits) | range_id;
         uint64_t page = 0;
         do {
             //if (count < this->n_pages)
                 page = this->page_ticket.val.fetch_add(1, simt::memory_order_acquire)  & (this->n_pages_minus_1);
-            uint64_t unlocked = UNLOCKED;
+            uint32_t unlocked = UNLOCKED;
             bool lock = false;
-            uint64_t v = this->page_take_lock[page].val.load(simt::memory_order_acquire);
+            uint32_t v = this->page_take_lock[page].val.load(simt::memory_order_acquire);
             //this->page_take_lock[page].val.compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             //not assigned to anyone yet
             if ( v == FREE ) {
