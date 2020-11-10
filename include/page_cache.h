@@ -21,18 +21,18 @@
 //   }
 // }
 
-enum page_state {USE = 1ULL, USE_DIRTY = ((1ULL << 63) | 1), VALID_DIRTY = (1ULL << 63), VALID = 0ULL, INVALID = (ULLONG_MAX & 0x7fffffffffffffff), BUSY = ((ULLONG_MAX & 0x7fffffffffffffff)-1)};
+enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31), VALID = 0U, INVALID = (UINT_MAX & 0x7fffffff), BUSY = ((UINT_MAX & 0x7fffffff)-1)};
 
-#define USE (1ULL)
-#define USE_DIRTY ((1ULL << 63) | 1)
-#define VALID_DIRTY (1ULL << 63)
-#define VALID (0ULL)
-#define INVALID (ULLONG_MAX & 0x7fffffffffffffff)
-#define BUSY ((ULLONG_MAX & 0x7fffffffffffffff)-1)
+#define USE (1U)
+#define USE_DIRTY ((1U << 31) | 1)
+#define VALID_DIRTY (1U << 31)
+#define VALID (0U)
+#define INVALID (UINT_MAX & 0x7fffffff)
+#define BUSY ((ULLONG_MAX & 0x7fffffff)-1)
 
 struct page_cache_t;
 
-typedef padded_struct* page_states_t;
+typedef padded_struct_pc* page_states_t;
 
 
 
@@ -49,8 +49,8 @@ struct range_t {
     uint64_t page_end;
     page_cache_t* cache;
     page_states_t page_states;
-    padded_struct* page_addresses;
-    //padded_struct* page_vals;  //len = num of pages for data
+    padded_struct_pc* page_addresses;
+    //padded_struct_pc* page_vals;  //len = num of pages for data
     //
 
     BufferPtr page_states_buff;
@@ -72,17 +72,17 @@ struct range_t {
         size_t s = (page_end-page_start);//*page_size / c_h->page_size;
 
         cache = (page_cache_t*) c_h->d_pc_ptr;
-        page_states_buff = createBuffer(s * sizeof(padded_struct), cudaDevice);
+        page_states_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
         page_states = (page_states_t) page_states_buff.get();
 
-        padded_struct* ts = new padded_struct[s];
+        padded_struct_pc* ts = new padded_struct_pc[s];
         for (size_t i = 0; i < s; i++)
             ts[i].val = INVALID;
-        cuda_err_chk(cudaMemcpy(page_states, ts, s * sizeof(padded_struct), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(page_states, ts, s * sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
         delete ts;
 
-        page_addresses_buff = createBuffer(s * sizeof(padded_struct), cudaDevice);
-        page_addresses = (padded_struct*) page_addresses_buff.get();
+        page_addresses_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
+        page_addresses = (padded_struct_pc*) page_addresses_buff.get();
 
         range_buff = createBuffer(sizeof(range_t<T>), cudaDevice);
         d_range_ptr = range_buff.get();
@@ -559,9 +559,9 @@ struct page_cache_t {
     uint64_t page_size_log;
     uint64_t n_pages;
     uint64_t n_pages_minus_1;
-    padded_struct* page_translation;         //len = num of pages in cache
-    padded_struct* page_take_lock;      //len = num of pages in cache
-    padded_struct page_ticket;
+    padded_struct_pc* page_translation;         //len = num of pages in cache
+    padded_struct_pc* page_take_lock;      //len = num of pages in cache
+    padded_struct_pc page_ticket;
     uint64_t* prp1;                  //len = num of pages in cache
     uint64_t* prp2;                  //len = num of pages in cache if page_size = ctrl.page_size *2
     //uint64_t* prp_list;              //len = num of pages in cache if page_size > ctrl.page_size *2
@@ -623,16 +623,16 @@ struct page_cache_t {
         ranges = (page_states_t*)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
 
-        page_translation_buf = createBuffer(np * sizeof(padded_struct), cudaDevice);
-        page_translation = (padded_struct*)page_translation_buf.get();
+        page_translation_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
+        page_translation = (padded_struct_pc*)page_translation_buf.get();
 
-        page_take_lock_buf = createBuffer(np * sizeof(padded_struct), cudaDevice);
-        page_take_lock =  (padded_struct*)page_take_lock_buf.get();
+        page_take_lock_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
+        page_take_lock =  (padded_struct_pc*)page_take_lock_buf.get();
 
-        padded_struct* tps = new padded_struct[np];
+        padded_struct_pc* tps = new padded_struct_pc[np];
         for (size_t i = 0; i < np; i++)
             tps[i].val = FREE;
-        cuda_err_chk(cudaMemcpy(page_take_lock, tps, np*sizeof(padded_struct), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(page_take_lock, tps, np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
         delete tps;
 
 

@@ -74,6 +74,12 @@ typedef struct __align__(32)
 } __attribute__((aligned (32))) nvm_dma_t;
 
 
+typedef struct __align__(32)
+{
+    simt::atomic<uint32_t, simt::thread_scope_system>  val;
+    //uint8_t pad[32-8];
+} __attribute__((aligned (32))) padded_struct_pc;
+
 
 typedef struct __align__(32)
 {
