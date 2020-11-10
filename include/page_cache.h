@@ -774,8 +774,8 @@ struct page_cache_t {
                     uint64_t previous_global_address = this->page_translation[page].val.load(simt::memory_order_acquire);
                     uint64_t previous_range = previous_global_address & n_ranges_mask;
                     uint64_t previous_address = previous_global_address >> n_ranges_bits;
-                    uint64_t expected_state = VALID;
-                    uint64_t new_state = BUSY;
+                    uint32_t expected_state = VALID;
+                    uint32_t new_state = BUSY;
                     bool pass = false;
                     //if ((previous_range >= range_cap) || (previous_address >= n_pages))
                     //    printf("prev_ga: %llu\tprev_range: %llu\tprev_add: %llu\trange_cap: %llu\tn_pages: %llu\n", (unsigned long long) previous_global_address, (unsigned long long) previous_range, (unsigned long long) previous_address,
