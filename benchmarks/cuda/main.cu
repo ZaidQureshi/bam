@@ -242,7 +242,7 @@ int main(int argc, char** argv) {
         //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
         //cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
-
+        cuda_err_chk(cudaDeviceSynchronize());
 
 
         double elapsed = after - before;
