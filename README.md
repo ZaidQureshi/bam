@@ -3,7 +3,7 @@ gpudirect-nvme
 This codebase builds on top of a opensource codebase by Jonas Markussen
 available [here](https://github.com/enfiskutensykkel/ssd-gpu-dma).
 We take his codebase and make it more robust by adding more error checking
-and fixing issues of memory alignment.
+and fixing issues of memory alignment along with increasing the performance when large number of requests are available.
 
 We add to the codebase functionality allowing any GPU thread independently
 access any location on the NVMe device. To facilitate this we develop high-throughput
@@ -25,8 +25,7 @@ a sequential and random access benchmark that incorporates all the functionality
 
 Hardware/System Requirements
 -------------------------------------------------------------------------------
-In order to be able to use this code base you need some specific type of hardware
-and some specific system configuration.
+This code base requires specific type of hardware and specific system configuration to be functional and performant.
 
 ### Hardware Requirements ###
 * A x86 system supporting PCIe P2P
@@ -34,7 +33,7 @@ and some specific system configuration.
   * Please make sure there isn't any needed data on this SSD  as the system can write data to the SSD if the application requests to.
 * A NVIDIA Tesla grade GPU that is from the Volta or newer generation. A Tesla V100 fits both of these requirements
   * A Tesla grade GPU is needed as it can expose all of its memory for P2P accesses over PCIe.
-  * A Volta or newer gen of GPU is needed because we rely on some memory synchronization primitives that are only supported since Volta.
+  * A Volta or newer generation of GPU is needed as we rely on memory synchronization primitives only supported since Volta.
 * A system that can support `Above 4G Decoding` for PCIe devices.
   * This is needed to address more than 4GB of memory for PCIe devices, specifically GPU memory.
   * This is a feature that might need to be ENABLED in the BIOS of the system.
@@ -47,7 +46,7 @@ and some specific system configuration.
 * The `iommu` support in Linux must be disabled too, which can be checked and disabled following the instructions [below](#disable-iommu-in-linux).
 * In the system's BIOS, `ACS` must be disabled if the option is available
 * Relatively new Linux kernel (ie. 5.x).
-* CMake 3.1 or newer and the _FindCUDA_ package for CMake
+* CMake 3.10 or newer and the _FindCUDA_ package for CMake
 * GCC version 5.4.0 or newer. Compiler must support C++11 and POSIX threads.
 * CUDA 10.2 or newer
 * Nvidia driver (at least 440.33 or newer)
@@ -57,7 +56,7 @@ and some specific system configuration.
 If you are using CUDA or implementing support for your own custom devices, 
 you need to explicitly disable IOMMU as IOMMU support for peer-to-peer on 
 Linux is a bit flaky at the moment. If you are not relying on peer-to-peer,
-I would in fact recommend you leaving the IOMMU _on_ for protecting memory 
+we would in fact recommend you leaving the IOMMU _on_ for protecting memory 
 from rogue writes.
 
 To check if the IOMMU is on, you can do the following:
@@ -75,7 +74,7 @@ The next time you reboot, the IOMMU will be disabled.
 
 ### Compiling Nvidia Driver Kernel Symbols ###
 Typically the Nvidia driver kernel sources are installed in the `/usr/src/` directory.
-So if my Nvidia driver version is `450.51.06`, then they will be in the `/usr/src/nvidia-450.51.06` directory.
+So if the Nvidia driver version is `450.51.06`, then they will be in the `/usr/src/nvidia-450.51.06` directory.
 So assuming the driver version is `450.51.06`, to get the kernel symbols you need to do the following commands as the `root` user.
 
 ```
@@ -95,7 +94,7 @@ $ make benchmarks                     # builds benchmark program
 ```
 
 The CMake configuration is _supposed to_ autodetect the location of CUDA, 
-Nvidia driver and SISCI library. CUDA is located by the _FindCUDA_ package for
+Nvidia driver and project library. CUDA is located by the _FindCUDA_ package for
 CMake, while the location of both the Nvidia driver can be manually
 set by overriding the `NVIDIA` defines for CMake 
 (`cmake .. -DNVIDIA=/usr/src/...`).
@@ -114,7 +113,7 @@ Loading/Unloading the Kernel Module
 In order to be able to use the custom kernel module for the NVMe device, we need to first unbind
 the NVMe device from the default Linux NVMe driver.
 To do this, we need to find the PCI ID of the NVMe device.
-To find this we can use the kernel log. For example, if the NVMe device I want to use is mapped to the `/dev/nvme0` block device, we can do the following to find the PCI ID.
+To find this we can use the kernel log. For example, if the required NVMe device want is mapped to the `/dev/nvme0` block device, we can do the following to find the PCI ID.
 
 ```
 $ dmesg | grep nvme0
