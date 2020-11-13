@@ -111,26 +111,24 @@ void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uin
 
 }
 __global__
-void access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
-    //printf("in threads\n");
+void sequential_access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count) {
+
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    //uint32_t bid = blockIdx.x;
-    //uint32_t smid = get_smid();
-
-    //uint32_t ctrl = bid & (num_ctrls-1);
-    //uint32_t queue = smid & (ctrls[ctrl].n_qps-1);
-
-
     if (tid < n_reqs) {
-        //req_count += (*dr)[tid];
-        req_count += dr->seq_read(tid);
-        //uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl].d_qps[queue].block_size_log;
-        //uint64_t n_blocks = req_size >> ctrls[ctrl].d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
 
-        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block, n_blocks, tid);
-        //__syncthreads();
-        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
-        //printf("tid: %llu finished\n", (unsigned long long) tid);
+        req_count += dr->seq_read(tid);
+
+    }
+
+}
+
+__global__
+void random_access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment) {
+
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < n_reqs) {
+
+        req_count += dr->seq_read(assignment[tid]);
 
     }
 
@@ -198,7 +196,7 @@ int main(int argc, char** argv) {
         //QueuePair* d_qp;
         page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
         #define TYPE uint64_t
-        uint64_t n_elems = (1024ULL)*(1024ULL)*(2);
+        uint64_t n_elems = settings.numElems;
         uint64_t t_size = n_elems * sizeof(TYPE);
 
         range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
@@ -212,13 +210,7 @@ int main(int argc, char** argv) {
 
         std::cout << "finished creating range\n";
 
-        uint64_t* assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
-        for (size_t i = 0; i< n_threads; i++)
-            assignment[i] = rand() % (n_elems);
 
-        uint64_t* d_assignment;
-        cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
-        cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
 
 
         unsigned long long* d_req_count;
@@ -228,15 +220,28 @@ int main(int argc, char** argv) {
         char st[15];
         cuda_err_chk(cudaDeviceGetPCIBusId(st, 15, settings.cudaDevice));
         std::cout << st << std::endl;
+        uint64_t* assignment;
+        uint64_t* d_assignment;
+        if (settings.random) {
+            assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
+            for (size_t i = 0; i< n_threads; i++)
+                assignment[i] = rand() % (n_elems);
 
+
+            cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
+            cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
+        }
         Event before;
         //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
-        access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
+        if (settings.random)
+            random_access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment);
+        else
+            sequential_access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count);
         Event after;
         //new_kernel<<<1,1>>>();
-        uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
+        //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
-        cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
+        //cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
 
 
 
@@ -245,7 +250,7 @@ int main(int argc, char** argv) {
         uint64_t data = ios*sizeof(uint64_t);
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
-        std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData SIze (bytes): " << data << std::endl;
+        std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
         std::cout << std::dec << "Read Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
         //std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
