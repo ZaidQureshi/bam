@@ -242,16 +242,16 @@ int main(int argc, char** argv) {
 
         double elapsed = after - before;
         uint64_t ios = g_size*b_size*settings.numReqs;
-        uint64_t data = ios*page_size;
+        uint64_t data = ios*sizeof(uint64_t);
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
-        std::cout << std::dec << "Elapsed: " << elapsed << "\tIOS: "<< ios << "\tData: " << data << std::endl;
-        std::cout << std::dec << "IOPs: " << iops << "\tBandwidth(GB/S): " << bandwidth << std::endl;
-        std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
+        std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData SIze (bytes): " << data << std::endl;
+        std::cout << std::dec << "Read Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
+        //std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
-        std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
-        ofile.write((char*)ret_array, data);
-        ofile.close();
+        //std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
+        //ofile.write((char*)ret_array, data);
+        //ofile.close();
 
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
             delete ctrls[i];
@@ -263,9 +263,9 @@ int main(int argc, char** argv) {
         free(ret_array);
 */
 
-        std::cout << "END\n";
+        //std::cout << "END\n";
 
-        std::cout << RAND_MAX << std::endl;
+        //std::cout << RAND_MAX << std::endl;
 
     }
     catch (const error& e) {
