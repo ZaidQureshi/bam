@@ -116,7 +116,7 @@ Loading/Unloading the Kernel Module
 In order to be able to use the custom kernel module for the NVMe device, we need to first unbind
 the NVMe device from the default Linux NVMe driver.
 To do this, we need to find the PCI ID of the NVMe device.
-To find this we can use the kernel log. For example if the NVMe device I want to use is mapped to the `/dev/nvme0` block device, we can do the following to find the PCI ID.
+To find this we can use the kernel log. For example, if the NVMe device I want to use is mapped to the `/dev/nvme0` block device, we can do the following to find the PCI ID.
 
 ```
 $ dmesg | grep nvme0
@@ -141,6 +141,8 @@ $ cd module
 $ sudo make load
 ```
 
+This should create a `/dev/libnvm0` device file for the controller.
+
 The module can be unloaded from the `build` directory with the following:
 
 ```
@@ -151,3 +153,20 @@ $ sudo make unload
 Running the Example Benchmark
 -------------------------------------------------------------------------------
 The example benchmark application tests the random and sequential read bandwidth from the GPU threads to the NVMe device.
+The application must be run with sudo as it needs direct access to the `/dev/libnvm0` file.
+The applicaiton will exist as the `./bin/nvm-cuda-bench` binary after compilation.
+The application arguments are as follows:
+
+``` 
+$ ./bin/nvm-cuda-bench --help
+OPTION            TYPE            DEFAULT   DESCRIPTION                         
+  page_size       count           4096      size of page in cache               
+  blk_size        count           64        CUDA thread block size              
+  queue_depth     count           16        queue depth                         
+  gpu             number          0         specify CUDA device                 
+  reqs            count           1         number of reqs per thread           
+  pages           count           1024      number of pages in cache            
+  num_queues      count           1         number of queues per controller     
+  threads         count           64        number of CUDA threads
+```
+
