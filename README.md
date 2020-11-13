@@ -19,7 +19,7 @@ All of these features are developed into a header-only library in the [`include`
 These headers can be used in Cuda C/C++ application code.
 
 We give an example of such an application in the [`benchmarks/cuda`](./benchmarks/cuda) directory which implements
-a sequential and random access benchmark that incorporates all the functionality mentioned aboved.
+a random access benchmark that incorporates all the functionality mentioned aboved.
 
 
 
@@ -149,7 +149,7 @@ $ sudo make unload
 
 Running the Example Benchmark
 -------------------------------------------------------------------------------
-The example benchmark application tests the random and sequential read bandwidth from the GPU threads to the NVMe device.
+The example benchmark application tests the random access read bandwidth from the GPU threads to the NVMe device.
 The application must be run with `sudo` as it needs direct access to the `/dev/libnvm0` file.
 The applicaiton will exist as the `./bin/nvm-cuda-bench` binary after compilation.
 The application arguments are as follows:
