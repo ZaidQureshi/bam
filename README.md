@@ -150,6 +150,7 @@ $ sudo make unload
 Running the Example Benchmark
 -------------------------------------------------------------------------------
 The example benchmark application tests the random access read bandwidth from the GPU threads to the NVMe device.
+It assumes an array of `uint64_t` on the backing NVMe device and makes random or sequential accesses to the array.
 The application must be run with `sudo` as it needs direct access to the `/dev/libnvm0` file.
 The applicaiton will exist as the `./bin/nvm-cuda-bench` binary after compilation.
 The application arguments are as follows:
@@ -159,11 +160,34 @@ $ ./bin/nvm-cuda-bench --help
 OPTION            TYPE            DEFAULT   DESCRIPTION                         
   page_size       count           4096      size of page in cache               
   blk_size        count           64        CUDA thread block size              
-  queue_depth     count           16        queue depth                         
+  queue_depth     count           16        queue depth per queue               
+  num_elems       count           2147483648number of 64-bit elements in backing array
   gpu             number          0         specify CUDA device                 
   reqs            count           1         number of reqs per thread           
   pages           count           1024      number of pages in cache            
   num_queues      count           1         number of queues per controller     
-  threads         count           64        number of CUDA threads
+  random          bool            true      if true the random access benchmark runs, if false the sequential access benchmark runs
+  threads         count           1024      number of CUDA threads
 ```
 
+The application prints many things during initalization as it helps in debugging, however near the end it prints some
+statistics of the GPU kernel, as shown below:
+
+```
+Elapsed Time: 200.576	Number of Read Ops: 1024	Data Size (bytes): 8192
+Read Ops/sec: 5.1053e+06	Effective Bandwidth(GB/S): 0.0380374
+```
+
+If I want to run a large GPU kernel on GPU 0 with many threads (262144 threads) each making 1 random request to an array with 4-billion 64-bit integers, a page cache with 262144 pages each with size 4096 bytes, 128 NVMe queues each 1024 elements deep, I would run the following command:
+
+```
+sudo ./bin/nvm-cuda-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296
+```
+
+If I want to run the same benchmark but now with each thread accessing the array sequentially, I would run the following command:
+
+```
+sudo ./bin/nvm-cuda-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296 --random=false
+```
+
+Disclaimer: The NVMe SSD I was using supports 128 queues each with 1024 depth. However, even if your SSD supports less number of queues and/or less depth the system will automatically use the numbers reported by your device.
