@@ -34,7 +34,7 @@ and some specific system configuration.
   * Please make sure there isn't any needed data on this SSD  as the system can write data to the SSD if the application requests to.
 * A NVIDIA Tesla grade GPU that is from the Volta or newer generation. A Tesla V100 fits both of these requirements
   * A Tesla grade GPU is needed as it can expose all of its memory for P2P accesses over PCIe.
-  * A Volta or newer gen of GPU is need because we really on some memory synchronization primitives that are only supported since Volta.
+  * A Volta or newer gen of GPU is needed because we rely on some memory synchronization primitives that are only supported since Volta.
 * A system that can support `Above 4G Decoding` for PCIe devices.
   * This is needed to address more than 4GB of memory for PCIe devices, specifically GPU memory.
   * This is a feature that might need to be ENABLED in the BIOS of the system.
@@ -46,7 +46,7 @@ and some specific system configuration.
   * In AMD Systems, this requires disableing `IOMMU` in the BIOS
 * The `iommu` support in Linux must be disabled too, which can be checked and disabled following the instructions [below](#disable-iommu-in-linux).
 * In the system's BIOS, `ACS` must be disabled if the option is available
-* Relatively new Linux kernel ie. 5.x).
+* Relatively new Linux kernel (ie. 5.x).
 * CMake 3.1 or newer and the _FindCUDA_ package for CMake
 * GCC version 5.4.0 or newer. Compiler must support C++11 and POSIX threads.
 * CUDA 10.2 or newer
@@ -151,7 +151,7 @@ $ sudo make unload
 Running the Example Benchmark
 -------------------------------------------------------------------------------
 The example benchmark application tests the random and sequential read bandwidth from the GPU threads to the NVMe device.
-The application must be run with sudo as it needs direct access to the `/dev/libnvm0` file.
+The application must be run with `sudo` as it needs direct access to the `/dev/libnvm0` file.
 The applicaiton will exist as the `./bin/nvm-cuda-bench` binary after compilation.
 The application arguments are as follows:
 
