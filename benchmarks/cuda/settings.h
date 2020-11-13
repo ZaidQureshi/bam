@@ -357,23 +357,23 @@ void Settings::parseArguments(int argc, char** argv)
         {'a', OptionPtr(new Option<uint32_t>(adapter, "number", "adapter", "DIS adapter number", "0"))},
         {'S', OptionPtr(new Option<uint32_t>(segmentId, "offset", "segment", "DIS segment identifier offset", "0"))},
 #else
-        {'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
+        //{'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
 #endif
         {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
         {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
-        {'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
-        {'B', OptionPtr(new Option<bool>(doubleBuffered, "bool", "double-buffer", "double buffer disk reads", "false"))},
-        {'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
+        //{'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
+        //{'B', OptionPtr(new Option<bool>(doubleBuffered, "bool", "double-buffer", "double buffer disk reads", "false"))},
+        //{'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
         {'n', OptionPtr(new Range(numReqs, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "reqs", "number of reqs per thread", "1"))},
-        {'p', OptionPtr(new Range(numPages, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "pages", "number of pages in cache", "1"))},
-        {'P', OptionPtr(new Range(pageSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "page_size", "size of page in cache", "512"))},
+        {'p', OptionPtr(new Range(numPages, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "pages", "number of pages in cache", "1024"))},
+        {'P', OptionPtr(new Range(pageSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "page_size", "size of page in cache", "4096"))},
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "64"))},
-        {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "block size", "64"))},
+        {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "CUDA thread block size", "64"))},
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
-        {'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
-        {'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
-        {'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
+        //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
+        //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
+        //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
     };
 
     string optionString;
@@ -452,7 +452,7 @@ Settings::Settings()
     nvmNamespace = 1;
     doubleBuffered = false;
     numReqs = 1;
-    numPages = 1;
+    numPages = 1024;
     startBlock = 0;
     stats = false;
     output = nullptr;
@@ -464,7 +464,7 @@ Settings::Settings()
     n_ctrls = 1;
     queueDepth = 16;
     numQueues = 1;
-    pageSize = 512;
+    pageSize = 4096;
 }
 
 
