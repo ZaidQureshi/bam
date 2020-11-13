@@ -44,17 +44,16 @@ and some specific system configuration.
 * The system's IOMMU should be disabled for ease of debugging.
   * In Intel Systems, this requires disabling `Vt-d` in the BIOS
   * In AMD Systems, this requires disableing `IOMMU` in the BIOS
-* The `iommu` support in Linux must be disabled too, which can be checked and disabled following the instructions [below](#disable-iommu).
+* The `iommu` support in Linux must be disabled too, which can be checked and disabled following the instructions [below](#disable-iommu-in-linux).
 * In the system's BIOS, `ACS` must be disabled if the option is available
 * Relatively new Linux kernel ie. 5.x).
 * CMake 3.1 or newer and the _FindCUDA_ package for CMake
 * GCC version 5.4.0 or newer. Compiler must support C++11 and POSIX threads.
 * CUDA 10.2 or newer
 * Nvidia driver (at least 440.33 or newer)
-* Kernel module symbols and headers for the Nvidia driver. The instructions for how to compile these symbols are given [below](#nvidia-symbols).
+* Kernel module symbols and headers for the Nvidia driver. The instructions for how to compile these symbols are given [below](#compiling-nvidia-driver-kernel-symbols).
 
 ### Disable IOMMU in Linux ###
-(#disable-iommu)
 If you are using CUDA or implementing support for your own custom devices, 
 you need to explicitly disable IOMMU as IOMMU support for peer-to-peer on 
 Linux is a bit flaky at the moment. If you are not relying on peer-to-peer,
@@ -75,7 +74,6 @@ You can disable it by removing `iommu=on` and `intel_iommu=on` from the
 The next time you reboot, the IOMMU will be disabled.
 
 ### Compiling Nvidia Driver Kernel Symbols ###
-(#nvidia-symbols)
 Typically the Nvidia driver kernel sources are installed in the `/usr/src/` directory.
 So if my Nvidia driver version is `450.51.06`, then they will be in the `/usr/src/nvidia-450.51.06` directory.
 So assuming the driver version is `450.51.06`, to get the kernel symbols you need to do the following commands as the `root` user.
