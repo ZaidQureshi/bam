@@ -88,7 +88,7 @@ void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uin
     uint32_t smid = get_smid();
 
     uint32_t ctrl = (tid/32) % (num_ctrls);
-    uint32_t queue = (tid/32) & (ctrls[ctrl]->n_qps-1);
+    uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
 
 
     if (tid < n_reqs) {

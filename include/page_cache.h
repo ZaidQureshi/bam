@@ -37,6 +37,7 @@ typedef padded_struct_pc* page_states_t;
 
 
 __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+__device__ void write_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
 
 template <typename T>
 struct range_t {
@@ -154,12 +155,11 @@ struct range_t {
                     if (pass) {
                         uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
-                        uint32_t bid = blockIdx.x;
-                        uint32_t smid = get_smid();
+                        uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+                        uint32_t ctrl = (tid/32) % (n_ctrls);
+                        Controller* c = this->d_ctrls[ctrl];
+                        uint32_t queue = (tid/32) % (c->n_qps);
 
-                        uint32_t ctrl = bid & ((cache->n_ctrls)-1);
-                        Controller* c = cache->d_ctrls[ctrl];
-                        uint32_t queue = smid & (c->n_qps-1);
 
                         read_data(cache, (c->d_qps)+queue, index, cache->page_size >> c->blk_size_log, page_trans);
                         //page_addresses[index].val.store(page_trans, simt::memory_order_release);
@@ -247,12 +247,11 @@ struct range_t {
                     if (pass) {
                         uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
-                        uint32_t bid = blockIdx.x;
-                        uint32_t smid = get_smid();
+                        uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+                        uint32_t ctrl = (tid/32) % (n_ctrls);
+                        Controller* c = this->d_ctrls[ctrl];
+                        uint32_t queue = (tid/32) % (c->n_qps);
 
-                        uint32_t ctrl = bid & ((cache->n_ctrls)-1);
-                        Controller* c = cache->d_ctrls[ctrl];
-                        uint32_t queue = smid & (c->n_qps-1);
 
                         read_data(cache, (c->d_qps)+queue, index, cache->page_size >> c->blk_size_log, page_trans);
                         //page_addresses[index].val.store(page_trans, simt::memory_order_release);
@@ -827,6 +826,14 @@ struct page_cache_t {
                                 //if ((this->page_dirty_start[page].load(simt::memory_order_acquire) == this->page_dirty_end[page].load(simt::memory_order_acquire))) {
 
                                 //writeback
+                                uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+                                uint32_t ctrl = (tid/32) % (n_ctrls);
+                                Controller* c = this->d_ctrls[ctrl];
+                                uint32_t queue = (tid/32) % (c->n_qps);
+
+
+
+                                write_data(this, (c->d_qps)+queue, index, this->page_size >> c->blk_size_log, page);
                                 this->ranges[previous_range][previous_address].val.store(INVALID, simt::memory_order_release);
 
                                 fail = false;
@@ -899,6 +906,41 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 }
 
+
+__device__ void write_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
+    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
+    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
+
+    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
+
+
+
+    nvm_cmd_t cmd;
+    uint16_t cid = get_cid(&(qp->sq));
+    //printf("cid: %u\n", (unsigned int) cid);
+
+
+    nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
+    uint64_t prp1 = pc->prp1[pc_entry];
+    uint64_t prp2 = 0;
+    if (pc->prps)
+        prp2 = pc->prp2[pc_entry];
+    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
+    nvm_cmd_data_ptr(&cmd, prp1, prp2);
+    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
+    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
+
+    uint32_t cq_pos = cq_poll(&qp->cq, cid);
+    cq_dequeue(&qp->cq, cq_pos);
+    sq_dequeue(&qp->sq, sq_pos);
+
+
+
+    put_cid(&qp->sq, cid);
+
+
+}
 
 
 
