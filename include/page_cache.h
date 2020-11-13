@@ -156,8 +156,8 @@ struct range_t {
                         uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
                         uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-                        uint32_t ctrl = (tid/32) % (n_ctrls);
-                        Controller* c = this->d_ctrls[ctrl];
+                        uint32_t ctrl = (tid/32) % (cache->n_ctrls);
+                        Controller* c = cache->d_ctrls[ctrl];
                         uint32_t queue = (tid/32) % (c->n_qps);
 
 
@@ -248,8 +248,8 @@ struct range_t {
                         uint32_t page_trans = cache->find_slot(index, range_id);
                         //fill in
                         uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-                        uint32_t ctrl = (tid/32) % (n_ctrls);
-                        Controller* c = this->d_ctrls[ctrl];
+                        uint32_t ctrl = (tid/32) % (cache->n_ctrls);
+                        Controller* c = cache->d_ctrls[ctrl];
                         uint32_t queue = (tid/32) % (c->n_qps);
 
 
