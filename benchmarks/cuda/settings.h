@@ -363,7 +363,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
 #endif
         {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
-        //{'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
+        {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
         //{'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
         //{'B', OptionPtr(new Option<bool>(doubleBuffered, "bool", "double-buffer", "double buffer disk reads", "false"))},
         //{'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
