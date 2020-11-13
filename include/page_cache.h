@@ -587,6 +587,9 @@ struct page_cache_t {
     uint64_t n_ranges_bits;
     uint64_t n_ranges_mask;
 
+    uint64_t* ranges_page_starts;
+    uint64_t* h_ranges_page_starts;
+
     //void* d_pc;
 
     //BufferPtr prp2_list_buf;
@@ -600,6 +603,7 @@ struct page_cache_t {
     BufferPtr ranges_buf;
     BufferPtr pc_buff;
     BufferPtr d_ctrls_buff;
+    BufferPtr ranges_page_starts_buf;
 
 
     void* d_pc_ptr;
@@ -612,6 +616,10 @@ struct page_cache_t {
 
         h_ranges[range->range_id] = range->page_states;
         cuda_err_chk(cudaMemcpy(ranges, h_ranges, n_ranges* sizeof(page_states_t), cudaMemcpyHostToDevice));
+
+
+        h_ranges_page_starts[range->range_id] = range->page_start;
+        cuda_err_chk(cudaMemcpy(ranges_page_starts, h_ranges_page_starts, n_ranges* sizeof(uint64_t), cudaMemcpyHostToDevice));
         cuda_err_chk(cudaMemcpy(d_pc_ptr, this, sizeof(page_cache_t), cudaMemcpyHostToDevice));
 
     }
@@ -635,6 +643,10 @@ struct page_cache_t {
         ranges_buf = createBuffer(max_range * sizeof(page_states_t), cudaDevice);
         ranges = (page_states_t*)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
+
+        ranges_page_starts_buf = createBuffer(max_range * sizeof(uint64_t), cudaDevice);
+        ranges_page_starts = (uint64_t*)ranges_page_starts_buf.get();
+        h_ranges_page_starts = new uint64_t[max_range];
 
         page_translation_buf = createBuffer(np * sizeof(uint32_t), cudaDevice);
         page_translation = (uint32_t*)page_translation_buf.get();
@@ -831,7 +843,7 @@ struct page_cache_t {
                                 Controller* c = this->d_ctrls[ctrl];
                                 uint32_t queue = (tid/32) % (c->n_qps);
 
-
+                                uint64_t index = ranges_page_starts[previous_range] + previous_global_address;
 
                                 write_data(this, (c->d_qps)+queue, index, this->page_size >> c->blk_size_log, page);
                                 this->ranges[previous_range][previous_address].val.store(INVALID, simt::memory_order_release);
