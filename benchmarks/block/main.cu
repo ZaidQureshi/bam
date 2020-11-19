@@ -81,7 +81,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 */
 __global__
-void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint32_t* access_type_assignment) {
+void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -97,13 +97,11 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
         //start_block = tid;
         uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
         //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
-
+        uint8_t opcode;
         for (size_t i = 0; i < reqs_per_thread; i++) {
             if (access_type == MIXED) {
-                if (access_type_assignment[tid] == READ)
-                    read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-                else
-                    write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                opcode = access_type_assignment[tid];
+                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
             }
             else if (access_type == READ) {
                 read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -124,7 +122,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
 
 }
 __global__
-void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint32_t* access_type_assignment) {
+void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -141,19 +139,17 @@ void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_si
         uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
         //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
 
+        uint8_t opcode;
         for (size_t i = 0; i < reqs_per_thread; i++) {
             if (access_type == MIXED) {
-                if (access_type_assignment[tid] == READ)
-                    read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-                else
-                    write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                opcode = access_type_assignment[tid];
+                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
             }
             else if (access_type == READ) {
                 read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
 
             }
             else {
-
                 write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             }
         }
@@ -268,15 +264,15 @@ int main(int argc, char** argv) {
         }
         Event before;
 
-        uint32_t* access_assignment;
-        uint32_t* d_access_assignment = NULL;
+        uint8_t* access_assignment;
+        uint8_t* d_access_assignment = NULL;
         if (settings.accessType == 2) {
-            access_assignment = (uint32_t*) malloc(n_threads*sizeof(uint32_t));
+            access_assignment = (uint8_t*) malloc(n_threads*sizeof(uint8_t));
             for (size_t i = 0; i < n_threads; i++)
-                access_assignment[i] = (((rand() % 100) + 1) <= settings.ratio) ? READ : WRITE;
+                access_assignment[i] = (((rand() % 100) + 1) <= settings.ratio) ? NVM_IO_READ : NVM_IO_WRITE;
 
-            cuda_err_chk(cudaMalloc(&d_access_assignment, n_threads*sizeof(uint32_t)));
-            cuda_err_chk(cudaMemcpy(d_access_assignment, access_assignment, n_threads*sizeof(uint32_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMalloc(&d_access_assignment, n_threads*sizeof(uint8_t)));
+            cuda_err_chk(cudaMemcpy(d_access_assignment, access_assignment, n_threads*sizeof(uint8_t), cudaMemcpyHostToDevice));
         }
         if (settings.random)
             random_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
