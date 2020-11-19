@@ -22,7 +22,7 @@
 
 #define READ 0
 #define WRITE 1
-#deine MIXED 2
+#define MIXED 2
 
 struct Settings
 {
