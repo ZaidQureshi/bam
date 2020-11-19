@@ -143,14 +143,12 @@ void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_si
 
         for (size_t i = 0; i < reqs_per_thread; i++) {
             if (access_type == MIXED) {
-                printf("here1\n");
                 if (access_type_assignment[tid] == READ)
                     read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
                 else
                     write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             }
             else if (access_type == READ) {
-                printf("here2\n");
                 read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
 
             }
