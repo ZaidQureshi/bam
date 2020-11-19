@@ -51,7 +51,7 @@ struct Settings
     uint64_t numBlks;
     bool random;
     uint32_t accessType;
-    uitn32_t ratio;
+    uint32_t ratio;
     Settings();
     void parseArguments(int argc, char** argv);
 
