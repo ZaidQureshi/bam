@@ -272,7 +272,7 @@ int main(int argc, char** argv) {
         if (settings.accessType == 2) {
             access_assignment = (uint32_t*) malloc(n_threads*sizeof(uint32_t));
             for (size_t i = 0; i < n_threads; i++)
-                access_assignment[i] = (rand() <= (RAND_MAX*(((double)settings.ratio)/((double)100.0)))) ? READ : WRITE;
+                access_assignment[i] = ((rand() % 101) <= settings.ratio) ? READ : WRITE;
 
             cuda_err_chk(cudaMalloc(&d_access_assignment, n_threads*sizeof(uint32_t)));
             cuda_err_chk(cudaMemcpy(d_access_assignment, access_assignment, n_threads*sizeof(uint32_t), cudaMemcpyHostToDevice));
