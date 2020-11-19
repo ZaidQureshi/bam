@@ -384,7 +384,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
         {'o', OptionPtr(new Range(accessType, 0, 1, "access_type", "type of access to make: 0->read, 1->write, 2->mixed", "0"))},
-        {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
+        {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for of mixed accesses that are read", "100"))},
     };
 
     string optionString;
