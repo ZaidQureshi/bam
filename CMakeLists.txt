@@ -318,7 +318,8 @@ endif ()
 
 # Add individual benchmarks
 if (CUDA_FOUND AND NOT no_cuda)
-    add_subdirectory ("${benchmarks_root}/cuda")
-    add_custom_target (benchmarks DEPENDS ${benchmark_targets})
+  add_subdirectory ("${benchmarks_root}/array")
+  add_subdirectory ("${benchmarks_root}/block")
+  add_custom_target (benchmarks DEPENDS ${benchmark_targets})
 endif ()
 

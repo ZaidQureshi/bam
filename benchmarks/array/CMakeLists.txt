@@ -8,6 +8,6 @@ find_package (CUDA 8.0 REQUIRED)
 
 
 
-make_benchmark (cuda-benchmark-module cuda-bench "main.cu;")
+make_benchmark (array-benchmark-module array-bench "main.cu;")
 
-make_benchmark_choice (cuda-benchmark cuda-benchmark-smartio cuda-benchmark-module)
+make_benchmark_choice (array-benchmark array-benchmark-smartio array-benchmark-module)
