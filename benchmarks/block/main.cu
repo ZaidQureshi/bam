@@ -143,16 +143,19 @@ void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_si
 
         for (size_t i = 0; i < reqs_per_thread; i++) {
             if (access_type == MIXED) {
+                printf("here1\n");
                 if (access_type_assignment[tid] == READ)
                     read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
                 else
                     write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             }
             else if (access_type == READ) {
+                printf("here2\n");
                 read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
 
             }
             else {
+
                 write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             }
         }
@@ -294,8 +297,8 @@ int main(int argc, char** argv) {
         uint64_t data = ios*page_size;
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
-        std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
-        std::cout << std::dec << "Read Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
+        std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
+        std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
         //std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
         //std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
