@@ -81,7 +81,37 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 */
 __global__
-void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread) {
+void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread) {
+    //printf("in threads\n");
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t bid = blockIdx.x;
+    uint32_t smid = get_smid();
+
+    uint32_t ctrl = (tid/32) % (num_ctrls);
+    uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
+
+
+    if (tid < n_reqs) {
+        uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+        //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+        //start_block = tid;
+        uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
+        //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
+
+        for (size_t i = 0; i < reqs_per_thread; i++)
+            read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+        //__syncthreads();
+        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
+        //printf("tid: %llu finished\n", (unsigned long long) tid);
+
+    }
+
+}
+__global__
+void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -110,29 +140,7 @@ void access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uin
     }
 
 }
-__global__
-void sequential_access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t reqs_per_thread) {
 
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < n_reqs) {
-        for (size_t i = 0; i < reqs_per_thread; i++)
-            req_count += dr->seq_read(tid);
-
-    }
-
-}
-
-__global__
-void random_access_kernel(array_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment, uint64_t reqs_per_thread) {
-
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < n_reqs) {
-        for (size_t i = 0; i < reqs_per_thread; i++)
-            req_count += dr->seq_read(assignment[tid]);
-
-    }
-
-}
 
 int main(int argc, char** argv) {
 
@@ -199,16 +207,16 @@ int main(int argc, char** argv) {
         uint64_t n_elems = settings.numElems;
         uint64_t t_size = n_elems * sizeof(TYPE);
 
-        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
-        range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
+        // range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
+        // range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
 
-        std::vector<range_t<uint64_t>*> vr(1);
-        vr[0] = & h_range;
-        //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
-        array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
+        // std::vector<range_t<uint64_t>*> vr(1);
+        // vr[0] = & h_range;
+        // //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
+        // array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
 
 
-        std::cout << "finished creating range\n";
+        //std::cout << "finished creating range\n";
 
 
 
@@ -232,11 +240,11 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
         }
         Event before;
-        //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
+
         if (settings.random)
-            random_access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment, settings.numReqs);
+            random_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
         else
-            sequential_access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, settings.numReqs);
+            sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs);
         Event after;
         //new_kernel<<<1,1>>>();
         //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
@@ -247,7 +255,7 @@ int main(int argc, char** argv) {
 
         double elapsed = after - before;
         uint64_t ios = g_size*b_size*settings.numReqs;
-        uint64_t data = ios*sizeof(uint64_t);
+        uint64_t data = ios*page_size;
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
         std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
