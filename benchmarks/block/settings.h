@@ -22,6 +22,7 @@
 
 #define READ 0
 #define WRITE 1
+#deine MIXED 2
 
 struct Settings
 {
@@ -478,7 +479,7 @@ Settings::Settings()
     pageSize = 4096;
     numBlks = 2097152;
     random = true;
-    accessType = 0;
+    accessType = READ;
     ratio = 100;
 }
 
