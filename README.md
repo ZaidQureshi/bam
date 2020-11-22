@@ -32,7 +32,7 @@ This code base requires specific type of hardware and specific system configurat
 * A NVMe SSD. Any NVMe SSD will do.
   * Please make sure there isn't any needed data on this SSD  as the system can write data to the SSD if the application requests to.
 * A NVIDIA Tesla grade GPU that is from the Volta or newer generation. A Tesla V100 fits both of these requirements
-  * A Tesla grade GPU is needed as it can expose all of its memory for P2P accesses over PCIe.
+  * A Tesla grade GPU is needed as it can expose all of its memory for P2P accesses over PCIe. (NVIDIA Tesla T4 does not work as it only provides 256M of BAR space)
   * A Volta or newer generation of GPU is needed as we rely on memory synchronization primitives only supported since Volta.
 * A system that can support `Above 4G Decoding` for PCIe devices.
   * This is needed to address more than 4GB of memory for PCIe devices, specifically GPU memory.
