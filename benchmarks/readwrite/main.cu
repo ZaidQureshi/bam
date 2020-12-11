@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
     //move to settings.h file
     const char* input_f;
     std::string read_f_tmp = std::string(input_f) + ".nvme";
-    const char* read_f_tmp = read_f_tmp.c_str();
+    const char* read_f = read_f_tmp.c_str();
     
     if(settings.input == nullptr){
         fprintf(stderr, "Input file required\n");
@@ -290,7 +290,7 @@ int main(int argc, char** argv) {
                     return 1;
                 }
                 
-                if( (ft =ftruncate(fd_out,sbin.st_size)) == -1){
+                if( (ft =ftruncate(fd_out,sb_in.st_size)) == -1){
                     fprintf(stderr, "Truncating NVMe Output file failed\n");
                     return 1;
                 }
@@ -324,7 +324,8 @@ int main(int argc, char** argv) {
 
                 }
 
-                if(munmap(map_out, sb_in.st_size) == -1) frintf(stderr,"munmap error output file\n");
+                if(munmap(map_out, sb_in.st_size) == -1) 
+                        fprintf(stderr,"munmap error output file\n");
                 close(fd_out);
 
         }
@@ -334,7 +335,7 @@ int main(int argc, char** argv) {
             delete ctrls[i];
 
         if(munmap(map_in, sb_in.st_size) == -1) 
-            frintf(stderr,"munmap error input file\n");
+            fprintf(stderr,"munmap error input file\n");
         close(fd_in);
     }
     catch (const error& e) {
