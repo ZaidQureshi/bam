@@ -79,15 +79,17 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
 
     uint32_t ctrl = (tid/32) % (num_ctrls);
     uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
+    uint64_t itr=0; 
 
-    for (size_t i = 0; i < pc->n_pages; i = i+n_reqs){
-        if (tid < n_reqs) {
-            uint64_t start_block = (s_offset + i*n_reqs + tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
-            uint64_t pc_idx = (tid+i*n_reqs);
+//    printf("Num pages: %llu, s_offset: %llu n_reqs: %llu\t req_size: %llu\n", (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) n_reqs, (unsigned long long) req_size); 
+    for (;tid < pc->n_pages; tid = tid+n_reqs){
+            uint64_t start_block = (s_offset + tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
+            uint64_t pc_idx = (tid);
             //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
             //start_block = tid;
             uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-            //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
+            printf("itr:%llu\ttid: %llu\tstart_block: %llu\tn_blocks: %llu\tpc_idx: %llu\n", (unsigned long long)itr, (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks, (unsigned long long) pc_idx);
+            itr = itr+1; 
             // uint8_t opcode;
             // for (size_t i = 0; i < reqs_per_thread; i++) {
                 if (access_type == READ) {
@@ -103,7 +105,6 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
             //__syncthreads();
             //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
             //printf("tid: %llu finished\n", (unsigned long long) tid);
-        }
     }
 }
 
@@ -233,23 +234,28 @@ int main(int argc, char** argv) {
 
 
         page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
-        std::cout << "finished creating cache\n Total Cache size (MBs):" << (total_cache_size/(1024*1024)) <<std::endl;
+        std::cout << "finished creating cache\n Total Cache size (MBs):" << ((float)total_cache_size/(1024*1024)) <<std::endl;
         fflush(stderr);
         fflush(stdout);
 
         //QueuePair* d_qp;
         page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
         
-        uint32_t n_tsteps = ((sb_in.st_size-16)/total_cache_size); //ceil 
+        uint32_t n_tsteps = ceil((float)(sb_in.st_size-16)/(float)total_cache_size);  
         uint64_t n_telem = ((sb_in.st_size-16)/sizeof(uint64_t)); 
         uint64_t s_offset = 0; 
+        
+        printf("n_tsteps: %lu, n_telem: %llu\n", n_tsteps, n_telem); 
 
         for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
                     if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
                         break;
 
                     uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-16-s_offset));
-                    cuda_err_chk(cudaMemcpy(d_pc->base_addr, map_in+s_offset+16, cpysize, cudaMemcpyHostToDevice));
+                    printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+                    fflush(stderr);
+                    fflush(stdout);
+                    cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+16, cpysize, cudaMemcpyHostToDevice));
                     Event before; 
                     sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
                                                                     settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
@@ -261,7 +267,7 @@ int main(int argc, char** argv) {
 
                     s_offset = s_offset + cpysize; 
 
-                    std::cout << "Completed:" << completed << "Time:" <<elapsed << std::endl;
+                    std::cout << "Completed:" << completed << "   Time:" <<elapsed << std::endl;
 
                     // uint64_t ios = g_size*b_size*settings.numReqs;
                     // uint64_t data = ios*page_size;
@@ -272,48 +278,9 @@ int main(int argc, char** argv) {
                     
         }
 
-
         
-        
-        // range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
-        // range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
-
-        // std::vector<range_t<uint64_t>*> vr(1);
-        // vr[0] = & h_range;
-        // //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
-        // array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
-
-        //std::cout << "finished creating range\n";
-
-        // uint64_t* assignment;
-        // uint64_t* d_assignment;
-        // if (settings.random) {
-        //     assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
-        //     for (size_t i = 0; i< n_threads; i++)
-        //         assignment[i] = rand() % (n_blocks);
-
-
-        //     cuda_err_chk(cudaMalloc(&d_assignment, n_threads*sizeof(uint64_t)));
-        //     cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
-        // }
-        
-        // if (settings.random)
-        //     random_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
-        // else
-        
-        //new_kernel<<<1,1>>>();
-        //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
-
-        //cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
-        //std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
-
-        //std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
-        //ofile.write((char*)ret_array, data);
-        //ofile.close();
-
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
             delete ctrls[i];
-        //hexdump(ret_array, n_pages*page_size);
 
     }
     catch (const error& e) {

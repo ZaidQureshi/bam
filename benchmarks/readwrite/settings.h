@@ -384,7 +384,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth per queue", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'e', OptionPtr(new Range(numBlks, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_blks", "number of pages in backing array", "2097152"))},
-        {'r', OptionPtr(new Option<bool>(random, "bool", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "true"))},
+        {'r', OptionPtr(new Option<bool>(random, "bool", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "false"))},
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
