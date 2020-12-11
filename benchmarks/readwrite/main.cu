@@ -175,6 +175,9 @@ int main(int argc, char** argv) {
 
     //move to settings.h file
     const char* input_f;
+    std::string read_f_tmp = std::string(input_f) + ".nvme";
+    const char* read_f_tmp = read_f_tmp.c_str();
+    
     if(settings.input == nullptr){
         fprintf(stderr, "Input file required\n");
         return 1;
@@ -199,7 +202,7 @@ int main(int argc, char** argv) {
         map_in = mmap(NULL, sb_in.st_size, PROT_READ, MAP_SHARED, fd_in, 0);
         
         if((map_in == (void*)-1)){
-                fprintf(stderr,"Input file map failed\n",map_in);
+                fprintf(stderr,"Input file map failed %d\n",map_in);
                 return 1;
         }
 
@@ -246,6 +249,7 @@ int main(int argc, char** argv) {
         uint64_t s_offset = 0; 
         
         printf("n_tsteps: %lu, n_telem: %llu\n", n_tsteps, n_telem); 
+
         if(settings.accessType == WRITE){
             for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
                if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
@@ -278,11 +282,60 @@ int main(int argc, char** argv) {
                         
             }
         }
+        else if(settings.accessType == READ){
+                int fd_out, ft;
+                void* map_out; 
+                if((fd_out = open(read_f, O_RDWR | O_CREAT)) == -1){
+                    fprintf(stderr, "NVMe Output file cannot be opened\n");
+                    return 1;
+                }
+                
+                if( (ft =ftruncate(fd_out,sbin.st_size)) == -1){
+                    fprintf(stderr, "Truncating NVMe Output file failed\n");
+                    return 1;
+                }
+                
+                map_out = mmap(NULL, sb_in.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd_out, 0);
+                
+                if((map_out == (void*)-1)){
+                        fprintf(stderr,"Output file map failed: %d\n",map_out);
+                        return 1;
+                }
+
+                for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
+                    if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
+                        break;
+
+                    uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-16-s_offset));
+                    printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+                    fflush(stderr);
+                    fflush(stdout);
+                    Event rbefore; 
+                    sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
+                                                                    settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
+                    Event rafter;
+                    cuda_err_chk(cudaDeviceSynchronize());
+                    cuda_err_chk(cudaMemcpy(map_in+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
+
+                    s_offset = s_offset + cpysize; 
+                    float rcompleted = 100*(total_cache_size*cstep)/(sb_in.st_size-16);
+                    double relapsed = rafter - rbefore;
+                    std::cout << "Read Completed:" << rcompleted << "   Read Time:" <<relapsed << std::endl;
+
+                }
+
+                if(munmap(map_out, sb_in.st_size) == -1) frintf(stderr,"munmap error output file\n");
+                close(fd_out);
+
+        }
 
         
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
             delete ctrls[i];
 
+        if(munmap(map_in, sb_in.st_size) == -1) 
+            frintf(stderr,"munmap error input file\n");
+        close(fd_in);
     }
     catch (const error& e) {
         fprintf(stderr, "Unexpected error: %s\n", e.what());
