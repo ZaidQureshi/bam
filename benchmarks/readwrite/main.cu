@@ -246,36 +246,37 @@ int main(int argc, char** argv) {
         uint64_t s_offset = 0; 
         
         printf("n_tsteps: %lu, n_telem: %llu\n", n_tsteps, n_telem); 
+        if(settings.accessType == WRITE){
+            for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
+               if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
+                   break;
 
-        for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
-                    if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
-                        break;
+               uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-16-s_offset));
+               printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+               fflush(stderr);
+               fflush(stdout);
+               cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+16, cpysize, cudaMemcpyHostToDevice));
+               Event before; 
+               sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
+                                                               settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
+               Event after;
+               cuda_err_chk(cudaDeviceSynchronize());
 
-                    uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-16-s_offset));
-                    printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
-                    fflush(stderr);
-                    fflush(stdout);
-                    cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+16, cpysize, cudaMemcpyHostToDevice));
-                    Event before; 
-                    sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
-                                                                    settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
-                    Event after;
-                    cuda_err_chk(cudaDeviceSynchronize());
+               float completed = 100*(total_cache_size*cstep)/(sb_in.st_size-16);
+               double elapsed = after - before;
 
-                    float completed = 100*(total_cache_size*cstep)/(sb_in.st_size-16);
-                    double elapsed = after - before;
+               s_offset = s_offset + cpysize; 
 
-                    s_offset = s_offset + cpysize; 
+               std::cout << "Completed:" << completed << "   Time:" <<elapsed << std::endl;
 
-                    std::cout << "Completed:" << completed << "   Time:" <<elapsed << std::endl;
-
-                    // uint64_t ios = g_size*b_size*settings.numReqs;
-                    // uint64_t data = ios*page_size;
-                    // double iops = ((double)ios)/(elapsed/1000000);
-                    // double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
-                    // std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
-                    // std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
-                    
+               // uint64_t ios = g_size*b_size*settings.numReqs;
+               // uint64_t data = ios*page_size;
+               // double iops = ((double)ios)/(elapsed/1000000);
+               // double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
+               // std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
+               // std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
+                        
+            }
         }
 
         
