@@ -23,6 +23,7 @@
 #define READ 0
 #define WRITE 1
 #define MIXED 2
+#define VERIFY 3
 
 struct Settings
 {

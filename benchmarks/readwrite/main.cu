@@ -88,7 +88,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
             //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
             //start_block = tid;
             uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-            printf("itr:%llu\ttid: %llu\tstart_block: %llu\tn_blocks: %llu\tpc_idx: %llu\n", (unsigned long long)itr, (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks, (unsigned long long) pc_idx);
+//            printf("itr:%llu\ttid: %llu\tstart_block: %llu\tn_blocks: %llu\tpc_idx: %llu\n", (unsigned long long)itr, (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks, (unsigned long long) pc_idx);
             itr = itr+1; 
             // uint8_t opcode;
             // for (size_t i = 0; i < reqs_per_thread; i++) {
@@ -98,6 +98,8 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
                 else {
                     write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, pc_idx);
                 }
+
+            
             // }
             //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -175,8 +177,6 @@ int main(int argc, char** argv) {
 
     //move to settings.h file
     const char* input_f;
-    std::string read_f_tmp = std::string(input_f) + ".nvme";
-    const char* read_f = read_f_tmp.c_str();
     
     if(settings.input == nullptr){
         fprintf(stderr, "Input file required\n");
@@ -186,6 +186,8 @@ int main(int argc, char** argv) {
         input_f = settings.input; 
         printf("File is : %s\n",input_f);
     }
+    std::string read_f_tmp = std::string(input_f) + ".nvme";
+    const char* read_f = read_f_tmp.c_str();
 
     try {
         void* map_in;
@@ -218,6 +220,9 @@ int main(int argc, char** argv) {
         std::vector<Controller*> ctrls(settings.n_ctrls);
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
             ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+        printf("controller created\n");
+        fflush(stderr);
+        fflush(stdout);
 
         // unsigned long long* d_req_count;
         // cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
@@ -285,7 +290,7 @@ int main(int argc, char** argv) {
         else if(settings.accessType == READ){
                 int fd_out, ft;
                 void* map_out; 
-                if((fd_out = open(read_f, O_RDWR | O_CREAT)) == -1){
+                if((fd_out = open(read_f, O_RDWR)) == -1){
                     fprintf(stderr, "NVMe Output file cannot be opened\n");
                     return 1;
                 }
@@ -302,7 +307,11 @@ int main(int argc, char** argv) {
                         return 1;
                 }
 
-                for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
+                uint8_t* tmprbuff; 
+                tmprbuff = (uint8_t*) malloc(sb_in.st_size);
+                memset(tmprbuff, 0, sb_in.st_size);
+                for (uint32_t cstep =0; cstep < 1; cstep++) {
+                //for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
                     if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
                         break;
 
@@ -310,13 +319,25 @@ int main(int argc, char** argv) {
                     printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
                     fflush(stderr);
                     fflush(stdout);
+//                    for(size_t wat=0; wat<32; wat++)
+//                            std::cout << std::hex << tmprbuff[wat]; 
+//                    std::cout<<std::endl;
+
                     Event rbefore; 
                     sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
                                                                     settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
-                    cuda_err_chk(cudaMemcpy(map_in+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                //    cuda_err_chk(cudaMemcpy(map_out+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                    cuda_err_chk(cudaMemcpy(tmprbuff+s_offset+2,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                   
 
+                    //if(msync(map_out, cpysize, MS_SYNC) == -1) {
+                    //        fprintf(stderr, "msync failed in cstep:%d\n", cstep);
+                    //}
+//                    for(size_t wat=0; wat<32; wat++)
+//                            std::cout << std::hex << tmprbuff[wat]; 
+//                    std::cout<<std::endl;
                     s_offset = s_offset + cpysize; 
                     float rcompleted = 100*(total_cache_size*cstep)/(sb_in.st_size-16);
                     double relapsed = rafter - rbefore;
@@ -324,19 +345,25 @@ int main(int argc, char** argv) {
 
                 }
 
-                if(munmap(map_out, sb_in.st_size) == -1) 
-                        fprintf(stderr,"munmap error output file\n");
+                uint64_t sz = write(fd_out, tmprbuff, sb_in.st_size);  
+                printf("size: %llu\n", sz);
+                free(tmprbuff);
+
+                //if(munmap(map_out, sb_in.st_size) == -1) 
+                //        fprintf(stderr,"munmap error output file\n");
                 close(fd_out);
 
         }
-
-        
-        for (size_t i = 0 ; i < settings.n_ctrls; i++)
-            delete ctrls[i];
+        else if (settings.accessType == VERIFY){
+        }
 
         if(munmap(map_in, sb_in.st_size) == -1) 
             fprintf(stderr,"munmap error input file\n");
         close(fd_in);
+ 
+        for (size_t i = 0 ; i < settings.n_ctrls; i++)
+            delete ctrls[i];
+
     }
     catch (const error& e) {
         fprintf(stderr, "Unexpected error: %s\n", e.what());
