@@ -42,6 +42,7 @@ struct Settings
     bool            stats;
     const char*     input;
     const char*     output;
+    size_t          ifileoffset; 
     size_t          ofileoffset; 
     size_t          numThreads;
     uint32_t        domain;
@@ -371,6 +372,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
 // #endif
         {'f', OptionPtr(new Option<const char*>(input, "path", "input", "Input dataset path used to write to NVMe SSD"))},
+        {'i', OptionPtr(new Range(ifileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "offset", "Offset where the input file contents need to read", "0"))},
         {'l', OptionPtr(new Range(ofileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "offset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
         {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
         {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
@@ -389,7 +391,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
-        {'o', OptionPtr(new Range(accessType, 0, 2, "access_type", "type of access to make: 0->read, 1->write", "0"))},
+        {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write", "0"))},
         {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
     };
 
@@ -474,6 +476,7 @@ Settings::Settings()
     stats = false;
     input = nullptr;
     output = nullptr;
+    ifileoffset = 0; 
     ofileoffset = 0; 
     numThreads = 64;
     blkSize = 64;

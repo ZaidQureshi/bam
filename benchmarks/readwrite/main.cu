@@ -28,6 +28,7 @@
 #include <util.h>
 #include <iostream>
 #include <fstream>
+#include <byteswap.h>
 #ifdef __DIS_CLUSTER__
 #include <sisci_api.h>
 #endif
@@ -154,6 +155,20 @@ void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_si
 }
 */
 
+__global__ 
+void verify_kernel(uint8_t* orig_h, uint8_t* nvme_h, uint64_t n_elems,uint32_t n_reqs){
+        uint64_t tid = blockIdx.x*blockDim.x + threadIdx.x; 
+
+        for (;tid < n_elems; tid = tid+n_reqs){
+           uint8_t orig_val = orig_h[tid]; 
+           uint8_t nvme_val = nvme_h[tid]; 
+           if(orig_val != nvme_val)
+              printf("MISMATCH: at %llu\torig_val:%llu\tnvme_val:%llu\tn_reqs:%lu\tn_elms:%llu\n",tid, (unsigned long long)orig_val, (unsigned long long)nvme_h, n_reqs, n_elems);
+        }
+        __syncthreads();//really not needed. 
+}
+
+
 int main(int argc, char** argv) {
 
     Settings settings;
@@ -249,34 +264,34 @@ int main(int argc, char** argv) {
         //QueuePair* d_qp;
         page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
         
-        uint32_t n_tsteps = ceil((float)(sb_in.st_size-16)/(float)total_cache_size);  
-        uint64_t n_telem = ((sb_in.st_size-16)/sizeof(uint64_t)); 
+        uint32_t n_tsteps = ceil((float)(sb_in.st_size-settings.ifileoffset)/(float)total_cache_size);  
+        uint64_t n_telem = ((sb_in.st_size-settings.ifileoffset)/sizeof(uint64_t)); 
         uint64_t s_offset = 0; 
         
         printf("n_tsteps: %lu, n_telem: %llu\n", n_tsteps, n_telem); 
 
         if(settings.accessType == WRITE){
             for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
-               if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
+               if(s_offset>(sb_in.st_size-settings.ifileoffset)) //This cannot happen. 
                    break;
 
-               uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-16-s_offset));
+               uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
                printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
                fflush(stderr);
                fflush(stdout);
-               cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+16, cpysize, cudaMemcpyHostToDevice));
+               cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
                Event before; 
                sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
                                                                settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
 
-               float completed = 100*(total_cache_size*cstep)/(sb_in.st_size-16);
+               float completed = 100*(total_cache_size*cstep)/(sb_in.st_size-settings.ifileoffset);
                double elapsed = after - before;
 
                s_offset = s_offset + cpysize; 
 
-               std::cout << "Completed:" << completed << "   Time:" <<elapsed << std::endl;
+               std::cout << "Completed:" << completed << "%   Time:" <<elapsed << std::endl;
 
                // uint64_t ios = g_size*b_size*settings.numReqs;
                // uint64_t data = ios*page_size;
@@ -310,12 +325,11 @@ int main(int argc, char** argv) {
                 uint8_t* tmprbuff; 
                 tmprbuff = (uint8_t*) malloc(sb_in.st_size);
                 memset(tmprbuff, 0, sb_in.st_size);
-                for (uint32_t cstep =0; cstep < 1; cstep++) {
-                //for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
-                    if(s_offset>(sb_in.st_size-16)) //This cannot happen. 
+                for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
+                    if(s_offset>(sb_in.st_size-settings.ifileoffset)) //This cannot happen. 
                         break;
 
-                    uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-16-s_offset));
+                    uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
                     printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
                     fflush(stderr);
                     fflush(stdout);
@@ -329,7 +343,7 @@ int main(int argc, char** argv) {
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
                 //    cuda_err_chk(cudaMemcpy(map_out+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
-                    cuda_err_chk(cudaMemcpy(tmprbuff+s_offset+2,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                    cuda_err_chk(cudaMemcpy(tmprbuff+s_offset+settings.ifileoffset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
                    
 
                     //if(msync(map_out, cpysize, MS_SYNC) == -1) {
@@ -339,9 +353,9 @@ int main(int argc, char** argv) {
 //                            std::cout << std::hex << tmprbuff[wat]; 
 //                    std::cout<<std::endl;
                     s_offset = s_offset + cpysize; 
-                    float rcompleted = 100*(total_cache_size*cstep)/(sb_in.st_size-16);
+                    float rcompleted = 100*(total_cache_size*cstep)/(sb_in.st_size-settings.ifileoffset);
                     double relapsed = rafter - rbefore;
-                    std::cout << "Read Completed:" << rcompleted << "   Read Time:" <<relapsed << std::endl;
+                    std::cout << "Read Completed:" << rcompleted << "%   Read Time:" <<relapsed << std::endl;
 
                 }
 
@@ -355,6 +369,51 @@ int main(int argc, char** argv) {
 
         }
         else if (settings.accessType == VERIFY){
+               uint64_t* orig_h;
+               uint64_t* nvme_h;
+               uint8_t* result_h; 
+               size_t orig_sz = sb_in.st_size - settings.ifileoffset; 
+               cuda_err_chk(cudaMallocManaged((void**)&orig_h, orig_sz)); 
+               memcpy(orig_h, map_in+settings.ifileoffset, orig_sz);
+
+               void* map_nvme;
+               int fd_nvme;
+               struct stat sb_nvme;
+               
+               if((fd_nvme= open(read_f, O_RDONLY)) == -1){
+                   fprintf(stderr, "NVMe file cannot be opened\n");
+                   return 1;
+               }
+               
+               fstat(fd_nvme, &sb_nvme);
+               
+               map_nvme = mmap(NULL, sb_nvme.st_size, PROT_READ, MAP_SHARED, fd_nvme, 0);
+               
+               if((map_nvme == (void*)-1)){
+                       fprintf(stderr,"Input file map failed %d\n",map_nvme);
+                       return 1;
+               }
+               
+               size_t nvme_sz = sb_nvme.st_size - settings.ifileoffset; 
+               if(orig_sz != nvme_sz){
+                   fprintf(stderr,"Orig and NVMe file are of different sizes: orig: %llu and nvme: %llu\n Continuing...\n",orig_sz, nvme_sz);
+                   return 1;
+               }
+               cuda_err_chk(cudaMallocManaged((void**)&nvme_h, nvme_sz)); 
+               cuda_err_chk(cudaMemset(nvme_h, 0, nvme_sz)); 
+               memcpy(nvme_h, map_nvme+settings.ifileoffset, nvme_sz);
+                
+               
+                for(int ver=0; ver<100; ver++){
+                        printf("id:%llu \t orig: %llu \t nvme: %llu\n", (uint64_t)ver, (uint64_t)orig_h[ver], (uint64_t)(nvme_h[ver]));
+                }
+
+
+               //cuda_err_chk(cudaMallocManaged((void**)&result_h, orig_sz)); 
+               //cuda_err_chk(cudaMemset((void**)&result_h, 0, orig_sz)); 
+               //verify_kernel<<<g_size, b_size>>>(orig_h,nvme_h, orig_sz, n_threads); 
+               cuda_err_chk(cudaDeviceSynchronize());
+
         }
 
         if(munmap(map_in, sb_in.st_size) == -1) 
