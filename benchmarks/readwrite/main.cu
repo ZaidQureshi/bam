@@ -255,6 +255,11 @@ int main(int argc, char** argv) {
         uint64_t total_cache_size = (page_size * n_pages);
         uint64_t n_blocks = settings.numBlks;
 
+        if(total_cache_size > (sb_in.st_size - settings.ifileoffset)){
+                n_pages = ceil((sb_in.st_size - settings.ifileoffset)/(1.0*settings.pageSize));
+                total_cache_size = n_pages*page_size; 
+        }
+
 
         page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
         std::cout << "finished creating cache\n Total Cache size (MBs):" << ((float)total_cache_size/(1024*1024)) <<std::endl;
@@ -268,7 +273,7 @@ int main(int argc, char** argv) {
         uint64_t n_telem = ((sb_in.st_size-settings.ifileoffset)/sizeof(uint64_t)); 
         uint64_t s_offset = 0; 
         
-        printf("n_tsteps: %lu, n_telem: %llu\n", n_tsteps, n_telem); 
+        printf("n_tsteps: %lu, n_telem: %llu, n_pages:%llu\n", n_tsteps, n_telem, n_pages); 
 
         if(settings.accessType == WRITE){
             printf("Writing contents from %s to NVMe Device\n", input_f); 
@@ -287,7 +292,7 @@ int main(int argc, char** argv) {
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
 
-               float completed = 100*(total_cache_size*cstep)/(sb_in.st_size-settings.ifileoffset);
+               float completed = 100*(total_cache_size*(cstep+1))/(sb_in.st_size-settings.ifileoffset);
                double elapsed = after - before;
 
                s_offset = s_offset + cpysize; 
@@ -357,7 +362,7 @@ int main(int argc, char** argv) {
 //                            std::cout << std::hex << tmprbuff[wat]; 
 //                    std::cout<<std::endl;
                     s_offset = s_offset + cpysize; 
-                    float rcompleted = 100*(total_cache_size*cstep)/(sb_in.st_size-settings.ifileoffset);
+                    float rcompleted = 100*(total_cache_size*(cstep+1))/(sb_in.st_size-settings.ifileoffset);
                     double relapsed = rafter - rbefore;
                     std::cout << "Read Completed:" << rcompleted << "%   Read Time:" <<relapsed << std::endl;
 
@@ -388,7 +393,7 @@ int main(int argc, char** argv) {
                int fd_orig;
                struct stat sb_orig;
                
-               printf("reading file %s\n", input_f);
+               printf("reading first file %s\n", input_f);
                if((fd_orig= open(input_f, O_RDWR)) == -1){
                    fprintf(stderr, "Orig file cannot be opened\n");
                    return 1;
@@ -419,6 +424,7 @@ int main(int argc, char** argv) {
                }
                
                fstat(fd_nvme, &sb_nvme);
+               printf("reading second file %s\n", read_f);
                
                map_nvme = mmap(NULL, sb_nvme.st_size, PROT_READ, MAP_SHARED, fd_nvme, 0);
                
@@ -437,15 +443,16 @@ int main(int argc, char** argv) {
                memcpy(nvme_h, map_nvme+settings.ifileoffset, nvme_sz);
                 
                
-                for(int ver=0; ver<100; ver++){
-                        printf("id:%u \t orig: %x \t nvme: %x\n", (uint64_t)ver, (uint8_t)(orig_h[ver] & 0xFF), (uint8_t)((nvme_h[ver])&0xFF));
-                }
-
+//                for(int ver=0; ver<100; ver++){
+//                        printf("id:%u \t orig: %x \t nvme: %x\n", (uint64_t)ver, (uint8_t)(orig_h[ver] & 0xFF), (uint8_t)((nvme_h[ver])&0xFF));
+//                }
+//
 
                //cuda_err_chk(cudaMallocManaged((void**)&result_h, orig_sz)); 
                //cuda_err_chk(cudaMemset((void**)&result_h, 0, orig_sz)); 
-               //verify_kernel<<<g_size, b_size>>>(orig_h,nvme_h, orig_sz, n_threads); 
+               verify_kernel<<<g_size, b_size>>>(orig_h,nvme_h, orig_sz, n_threads); 
                cuda_err_chk(cudaDeviceSynchronize());
+               std::cout<< "Completed. Check for mismatches" <<std::endl;
 
         }
 
