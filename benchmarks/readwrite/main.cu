@@ -271,6 +271,7 @@ int main(int argc, char** argv) {
         printf("n_tsteps: %lu, n_telem: %llu\n", n_tsteps, n_telem); 
 
         if(settings.accessType == WRITE){
+            printf("Writing contents from %s to NVMe Device\n", input_f); 
             for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
                if(s_offset>(sb_in.st_size-settings.ifileoffset)) //This cannot happen. 
                    break;
@@ -301,6 +302,9 @@ int main(int argc, char** argv) {
                // std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
                         
             }
+            if(munmap(map_in, sb_in.st_size) == -1) 
+                fprintf(stderr,"munmap error input file\n");
+            close(fd_in);
         }
         else if(settings.accessType == READ){
                 int fd_out, ft;
@@ -366,15 +370,44 @@ int main(int argc, char** argv) {
                 //if(munmap(map_out, sb_in.st_size) == -1) 
                 //        fprintf(stderr,"munmap error output file\n");
                 close(fd_out);
+                if(munmap(map_in, sb_in.st_size) == -1) 
+                    fprintf(stderr,"munmap error input file\n");
+                close(fd_in);
 
         }
         else if (settings.accessType == VERIFY){
-               uint64_t* orig_h;
-               uint64_t* nvme_h;
+               uint8_t* orig_h;
+               uint8_t* nvme_h;
                uint8_t* result_h; 
-               size_t orig_sz = sb_in.st_size - settings.ifileoffset; 
+        
+               if(munmap(map_in, sb_in.st_size) == -1) 
+                  fprintf(stderr,"munmap error input file\n");
+               close(fd_in);
+               
+               void* map_orig;
+               int fd_orig;
+               struct stat sb_orig;
+               
+               printf("reading file %s\n", input_f);
+               if((fd_orig= open(input_f, O_RDWR)) == -1){
+                   fprintf(stderr, "Orig file cannot be opened\n");
+                   return 1;
+               }
+               
+               fstat(fd_orig, &sb_orig);
+               
+               map_orig = mmap(NULL, sb_orig.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd_orig, 0);
+               
+               if((map_orig == (void*)-1)){
+                       fprintf(stderr,"Input file map failed %d\n",map_orig);
+                       return 1;
+               }
+               
+               size_t orig_sz = sb_orig.st_size - settings.ifileoffset; 
+
                cuda_err_chk(cudaMallocManaged((void**)&orig_h, orig_sz)); 
-               memcpy(orig_h, map_in+settings.ifileoffset, orig_sz);
+               cuda_err_chk(cudaMemset(orig_h, 0, orig_sz)); 
+               memcpy(orig_h, map_orig+settings.ifileoffset, orig_sz);
 
                void* map_nvme;
                int fd_nvme;
@@ -405,7 +438,7 @@ int main(int argc, char** argv) {
                 
                
                 for(int ver=0; ver<100; ver++){
-                        printf("id:%llu \t orig: %llu \t nvme: %llu\n", (uint64_t)ver, (uint64_t)orig_h[ver], (uint64_t)(nvme_h[ver]));
+                        printf("id:%u \t orig: %x \t nvme: %x\n", (uint64_t)ver, (uint8_t)(orig_h[ver] & 0xFF), (uint8_t)((nvme_h[ver])&0xFF));
                 }
 
 
@@ -416,9 +449,6 @@ int main(int argc, char** argv) {
 
         }
 
-        if(munmap(map_in, sb_in.st_size) == -1) 
-            fprintf(stderr,"munmap error input file\n");
-        close(fd_in);
  
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
             delete ctrls[i];
