@@ -372,8 +372,8 @@ void Settings::parseArguments(int argc, char** argv)
         //{'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
 // #endif
         {'f', OptionPtr(new Option<const char*>(input, "path", "input", "Input dataset path used to write to NVMe SSD"))},
-        {'i', OptionPtr(new Range(ifileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "offset", "Offset where the input file contents need to read", "0"))},
-        {'l', OptionPtr(new Range(ofileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "offset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
+        {'i', OptionPtr(new Range(ifileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "ioffset", "Offset where the input file contents need to read", "0"))},
+        {'l', OptionPtr(new Range(ofileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "loffset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
         {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
         {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
         //{'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
