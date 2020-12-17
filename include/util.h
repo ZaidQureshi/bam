@@ -22,7 +22,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=f
 #ifndef HEXDUMP_COLS
 #define HEXDUMP_COLS 16
 #endif
-void hexdump(void *mem, unsigned int len)
+__device__ void hexdump(void *mem, unsigned int len)
 {
         unsigned int i, j;
 
@@ -45,25 +45,25 @@ void hexdump(void *mem, unsigned int len)
                 }
 
                 /* print ASCII dump */
-                if(i % HEXDUMP_COLS == (HEXDUMP_COLS - 1))
-                {
-                        for(j = i - (HEXDUMP_COLS - 1); j <= i; j++)
-                        {
-                                if(j >= len) /* end of block, not really printing */
-                                {
-                                        putchar(' ');
-                                }
-                                else if(isprint(((char*)mem)[j])) /* printable char */
-                                {
-                                        putchar(0xFF & ((char*)mem)[j]);
-                                }
-                                else /* other char */
-                                {
-                                        putchar('.');
-                                }
-                        }
-                        putchar('\n');
-                }
+//                if(i % HEXDUMP_COLS == (HEXDUMP_COLS - 1))
+//                {
+//                        for(j = i - (HEXDUMP_COLS - 1); j <= i; j++)
+//                        {
+//                                if(j >= len) /* end of block, not really printing */
+//                                {
+//                                        printf(' ');
+//                                }
+//                                else if(isprint(((char*)mem)[j])) /* printable char */
+//                                {
+//                                        printf(0xFF & ((char*)mem)[j]);
+//                                }
+//                                else /* other char */
+//                                {
+//                                        putchar('.');
+//                                }
+//                        }
+//                        putchar('\n');
+//                }
         }
 }
 
