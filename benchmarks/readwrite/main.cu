@@ -72,7 +72,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 __global__
 void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, //unsigned long long* req_count, 
-                                uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint64_t s_offset){
+                                uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint64_t s_offset, uint64_t o_offset){
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     // uint32_t bid = blockIdx.x;
@@ -84,7 +84,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
 
 //    printf("Num pages: %llu, s_offset: %llu n_reqs: %llu\t req_size: %llu\n", (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) n_reqs, (unsigned long long) req_size); 
     for (;tid < pc->n_pages; tid = tid+n_reqs){
-            uint64_t start_block = (s_offset + tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
+            uint64_t start_block = (o_offset+s_offset + tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
             uint64_t pc_idx = (tid);
             //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
             //start_block = tid;
@@ -281,19 +281,17 @@ int main(int argc, char** argv) {
         printf("n_tsteps: %lu, n_telem: %llu, n_pages:%llu\n", n_tsteps, n_telem, n_pages); 
 
         if(settings.accessType == WRITE){
-            printf("Writing contents from %s to NVMe Device\n", input_f); 
+            printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
             for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
-               if(s_offset>(sb_in.st_size-settings.ifileoffset)) //This cannot happen. 
-                   break;
 
                uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
-               printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+               printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
                fflush(stderr);
                fflush(stdout);
                cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
                Event before; 
                sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
-                                                               settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
+                                                               settings.n_ctrls, settings.numReqs, settings.accessType, s_offset, settings.ofileoffset);
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
 
@@ -339,13 +337,14 @@ int main(int argc, char** argv) {
                 uint8_t* tmprbuff; 
                 tmprbuff = (uint8_t*) malloc(sb_in.st_size-settings.ifileoffset);
                 memset(tmprbuff, 0, (sb_in.st_size-settings.ifileoffset));
+                
+                printf("Reading NVMe contents from %llu to file\n", settings.ofileoffset, read_f); 
+                
                 for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
-                    if(s_offset>(sb_in.st_size-settings.ifileoffset)) //This cannot happen. 
-                        break;
 
                     uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
                     //uint64_t cpysize = (total_cache_size); //, (sb_in.st_size-settings.ifileoffset-s_offset));
-                    printf("cstep: %lu   s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+                    printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
                     fflush(stderr);
                     fflush(stdout);
 //                    for(size_t wat=0; wat<32; wat++)
@@ -355,7 +354,7 @@ int main(int argc, char** argv) {
 
                     Event rbefore; 
                     sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
-                                                                    settings.n_ctrls, settings.numReqs, settings.accessType, s_offset);
+                                                                    settings.n_ctrls, settings.numReqs, settings.accessType, s_offset, settings.ofileoffset);
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
                 //    cuda_err_chk(cudaMemcpy(map_out+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
