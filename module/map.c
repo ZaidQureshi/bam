@@ -367,7 +367,7 @@ int map_gpu_memory(struct map* map, struct list* list)
             for (i = 0; i < map->n_addrs; ++i)
             {
                 map->addrs[i] = gd->mappings[0]->dma_addresses[i];
-                printk("++paddr: %llx\n", (uint64_t) map->addrs[i]);
+                //printk("++paddr: %llx\n", (uint64_t) map->addrs[i]);
             }
         }
         element = list_next(element);
@@ -383,9 +383,9 @@ int map_gpu_memory(struct map* map, struct list* list)
 
     map->n_addrs = gd->pages->entries;
 
-    printk("vaddr: %llx\n", (uint64_t) map->vaddr);
-    for (j = 0; j < map->n_addrs; j++)
-        printk("\tpaddr: %llx\n", (uint64_t) map->addrs[j]);
+    //printk("vaddr: %llx\n", (uint64_t) map->vaddr);
+//    for (j = 0; j < map->n_addrs; j++)
+//        printk("\tpaddr: %llx\n", (uint64_t) map->addrs[j]);
     
     return 0;
 }
