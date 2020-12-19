@@ -71,7 +71,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 */
 
 __global__
-void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, //unsigned long long* req_count, 
+void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, //unsigned long long* req_count,
                                 uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint64_t s_offset, uint64_t o_offset){
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -272,7 +272,7 @@ int main(int argc, char** argv) {
         fflush(stdout);
 
         //QueuePair* d_qp;
-        page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
+        page_cache_d_t* d_pc = (page_cache_d_t*) (h_pc.d_pc_ptr);
         
         uint32_t n_tsteps = ceil((float)(sb_in.st_size-settings.ifileoffset)/(float)total_cache_size);  
         uint64_t n_telem = ((sb_in.st_size-settings.ifileoffset)/sizeof(uint64_t)); 
@@ -285,12 +285,12 @@ int main(int argc, char** argv) {
             for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
 
                uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
-               printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+               printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
                fflush(stderr);
                fflush(stdout);
-               cuda_err_chk(cudaMemcpy(h_pc.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
+               cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
                Event before; 
-               sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
+               sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, //d_req_count,
                                                                settings.n_ctrls, settings.numReqs, settings.accessType, s_offset, settings.ofileoffset);
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
@@ -344,22 +344,22 @@ int main(int argc, char** argv) {
 
                     uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
                     //uint64_t cpysize = (total_cache_size); //, (sb_in.st_size-settings.ifileoffset-s_offset));
-                    printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.base_addr, b_size, g_size); 
+                    printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
                     fflush(stderr);
                     fflush(stdout);
 //                    for(size_t wat=0; wat<32; wat++)
 //                            std::cout << std::hex << tmprbuff[wat]; 
 //                    std::cout<<std::endl;
-                    cuda_err_chk(cudaMemset(h_pc.base_addr, 0, total_cache_size)); 
+                    cuda_err_chk(cudaMemset(h_pc.pdt.base_addr, 0, total_cache_size));
 
                     Event rbefore; 
-                    sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, //d_req_count, 
+                    sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, //d_req_count,
                                                                     settings.n_ctrls, settings.numReqs, settings.accessType, s_offset, settings.ofileoffset);
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
-                //    cuda_err_chk(cudaMemcpy(map_out+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
-                    cuda_err_chk(cudaMemcpy(tmprbuff+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
-                    //cuda_err_chk(cudaMemcpy(tmprbuff+s_offset,h_pc.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                //    cuda_err_chk(cudaMemcpy(map_out+s_offset,h_pc.pdt.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                    cuda_err_chk(cudaMemcpy(tmprbuff+s_offset,h_pc.pdt.base_addr, cpysize, cudaMemcpyDeviceToHost));
+                    //cuda_err_chk(cudaMemcpy(tmprbuff+s_offset,h_pc.pdt.base_addr, cpysize, cudaMemcpyDeviceToHost));
                    
 
                     //if(msync(map_out, cpysize, MS_SYNC) == -1) {

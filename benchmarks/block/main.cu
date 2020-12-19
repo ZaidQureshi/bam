@@ -81,7 +81,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 */
 __global__
-void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
+void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -122,7 +122,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t re
 
 }
 __global__
-void random_access_kernel(Controller** ctrls, page_cache_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
+void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t bid = blockIdx.x;
@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
-        page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
+        page_cache_d_t* d_pc = (page_cache_d_t*) (h_pc.d_pc_ptr);
         #define TYPE uint64_t
         uint64_t n_blocks = settings.numBlks;
         //uint64_t t_size = n_blocks * sizeof(TYPE);
@@ -275,9 +275,9 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMemcpy(d_access_assignment, access_assignment, n_threads*sizeof(uint8_t), cudaMemcpyHostToDevice));
         }
         if (settings.random)
-            random_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
+            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
         else
-            sequential_access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
+            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
         Event after;
         //new_kernel<<<1,1>>>();
         //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
