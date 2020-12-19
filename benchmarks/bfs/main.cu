@@ -56,8 +56,8 @@
 
 using error = std::runtime_error;
 using std::string;
-//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-const char* const ctrls_paths[] = {"/dev/libnvm0"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+//const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 #define MYINFINITY 0xFFFFFFFF
 
@@ -124,12 +124,13 @@ __global__ void kernel_baseline(uint32_t *label, const uint32_t level, const uin
 
 
 
-__global__ void kernel_baseline_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count,
+__global__ __launch_bounds__(1024,2)
+void kernel_baseline_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count,
                         const uint64_t *vertexList, const EdgeT *edgeList, bool *changed, unsigned long long int *globalvisitedcount_d, unsigned long long int *vertexVisitCount_d
     ) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
-    array_d_t<uint64_t> d_array = *da;
+//    array_d_t<uint64_t> d_array = *da;
     // if(tid==0)
     //         printf("Warning: The code is not optimal because of additional counters added for profiling\n");
 
@@ -139,7 +140,7 @@ __global__ void kernel_baseline_pc(array_d_t<uint64_t>* da, uint32_t *label, con
 
         for(uint64_t i = start; i < end; i++) {
             //EdgeT next = da->seq_read(i);
-            EdgeT next = d_array.seq_read(i);
+            EdgeT next = da->seq_read(i);
 //                printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
             //performance code
             // atomicAdd(&vertexVisitCount_d[next], 1);
@@ -182,8 +183,8 @@ __global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uin
 
                 if(label[next] == MYINFINITY) {
 
-                    if(level ==0)
-                            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                //    if(level ==0)
+                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
                     label[next] = level + 1;
                     *changed = true;
                 }
@@ -193,12 +194,12 @@ __global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uin
 }
 
 
-__launch_bounds__(1024,1)
-__global__ void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
+__global__ __launch_bounds__(1024,2)
+void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
-    array_d_t<uint64_t> d_array = *da;
+    //array_d_t<uint64_t> d_array = *da;
     if(warpIdx < vertex_count && label[warpIdx] == level) {
         const uint64_t start = vertexList[warpIdx];
         const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
@@ -208,12 +209,12 @@ __global__ void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, con
             if (i >= start) {
                 //const EdgeT next = edgeList[i];
                 //EdgeT next = da->seq_read(i);
-                EdgeT next = d_array.seq_read(i);
+                EdgeT next = da->seq_read(i);
 //                printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
 
                 if(label[next] == MYINFINITY) {
-                    if(level ==0)
-                            printf("tid:%llu, level:%llu, next: %llu\n", tid, (unsigned long long)level, (unsigned long long)next);
+                //    if(level ==0)
+                //            printf("tid:%llu, level:%llu, next: %llu\n", tid, (unsigned long long)level, (unsigned long long)next);
                     label[next] = level + 1;
                     *changed = true;
                 }
@@ -265,7 +266,7 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const ui
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     const uint64_t chunkIdx = warpIdx * CHUNK_SIZE;
     uint64_t chunk_size = CHUNK_SIZE;
-    array_d_t<uint64_t> d_array = *da;
+    //array_d_t<uint64_t> d_array = *da;
     if((chunkIdx + CHUNK_SIZE) > vertex_count) {
         if ( vertex_count > chunkIdx )
             chunk_size = vertex_count - chunkIdx;
@@ -283,7 +284,7 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const ui
                 if (j >= start) {
                     // const EdgeT next = edgeList[j];
                     //EdgeT next = da->seq_read(j);
-                    EdgeT next = d_array.seq_read(j);
+                    EdgeT next = da->seq_read(j);
                     // printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
 
                     if(label[next] == MYINFINITY) {
@@ -325,9 +326,10 @@ int main(int argc, char *argv[]) {
     double avg_milliseconds;
 
     Settings settings;
-    uint64_t pc_page_size = 4096; 
-    uint64_t pc_pages = 2*1024*1024;//1M*4096 = 4GB of page cache.  
+    uint64_t pc_page_size = 4096*2; 
+    uint64_t pc_pages = 1*1024*1024;//1M*4096 = 4GB of page cache.  
 
+    cuda_err_chk(cudaSetDevice(settings.cudaDevice));
     cudaEvent_t start, end;
 
     while ((c = getopt(argc, argv, "f:r:t:i:m:p:s:h")) != -1) {
@@ -596,10 +598,10 @@ int main(int argc, char *argv[]) {
             if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
 //             page_cache_t h_pc(pc_page_size, pc_pages, settings, (uint64_t) 64); 
 //             range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
-               h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 1, ctrls);
-               h_range = new range_t<uint64_t>((int)0 ,(uint64_t)edge_count, (int) 0,(uint64_t)n_pages, (int)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
+               h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+               h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(240518168576*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
                vec_range[0] = h_range; 
-               h_array = new array_t<uint64_t>(edge_count, 0, vec_range, settings.cudaDevice);
+               h_array = new array_t<uint64_t>(edge_count, 240518168576, vec_range, settings.cudaDevice);
                
                printf("Page cache initialized\n");
                fflush(stdout);
@@ -614,6 +616,8 @@ int main(int argc, char *argv[]) {
                 iter = 0;
 
                 cuda_err_chk(cudaEventRecord(start, 0));
+                printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
+                fflush(stdout);
 
                 // Run BFS
                 do {

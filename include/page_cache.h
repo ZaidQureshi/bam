@@ -69,7 +69,8 @@ struct page_cache_d_t {
     Controller** d_ctrls;
     uint64_t n_ctrls;
     bool prps;
-
+    
+    uint64_t n_blocks_per_page; 
 
     __forceinline__
     __device__
@@ -157,7 +158,7 @@ range_t<T>::range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t
     rdt.page_end = pe;
     rdt.page_size = p_size;
     rdt.page_start_offset = pso;
-    size_t s = (rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
+    size_t s = pe;//(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
 
     cache = (page_cache_d_t*) c_h->d_pc_ptr;
     page_states_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
@@ -166,6 +167,7 @@ range_t<T>::range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t
     padded_struct_pc* ts = new padded_struct_pc[s];
     for (size_t i = 0; i < s; i++)
         ts[i] = INVALID;
+    printf("S value: %llu\n", (unsigned long long)s);
     cuda_err_chk(cudaMemcpy(rdt.page_states, ts, s * sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
     delete ts;
 
@@ -270,7 +272,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t queue = (tid/32) % (c->n_qps);
 
 
-                    read_data(&cache, (c->d_qps)+queue, index, cache.page_size >> c->blk_size_log, page_trans);
+                    read_data(&cache, (c->d_qps)+queue, (index*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
                     page_addresses[index] = page_trans;
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -364,7 +366,7 @@ struct array_d_t {
                 //std::pair<uint64_t, bool> base_memcpyflag;
                 base = d_ranges[r].acquire_page(page, count, false);
                 base_master = base;
-//                printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
+//                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
             }
             base_master = __shfl_sync(eq_mask,  base_master, master);
 
@@ -538,6 +540,8 @@ struct page_cache_t {
         pdt.n_ctrls = ctrls.size();
         d_ctrls_buff = createBuffer(pdt.n_ctrls * sizeof(Controller*), cudaDevice);
         pdt.d_ctrls = (Controller**) d_ctrls_buff.get();
+        pdt.n_blocks_per_page = (ps/ctrl.blk_size);
+
         for (size_t k = 0; k < pdt.n_ctrls; k++)
             cuda_err_chk(cudaMemcpy(pdt.d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
         //n_ctrls = ctrls.size();
@@ -770,7 +774,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
 
                             uint64_t index = ranges_page_starts[previous_range] + previous_global_address;
 
-                            write_data(this, (c->d_qps)+queue, index, this->page_size >> c->blk_size_log, page);
+                            write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                             this->ranges[previous_range][previous_address].store(INVALID, simt::memory_order_release);
 
                             fail = false;
