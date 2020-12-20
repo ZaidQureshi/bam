@@ -64,7 +64,7 @@ struct page_cache_d_t {
     uint64_t n_ranges_mask;
 
     uint64_t* ranges_page_starts;
-    uint64_t* h_ranges_page_starts;
+
 
     Controller** d_ctrls;
     uint64_t n_ctrls;
@@ -272,7 +272,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t queue = (tid/32) % (c->n_qps);
 
 
-                    read_data(&cache, (c->d_qps)+queue, ((index+page_start)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
+                    read_data(&cache, (c->d_qps)+queue, ((index+ranges_page_starts[range_id])*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
                     page_addresses[index] = page_trans;
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -504,6 +504,7 @@ struct page_cache_t {
     //BufferPtr prp2_list_buf;
     //bool prps;
     page_states_t*   h_ranges;
+    uint64_t* h_ranges_page_starts;
     page_cache_d_t* d_pc_ptr;
 
     DmaPtr pages_dma;
@@ -524,6 +525,8 @@ struct page_cache_t {
     void page_cache_t::add_range(range_t<T>* range) {
 
         h_ranges[range->rdt.range_id] = range->rdt.page_states;
+        h_ranges_page_starts[range->rdt.range_id] = range->rdt.page_start;
+        cuda_err_chk(cudaMemcpy(pdt.ranges_page_starts, h_ranges_page_starts, pdt.n_ranges * sizeof(uint64_t), cudaMemcpyHostToDevice));
         cuda_err_chk(cudaMemcpy(pdt.ranges, h_ranges, pdt.n_ranges* sizeof(page_states_t), cudaMemcpyHostToDevice));
         cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
 
@@ -562,6 +565,9 @@ struct page_cache_t {
         pdt.ranges = (page_states_t*)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
 
+        h_ranges_page_starts = new uint64_t[max_range];
+        std::memset(h_ranges_page_starts, 0, max_range * sizeof(uint64_t));
+
         page_translation_buf = createBuffer(np * sizeof(uint32_t), cudaDevice);
         pdt.page_translation = (uint32_t*)page_translation_buf.get();
         //page_translation_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
@@ -569,6 +575,10 @@ struct page_cache_t {
 
         page_take_lock_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_take_lock =  (padded_struct_pc*)page_take_lock_buf.get();
+
+
+        ranges_page_starts_buf = createBuffer(max_range * sizeof(uint64_t), cudaDevice);
+        pdt.ranges_page_starts = (uint64_t*) range_page_starts_buf.get();
 
         page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
@@ -774,7 +784,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
 
                             uint64_t index = ranges_page_starts[previous_range] + previous_global_address;
 
-                            write_data(this, (c->d_qps)+queue, ((index+page_start)*this->n_blocks_per_page), this->n_blocks_per_page, page);
+                            write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                             this->ranges[previous_range][previous_address].store(INVALID, simt::memory_order_release);
 
                             fail = false;
