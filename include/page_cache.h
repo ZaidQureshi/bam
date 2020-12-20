@@ -272,7 +272,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t queue = (tid/32) % (c->n_qps);
 
 
-                    read_data(&cache, (c->d_qps)+queue, (index*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
+                    read_data(&cache, (c->d_qps)+queue, (index*cache.n_blocks_per_page)+page_start, cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
                     page_addresses[index] = page_trans;
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -774,7 +774,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
 
                             uint64_t index = ranges_page_starts[previous_range] + previous_global_address;
 
-                            write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
+                            write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page)+page_start, this->n_blocks_per_page, page);
                             this->ranges[previous_range][previous_address].store(INVALID, simt::memory_order_release);
 
                             fail = false;
