@@ -578,7 +578,7 @@ struct page_cache_t {
 
 
         ranges_page_starts_buf = createBuffer(max_range * sizeof(uint64_t), cudaDevice);
-        pdt.ranges_page_starts = (uint64_t*) range_page_starts_buf.get();
+        pdt.ranges_page_starts = (uint64_t*) ranges_page_starts_buf.get();
 
         page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
