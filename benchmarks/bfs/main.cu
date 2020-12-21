@@ -302,14 +302,38 @@ __global__ void throttle_memory(uint32_t *pad) {
     pad[1] = pad[0];
 }
 
+
+
+
+
 int main(int argc, char *argv[]) {
     using namespace std::chrono; 
+
+    Settings settings; 
+    try
+    {
+        settings.parseArguments(argc, argv);
+    }
+    catch (const string& e)
+    {
+        fprintf(stderr, "%s\n", e.c_str());
+        fprintf(stderr, "%s\n", Settings::usageString(argv[0]).c_str());
+        return 1;
+    }
+
+    cudaDeviceProp properties;
+    if (cudaGetDeviceProperties(&properties, settings.cudaDevice) != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to get CUDA device properties\n");
+        return 1;
+    }
+
     std::ifstream file;
     std::string vertex_file, edge_file;
     std::string filename;
-    
-    bool changed_h, *changed_d, no_src = false;
-    int c, num_run = 1, arg_num = 0;
+
+    bool changed_h, *changed_d;// no_src = false;
+    int num_run = 1;// arg_num = 0;
     impl_type type;
     mem_type mem;
     uint32_t *pad;
@@ -320,409 +344,300 @@ int main(int argc, char *argv[]) {
     uint64_t typeT, src;
     uint64_t numblocks, numthreads;
     size_t freebyte, totalbyte;
-    EdgeT *edgeList_dtmp;
 
     float milliseconds;
     double avg_milliseconds;
 
-    Settings settings;
-    uint64_t pc_page_size = 4096*2; 
-    uint64_t pc_pages = 1*1024*1024;//1M*4096 = 4GB of page cache.  
+    uint64_t pc_page_size; 
+    uint64_t pc_pages;
+   
+    try{
+         //prepare from settings
+         filename = std::string(settings.input); 
 
-    cuda_err_chk(cudaSetDevice(settings.cudaDevice));
-    cudaEvent_t start, end;
+         if(settings.src == 0) {
+                 num_run = settings.repeat; 
+                 src = 0;
+         }
+         else {
+                 num_run = 1; 
+                 src = settings.src; 
+         }
 
-    while ((c = getopt(argc, argv, "f:r:t:i:m:p:s:h")) != -1) {
-        switch (c) {
-            case 'f':
-                filename = optarg;
-                arg_num++;
-                break;
-            case 'r':
-                if (!no_src)
-                    src = atoll(optarg);
-                arg_num++;
-                break;
-            case 't':
-                type = (impl_type)atoi(optarg);
-                arg_num++;
-                break;
-            case 'i':
-                no_src = true;
-                src = 0;
-                num_run = atoi(optarg);
-                arg_num++;
-                break;
-            case 'm':
-                mem = (mem_type)atoi(optarg);
-                arg_num++;
-                break;
-            case 'p':
-                //Need to add type condition check.
-                pc_page_size = atoi(optarg); 
-                arg_num++;
-                break;
-            case 's':
-                pc_pages = atoi(optarg); 
-                arg_num++; 
-                break;
-            case 'h':
-                printf("\t-f | input file name (must end with .bel)\n");
-                printf("\t-r | BFS root (unused when i > 1)\n");
-                printf("\t-t | type of BFS to run.\n");
-                printf("\t   | BASELINE = 0, COALESCE = 1, COALESCE_CHUNK = 2\n");
-                printf("\t   | BASELINE_PC = 3, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5\n");
-                printf("\t-m | memory allocation.\n");
-                printf("\t   | GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2\n");
-                printf("\t   | UVM_READONLY_NVLINK = 3, UVM_DIRECT_NVLINK = 4, BAFS_DIRECT = 6\n");
-                printf("\t-i | number of iterations to run\n");
-                printf("\t-p | (applies only for PC) page cache page size in bytes\n");
-                printf("\t-s | (applies only for PC) number of entries in page cache\n");
-                printf("\t-h | help message\n");
-                return 0;
-            case '?':
-                break;
-            default:
-                break;
-        }
-    }
+         type = (impl_type) settings.type; 
+         mem = (mem_type) settings.memalloc; 
 
-    if (arg_num < 4) {
-        printf("\t-f | input file name (must end with .bel)\n");
-        printf("\t-r | BFS root (unused when i > 1)\n");
-        printf("\t-t | type of BFS to run.\n");
-        printf("\t   | BASELINE = 0, COALESCE = 1, COALESCE_CHUNK = 2\n");
-        printf("\t   | BASELINE_PC = 3, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5\n");
-        printf("\t-m | memory allocation.\n");
-        printf("\t   | GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2\n");
-        printf("\t   | UVM_READONLY_NVLINK = 3, UVM_DIRECT_NVLINK = 4, BAFS_DIRECT = 6\n");
-        printf("\t-i | number iterations to run\n");
-        printf("\t-p | (applies only for PC) page cache page size in bytes\n");
-        printf("\t-s | (applies only for PC) number of entries in page cache\n");
-        printf("\t-h | help message\n");
-        return 0;
-    }
+         pc_page_size = settings.pageSize; 
+         pc_pages = ceil((float)settings.maxPageCacheSize/pc_page_size);
 
-    cuda_err_chk(cudaEventCreate(&start));
-    cuda_err_chk(cudaEventCreate(&end));
+         numthreads = settings.numThreads;
+         
+         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
+         
+         cudaEvent_t start, end;
+         cuda_err_chk(cudaEventCreate(&start));
+         cuda_err_chk(cudaEventCreate(&end));
 
-    vertex_file = filename + ".col";
-    edge_file = filename + ".dst";
+         vertex_file = filename + ".col";
+         edge_file = filename + ".dst";
 
-    std::cout << filename << std::endl;
-    fprintf(stderr, "File %s\n", filename.c_str());
-    // Read files
-    file.open(vertex_file.c_str(), std::ios::in | std::ios::binary);
-    if (!file.is_open()) {
-        fprintf(stderr, "Vertex file open failed\n");
-        exit(1);
-    };
+         std::cout << filename << std::endl;
+         fprintf(stderr, "File %s\n", filename.c_str());
+         // Read files
+         file.open(vertex_file.c_str(), std::ios::in | std::ios::binary);
+         if (!file.is_open()) {
+             fprintf(stderr, "Vertex file open failed\n");
+             exit(1);
+         };
 
-    file.read((char*)(&vertex_count), 8);
-    file.read((char*)(&typeT), 8);
+         file.read((char*)(&vertex_count), 8);
+         file.read((char*)(&typeT), 8);
 
-    vertex_count--;
+         vertex_count--;
 
-    printf("Vertex: %llu, ", vertex_count);
-    vertex_size = (vertex_count+1) * sizeof(uint64_t);
+         printf("Vertex: %llu, ", vertex_count);
+         vertex_size = (vertex_count+1) * sizeof(uint64_t);
 
-    vertexList_h = (uint64_t*)malloc(vertex_size);
+         vertexList_h = (uint64_t*)malloc(vertex_size);
 
-    file.read((char*)vertexList_h, vertex_size);
-    file.close();
+         file.read((char*)vertexList_h, vertex_size);
+         file.close();
 
-    file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
-    if (!file.is_open()) {
-        fprintf(stderr, "Edge file open failed\n");
-        exit(1);
-    };
+         file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
+         if (!file.is_open()) {
+             fprintf(stderr, "Edge file open failed\n");
+             exit(1);
+         };
 
-    file.read((char*)(&edge_count), 8);
-    file.read((char*)(&typeT), 8);
+         file.read((char*)(&edge_count), 8);
+         file.read((char*)(&typeT), 8);
 
-    printf("Edge: %llu\n", edge_count);
-    fflush(stdout);
-    edge_size = edge_count * sizeof(EdgeT); //4096 padding for weights and edges. TODO. confirm page aligned address mapping on cudamallocmanaged.
-    edge_size = edge_size + (4096 - (edge_size & 0xFFFULL));
+         printf("Edge: %llu\n", edge_count);
+         fflush(stdout);
+         edge_size = edge_count * sizeof(EdgeT); //4096 padding for weights and edges. 
+         edge_size = edge_size + (4096 - (edge_size & 0xFFFULL));
 
-    edgeList_h = NULL;
+         edgeList_h = NULL;
 
-    // Allocate memory for GPU
-    cuda_err_chk(cudaMalloc((void**)&vertexList_d, vertex_size));
-    cuda_err_chk(cudaMalloc((void**)&label_d, vertex_count * sizeof(uint32_t)));
-    cuda_err_chk(cudaMalloc((void**)&changed_d, sizeof(bool)));
+         // Allocate memory for GPU
+         cuda_err_chk(cudaMalloc((void**)&vertexList_d, vertex_size));
+         cuda_err_chk(cudaMalloc((void**)&label_d, vertex_count * sizeof(uint32_t)));
+         cuda_err_chk(cudaMalloc((void**)&changed_d, sizeof(bool)));
+     
+         std::vector<unsigned long long int> vertexVisitCount_h;
+         unsigned long long int* vertexVisitCount_d;
+         unsigned long long int globalvisitedcount_h;
+         unsigned long long int* globalvisitedcount_d;
+     
+         vertexVisitCount_h.resize(vertex_count);
+         cuda_err_chk(cudaMalloc((void**)&globalvisitedcount_d, sizeof(unsigned long long int)));
+         cuda_err_chk(cudaMemset(globalvisitedcount_d, 0, sizeof(unsigned long long int)));
+         cuda_err_chk(cudaMalloc((void**)&vertexVisitCount_d, vertex_count*sizeof(unsigned long long int)));
+         cuda_err_chk(cudaMemset(vertexVisitCount_d, 0, vertex_count*sizeof(unsigned long long int)));
 
-    std::vector<unsigned long long int> vertexVisitCount_h;
-    unsigned long long int* vertexVisitCount_d;
-    unsigned long long int globalvisitedcount_h;
-    unsigned long long int* globalvisitedcount_d;
+         switch (mem) {
+             case GPUMEM:
+                 edgeList_h = (EdgeT*)malloc(edge_size);
+                 file.read((char*)edgeList_h, edge_size);
+                 cuda_err_chk(cudaMalloc((void**)&edgeList_d, edge_size));
+                 file.close();
+                 break;
+             case UVM_READONLY:
+                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
+                 file.read((char*)edgeList_d, edge_size);
+                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetReadMostly, 0));
+     
+                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
+                 if (totalbyte < 16*1024*1024*1024ULL)
+                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                 else {
+                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                     cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
+                     throttle_memory<<<1,1>>>(pad);
+                 }
+                 file.close();
+                 break;
+             case UVM_DIRECT:
+             {
+                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
+                 // printf("Address is %p   %p\n", edgeList_d, &edgeList_d[0]); 
+                 high_resolution_clock::time_point ft1 = high_resolution_clock::now();
+                 file.read((char*)edgeList_d, edge_size);
+                 file.close();
+                 high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                 duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                 std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
+                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, 0));
+                 break;
+             }
+             case BAFS_DIRECT: 
+                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
+                 if (totalbyte < 16*1024*1024*1024ULL)
+                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                 else {
+                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                     cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
+                     throttle_memory<<<1,1>>>(pad);
+                 }
+                 break;
+         }
+     
+     
+         printf("Allocation finished\n");
+         fflush(stdout);
 
-    vertexVisitCount_h.resize(vertex_count);
-    cuda_err_chk(cudaMalloc((void**)&globalvisitedcount_d, sizeof(unsigned long long int)));
-    cuda_err_chk(cudaMemset(globalvisitedcount_d, 0, sizeof(unsigned long long int)));
-    cuda_err_chk(cudaMalloc((void**)&vertexVisitCount_d, vertex_count*sizeof(unsigned long long int)));
-    cuda_err_chk(cudaMemset(vertexVisitCount_d, 0, vertex_count*sizeof(unsigned long long int)));
+         // Initialize values
+         cuda_err_chk(cudaMemcpy(vertexList_d, vertexList_h, vertex_size, cudaMemcpyHostToDevice));
 
-    switch (mem) {
-        case GPUMEM:
-            edgeList_h = (EdgeT*)malloc(edge_size);
-            file.read((char*)edgeList_h, edge_size);
-            cuda_err_chk(cudaMalloc((void**)&edgeList_d, edge_size));
-            file.close();
-            break;
-        case UVM_READONLY:
-            cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
-            file.read((char*)edgeList_d, edge_size);
-            cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetReadMostly, 0));
-
-            cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
-            if (totalbyte < 16*1024*1024*1024ULL)
-                printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
-            else {
-                printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
-                cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
-                throttle_memory<<<1,1>>>(pad);
-            }
-            file.close();
-            break;
-        case UVM_DIRECT:
-        {
-            cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
-            // printf("Address is %p   %p\n", edgeList_d, &edgeList_d[0]); 
-            high_resolution_clock::time_point ft1 = high_resolution_clock::now();
-            file.read((char*)edgeList_d, edge_size);
-            file.close();
-            high_resolution_clock::time_point ft2 = high_resolution_clock::now();
-            duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
-            std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
-            cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, 0));
-            break;
-        }
-/*        case UVM_READONLY_NVLINK:
-            cuda_err_chk(cudaSetDevice(2));
-            cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
-            file.read((char*)edgeList_d, edge_size);
-            cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetReadMostly, 0));
-            cuda_err_chk(cudaMemPrefetchAsync(edgeList_d, edge_size, 2, 0));
-            cuda_err_chk(cudaDeviceSynchronize());
-            cuda_err_chk(cudaSetDevice(0));
-            file.close();
-            break;
-        case UVM_DIRECT_NVLINK:
-            cuda_err_chk(cudaSetDevice(2));
-            cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
-            file.read((char*)edgeList_d, edge_size);
-            cuda_err_chk(cudaMemPrefetchAsync(edgeList_d, edge_size, 2, 0));
-            cuda_err_chk(cudaDeviceSynchronize());
-            cuda_err_chk(cudaSetDevice(0));
-            cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, 0));
-            file.close();
-            break;
-        case DRAGON_MAP:
-            if((dragon_map(edge_file.c_str(), (edge_size+16), D_F_READ, (void**) &edgeList_dtmp)) != D_OK){
-                  printf("Dragon Map Failed for edgelist\n");
-                  return -1;
-            }
-            edgeList_d = edgeList_dtmp+2;
-            break;
-*/
-        case BAFS_DIRECT: 
-            cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
-            if (totalbyte < 16*1024*1024*1024ULL)
-                printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
-            else {
-                printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
-                cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
-                throttle_memory<<<1,1>>>(pad);
-            }
-            break;
-    }
-
-
-    printf("Allocation finished\n");
-    fflush(stdout);
-
-    // Initialize values
-    cuda_err_chk(cudaMemcpy(vertexList_d, vertexList_h, vertex_size, cudaMemcpyHostToDevice));
-
-    if (mem == GPUMEM){
-        cuda_err_chk(cudaMemcpy(edgeList_d, edgeList_h, edge_size, cudaMemcpyHostToDevice));
-    }
+         if (mem == GPUMEM){
+             cuda_err_chk(cudaMemcpy(edgeList_d, edgeList_h, edge_size, cudaMemcpyHostToDevice));
+         }
     
-    numthreads = 1024;
 
-    switch (type) {
-        case BASELINE:
-        case BASELINE_PC:
-            numblocks = ((vertex_count + numthreads) / numthreads);
-            break;
-        case COALESCE:
-        case COALESCE_PC:
-            numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
-            break;
-        case COALESCE_CHUNK:
-        case COALESCE_CHUNK_PC:
-            numblocks = ((vertex_count * (WARP_SIZE / CHUNK_SIZE) + numthreads) / numthreads);
-            break;
-        default:
-            fprintf(stderr, "Invalid type\n");
-            exit(1);
-            break;
-    }
+         switch (type) {
+             case BASELINE:
+             case BASELINE_PC:
+                 numblocks = ((vertex_count + numthreads) / numthreads);
+                 break;
+             case COALESCE:
+             case COALESCE_PC:
+                 numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
+                 break;
+             case COALESCE_CHUNK:
+             case COALESCE_CHUNK_PC:
+                 numblocks = ((vertex_count * (WARP_SIZE / CHUNK_SIZE) + numthreads) / numthreads);
+                 break;
+             default:
+                 fprintf(stderr, "Invalid type\n");
+                 exit(1);
+                 break;
+         }
+    
+         //TODO : FIX THIS. 
+         dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
 
-    dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
+         avg_milliseconds = 0.0f;
 
-    avg_milliseconds = 0.0f;
 
-    printf("Initialization done\n");
-    fflush(stdout);
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+         }
 
-    if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
-            printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
-    }
+         std::vector<Controller*> ctrls(settings.n_ctrls);
+         if(mem == BAFS_DIRECT){
+             cuda_err_chk(cudaSetDevice(settings.cudaDevice));
+             for (size_t i = 0 ; i < settings.n_ctrls; i++)
+                 ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+             printf("Controllers Created\n");
+         }
 
-    try{         
-            std::vector<Controller*> ctrls(settings.n_ctrls);
-            if(mem == BAFS_DIRECT){
-                cuda_err_chk(cudaSetDevice(settings.cudaDevice));
-                for (size_t i = 0 ; i < settings.n_ctrls; i++)
-                    ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
-            }
-
-            page_cache_t* h_pc; 
-            range_t<uint64_t>* h_range;
-            std::vector<range_t<uint64_t>*> vec_range(1);
-            array_t<uint64_t>* h_array; 
-            uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
+         printf("Initialization done.\n");
+         fflush(stdout);
+         
+         page_cache_t* h_pc; 
+         range_t<uint64_t>* h_range;
+         std::vector<range_t<uint64_t>*> vec_range(1);
+         array_t<uint64_t>* h_array; 
+         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
+         
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+            h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+            h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
+            vec_range[0] = h_range; 
+            h_array = new array_t<uint64_t>(edge_count, settings.ofileoffset, vec_range, settings.cudaDevice);
             
-            if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
-//             page_cache_t h_pc(pc_page_size, pc_pages, settings, (uint64_t) 64); 
-//             range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
-               h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
-               h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(240518168576*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
-               vec_range[0] = h_range; 
-               h_array = new array_t<uint64_t>(edge_count, 240518168576, vec_range, settings.cudaDevice);
-               
-               printf("Page cache initialized\n");
-               fflush(stdout);
-            }
-            // Set root
-            for (int i = 0; i < num_run; i++) {
-                zero = 0;
-                cuda_err_chk(cudaMemset(label_d, 0xFF, vertex_count * sizeof(uint32_t)));
-                cuda_err_chk(cudaMemcpy(&label_d[src], &zero, sizeof(uint32_t), cudaMemcpyHostToDevice));
+            printf("Page cache initialized\n");
+            fflush(stdout);
+         }
+         // Set root
+         for (int i = 0; i < num_run; i++) {
+             zero = 0;
+             cuda_err_chk(cudaMemset(label_d, 0xFF, vertex_count * sizeof(uint32_t)));
+             cuda_err_chk(cudaMemcpy(&label_d[src], &zero, sizeof(uint32_t), cudaMemcpyHostToDevice));
 
-                level = 0;
-                iter = 0;
+             level = 0;
+             iter = 0;
 
-                cuda_err_chk(cudaEventRecord(start, 0));
-                printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
-                fflush(stdout);
+             cuda_err_chk(cudaEventRecord(start, 0));
+   // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
+   //          fflush(stdout);
 
-                // Run BFS
-                do {
-                    changed_h = false;
-                    cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
+             // Run BFS
+             do {
+                 changed_h = false;
+                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
 
-                    switch (type) {
-                        case BASELINE:
-                            kernel_baseline<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, globalvisitedcount_d, vertexVisitCount_d);
-                            break;
-                        case COALESCE:
-                            kernel_coalesce<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
-                            break;
-                        case COALESCE_CHUNK:
-                            kernel_coalesce_chunk<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
-                            break;
-                        case BASELINE_PC:
-                            //printf("Calling Page cache enabled baseline kernel\n");
-                            kernel_baseline_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, globalvisitedcount_d, vertexVisitCount_d);
-                            break;
-                        case COALESCE_PC:
-                            //printf("Calling Page cache enabled coalesce kernel\n");
-                            kernel_coalesce_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
-                            break;
-                        case COALESCE_CHUNK_PC:
-                            //printf("Calling Page cache enabled coalesce chunk kernel\n");
-                            kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
-                            break;
-                        default:
-                            fprintf(stderr, "Invalid type\n");
-                            exit(1);
-                            break;
-                    }
+                 switch (type) {
+                     case BASELINE:
+                         kernel_baseline<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, globalvisitedcount_d, vertexVisitCount_d);
+                         break;
+                     case COALESCE:
+                         kernel_coalesce<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
+                         break;
+                     case COALESCE_CHUNK:
+                         kernel_coalesce_chunk<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
+                         break;
+                     case BASELINE_PC:
+                         //printf("Calling Page cache enabled baseline kernel\n");
+                         kernel_baseline_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, globalvisitedcount_d, vertexVisitCount_d);
+                         break;
+                     case COALESCE_PC:
+                         //printf("Calling Page cache enabled coalesce kernel\n");
+                         kernel_coalesce_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
+                         break;
+                     case COALESCE_CHUNK_PC:
+                         //printf("Calling Page cache enabled coalesce chunk kernel\n");
+                         kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
+                         break;
+                     default:
+                         fprintf(stderr, "Invalid type\n");
+                         exit(1);
+                         break;
+                 }
 
-                    iter++;
-                    level++;
+                 iter++;
+                 level++;
 
-                    cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
-                    //break;
-                } while(changed_h);
+                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                 //break;
+             } while(changed_h);
 
-                cuda_err_chk(cudaEventRecord(end, 0));
-                cuda_err_chk(cudaEventSynchronize(end));
-                cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
+             cuda_err_chk(cudaEventRecord(end, 0));
+             cuda_err_chk(cudaEventSynchronize(end));
+             cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
 
-                printf("run %*d: ", 3, i);
-                printf("src %*u, ", 10, src);
-                printf("iteration %*u, ", 3, iter);
-                printf("time %*f ms\n", 12, milliseconds);
-                fflush(stdout);
+             printf("run %*d: ", 3, i);
+             printf("src %*u, ", 10, src);
+             printf("iteration %*u, ", 3, iter);
+             printf("time %*f ms\n", 12, milliseconds);
+             fflush(stdout);
 
-                avg_milliseconds += (double)milliseconds;
+             avg_milliseconds += (double)milliseconds;
 
-                src += vertex_count / num_run;
+             src += vertex_count / num_run;
+         }
+         printf("\nAverage run time %f ms\n", avg_milliseconds / num_run);
+         
+         free(vertexList_h);
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+            delete h_pc; 
+            delete h_range; 
+            delete h_array;
+         }
+         if (edgeList_h)
+             free(edgeList_h);
+         cuda_err_chk(cudaFree(vertexList_d));
+         cuda_err_chk(cudaFree(label_d));
+         cuda_err_chk(cudaFree(changed_d));
 
-                /*if (i < num_run - 1) {
-                   EdgeT *edgeList_temp;
+         cuda_err_chk(cudaFree(globalvisitedcount_d));
+         cuda_err_chk(cudaFree(vertexVisitCount_d));
+         vertexVisitCount_h.clear();
 
-                   switch (mem) {
-                       case UVM_READONLY:
-                           cuda_err_chk(cudaMallocManaged((void**)&edgeList_temp, edge_size));
-                           memcpy(edgeList_temp, edgeList_d, edge_size);
-                           cuda_err_chk(cudaFree(edgeList_d));
-                           edgeList_d = edgeList_temp;
-                           cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetReadMostly, 0));
-                           break;
-                       case UVM_READONLY_NVLINK:
-                           cuda_err_chk(cudaSetDevice(2));
-                           cuda_err_chk(cudaMallocManaged((void**)&edgeList_temp, edge_size));
-                           memcpy(edgeList_temp, edgeList_d, edge_size);
-                           cuda_err_chk(cudaFree(edgeList_d));
-                           edgeList_d = edgeList_temp;
-                           cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetReadMostly, 0));
-                           cuda_err_chk(cudaMemPrefetchAsync(edgeList_d, edge_size, 2, 0));
-                           cuda_err_chk(cudaDeviceSynchronize());
-                           cuda_err_chk(cudaSetDevice(0));
-                           break;
-                       default:
-                           break;
-                   }
-                }*/
-            }
-            printf("\nAverage run time %f ms\n", avg_milliseconds / num_run);
-            
-
-            free(vertexList_h);
-            if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
-               delete h_pc; 
-               delete h_range; 
-               delete h_array;
-            }
-            if (edgeList_h)
-                free(edgeList_h);
-            cuda_err_chk(cudaFree(vertexList_d));
-            cuda_err_chk(cudaFree(label_d));
-            cuda_err_chk(cudaFree(changed_d));
-
-            cuda_err_chk(cudaFree(globalvisitedcount_d));
-            cuda_err_chk(cudaFree(vertexVisitCount_d));
-            vertexVisitCount_h.clear();
-
-            cuda_err_chk(cudaFree(edgeList_d));
-            
-            for (size_t i = 0 ; i < settings.n_ctrls; i++)
-                delete ctrls[i];
+         cuda_err_chk(cudaFree(edgeList_d));
+         
+         for (size_t i = 0 ; i < settings.n_ctrls; i++)
+             delete ctrls[i];
     }
     catch (const error& e){
         fprintf(stderr, "Unexpected error: %s\n", e.what());
