@@ -450,7 +450,7 @@ void Settings::parseArguments(int argc, char** argv)
 
 Settings::Settings()
 {
-    cudaDevice = 8;
+    cudaDevice = 0;
     cudaDeviceId = 0;
     blockDevicePath = nullptr;
     controllerPath = nullptr;

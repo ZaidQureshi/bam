@@ -259,7 +259,7 @@ __global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, con
 }
 
 
-__global__  __launch_bounds__(1024,1)
+__global__  __launch_bounds__(1024,2)
 void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;

@@ -322,6 +322,8 @@ if (CUDA_FOUND AND NOT no_cuda)
   add_subdirectory ("${benchmarks_root}/block")
   add_subdirectory ("${benchmarks_root}/readwrite")
   add_subdirectory ("${benchmarks_root}/bfs")
+  add_subdirectory ("${benchmarks_root}/cc")
+  add_subdirectory ("${benchmarks_root}/pagerank")
   add_custom_target (benchmarks DEPENDS ${benchmark_targets})
 endif ()
 
