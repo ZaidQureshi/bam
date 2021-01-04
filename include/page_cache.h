@@ -268,7 +268,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     //fill in
                     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                     //uint32_t ctrl = (tid/32) % (n_ctrls);
-                    uint32_t ctrl = get_smid() % (n_ctrls);
+                    uint32_t ctrl = get_smid() % (cache.n_ctrls);
                     Controller* c = cache.d_ctrls[ctrl];
                     uint32_t queue = (tid/32) % (c->n_qps);
 
