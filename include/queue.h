@@ -58,7 +58,7 @@ struct QueuePair
         this->sq.head_mark = (padded_struct*) this->sq_head_mark.get();
         this->sq.tail_mark = (padded_struct*) this->sq_tail_mark.get();
         this->sq.cid = (padded_struct*) this->sq_cid.get();
-        std::cout << "init_gpu_specific: " << std::hex << this->sq.cid <<  std::endl;
+    //    std::cout << "init_gpu_specific: " << std::hex << this->sq.cid <<  std::endl;
         this->sq.qs_minus_1 = this->sq.qs - 1;
         this->sq.qs_log2 = (uint32_t) std::log2(this->sq.qs);
 
@@ -81,7 +81,7 @@ struct QueuePair
         //this->this = (QueuePairThis*) malloc(sizeof(QueuePairThis));
 
 
-        std::cout << "HERE\n";
+    //    std::cout << "HERE\n";
         uint64_t cap = ((volatile uint64_t*) ctrl->mm_ptr)[0];
         bool cqr = (cap & 0x0000000000010000) == 0x0000000000010000;
         //uint64_t sq_size = 16;
@@ -96,24 +96,24 @@ struct QueuePair
         sq_size = std::min(queueDepth, sq_size);
         cq_size = std::min(queueDepth, cq_size);
 
-        printf("sq_size: %ld\tcq_size: %ld\n", sq_size, cq_size);
+  //      printf("sq_size: %ld\tcq_size: %ld\n", sq_size, cq_size);
         bool sq_need_prp = false;//(!cqr) || (sq_size > MAX_SQ_ENTRIES_64K);
         bool cq_need_prp = false;// (!cqr) || (cq_size > MAX_CQ_ENTRIES_64K);
 
         size_t sq_mem_size =  sq_size * sizeof(nvm_cmd_t) + sq_need_prp*(64*1024);
         size_t cq_mem_size =  cq_size * sizeof(nvm_cpl_t) + cq_need_prp*(64*1024);
 
-        std::cout << sq_size << "\t" << sq_mem_size << std::endl;
+//        std::cout << sq_size << "\t" << sq_mem_size << std::endl;
         //size_t queueMemSize = ctrl.info.page_size * 2;
         //size_t prpListSize = ctrl.info.page_size * numThreads * (doubleBuffered + 1);
         //size_t prp_mem_size = sq_size * (4096) * 2;
-        std::cout << "Started creating DMA\n";
+//        std::cout << "Started creating DMA\n";
         // qmem->vaddr will be already a device pointer after the following call
         this->sq_mem = createDma(ctrl, NVM_PAGE_ALIGN(sq_mem_size, 1UL << 16), cudaDevice);
-        std::cout << "Finished creating sq dma vaddr: " << this->sq_mem.get()->vaddr << "\tioaddr: " << std::hex<< this->sq_mem.get()->ioaddrs[0] << std::dec << std::endl;
+ //       std::cout << "Finished creating sq dma vaddr: " << this->sq_mem.get()->vaddr << "\tioaddr: " << std::hex<< this->sq_mem.get()->ioaddrs[0] << std::dec << std::endl;
         this->cq_mem = createDma(ctrl, NVM_PAGE_ALIGN(cq_mem_size, 1UL << 16), cudaDevice);
         //this->prp_mem = createDma(ctrl, NVM_PAGE_ALIGN(prp_mem_size, 1UL << 16), cudaDevice, adapter, segmentId);
-        std::cout << "Finished creating cq dma vaddr: " << this->cq_mem.get()->vaddr << "\tioaddr: " << std::hex << this->cq_mem.get()->ioaddrs[0] << std::dec << std::endl;
+ //       std::cout << "Finished creating cq dma vaddr: " << this->cq_mem.get()->vaddr << "\tioaddr: " << std::hex << this->cq_mem.get()->ioaddrs[0] << std::dec << std::endl;
 
         // Set members
         this->pageSize = info.page_size;
@@ -121,7 +121,7 @@ struct QueuePair
 
         this->block_size_minus_1 = ns.lba_data_size-1;
         this->block_size_log = std::log2(ns.lba_data_size);
-        std::cout << "block size: " << this->block_size << "\tblock_size_log: " << this->block_size_log << std::endl ;
+//        std::cout << "block size: " << this->block_size << "\tblock_size_log: " << this->block_size_log << std::endl ;
         this->nvmNamespace = ns.ns_id;
 
         //this->prpList = NVM_DMA_OFFSET(this->prp_mem, 0);
@@ -165,7 +165,7 @@ struct QueuePair
 
             free(cpu_vaddrs);
         }
-        std::cout << "before nvm_admin_cq_create\n";
+      //  std::cout << "before nvm_admin_cq_create\n";
         // Create completion queue
         // (nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
         int status = nvm_admin_cq_create(aq_ref, &this->cq, qp_id, this->cq_mem.get(), 0, cq_size, cq_need_prp);
@@ -173,7 +173,7 @@ struct QueuePair
         {
             throw error(string("Failed to create completion queue: ") + nvm_strerror(status));
         }
-         std::cout << "after nvm_admin_cq_create\n";
+        // std::cout << "after nvm_admin_cq_create\n";
 
         // Get a valid device pointer for CQ doorbell
         void* devicePtr = nullptr;
@@ -200,10 +200,10 @@ struct QueuePair
             throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
         }
         this->sq.db = (volatile uint32_t*) devicePtr;
-        std::cout << "Finish Making Queue\n";
+//        std::cout << "Finish Making Queue\n";
 
         init_gpu_specific_struct(cudaDevice);
-        std::cout << "in preparequeuepair: " << std::hex << this->sq.cid << std::endl;
+       // std::cout << "in preparequeuepair: " << std::hex << this->sq.cid << std::endl;
         return;
 
 
