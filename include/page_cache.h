@@ -64,6 +64,7 @@ struct page_cache_d_t {
     uint64_t n_ranges_mask;
 
     uint64_t* ranges_page_starts;
+    simt::atomic<uint64_t, simt::thread_scope_device>* ctrl_counter;
 
 
     Controller** d_ctrls;
@@ -268,7 +269,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     //fill in
                     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                     //uint32_t ctrl = (tid/32) % (n_ctrls);
-                    uint32_t ctrl = get_smid() % (cache.n_ctrls);
+                    //uint32_t ctrl = get_smid() % (cache.n_ctrls);
+                    uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (n_ctrls);
                     Controller* c = cache.d_ctrls[ctrl];
                     uint32_t queue = (tid/32) % (c->n_qps);
 
@@ -520,6 +522,7 @@ struct page_cache_t {
     BufferPtr ranges_page_starts_buf;
 
     BufferPtr page_ticket_buf;
+    BufferPtr ctrl_counter_buf;
 
 
     template <typename T>
@@ -535,7 +538,8 @@ struct page_cache_t {
 
     page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
 
-
+        ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
         pdt.page_size = ps;
         pdt.page_size_minus_1 = ps - 1;
         pdt.n_pages = np;
@@ -780,7 +784,8 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             //writeback
                             uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                             //uint32_t ctrl = (tid/32) % (n_ctrls);
-                            uint32_t ctrl = get_smid() % (n_ctrls);
+                            //uint32_t ctrl = get_smid() % (n_ctrls);
+                            uint32_t ctrl = ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (n_ctrls);
                             Controller* c = this->d_ctrls[ctrl];
                             uint32_t queue = (tid/32) % (c->n_qps);
 
