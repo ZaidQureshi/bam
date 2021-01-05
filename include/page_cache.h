@@ -152,12 +152,12 @@ struct range_t {
 
     range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice);
 
-    print_stats(void);
+    void print_stats(void);
 
 };
 
 template <typename T>
-range_t<T>::print_stats(void) {
+void range_t<T>::print_stats(void) {
     cuda_err_chk(cudaMemcpy(&rdt, d_range_ptr, sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
 
     std::cout << std::dec << "# READ IOs:\t" << rdt.read_io_cnt << std::endl;
