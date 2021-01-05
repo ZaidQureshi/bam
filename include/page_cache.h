@@ -171,7 +171,7 @@ range_t<T>::range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t
     rdt.access_cnt = 0;
     rdt.miss_cnt = 0;
     rdt.hit_cnt = 0;
-    rdt.read_io_count = 0;
+    rdt.read_io_cnt = 0;
     rdt.index_start = is;
     rdt.index_end = ie;
     //range_id = (c_h->range_count)++;
