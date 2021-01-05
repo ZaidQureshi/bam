@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <algorithm>
+#include <simt/atomic>
 
 #include "queue.h"
 
@@ -44,6 +45,8 @@ struct Controller
     uint32_t                deviceId;
     QueuePair**             h_qps;
     QueuePair*              d_qps;
+
+    simt::atomic<uint64_t, simt::thread_scope_device> queue_counter;
     uint32_t page_size;
     uint32_t blk_size;
     uint32_t blk_size_log;
@@ -153,6 +156,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, ui
     {
         throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
     }
+    queue_counter = 0;
     page_size = ctrl->page_size;
     blk_size = this->ns.lba_data_size;
     blk_size_log = std::log2(blk_size);
