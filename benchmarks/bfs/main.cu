@@ -599,6 +599,7 @@ int main(int argc, char *argv[]) {
                  level++;
 
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                 h_array->print_stats();
                  //break;
              } while(changed_h);
 
@@ -611,7 +612,7 @@ int main(int argc, char *argv[]) {
              printf("iteration %*u, ", 3, iter);
              printf("time %*f ms\n", 12, milliseconds);
 
-             h_array->print_stats();
+
              fflush(stdout);
 
              avg_milliseconds += (double)milliseconds;
