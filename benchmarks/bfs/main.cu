@@ -599,7 +599,7 @@ int main(int argc, char *argv[]) {
                  level++;
 
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
-                 h_array->print_stats();
+                 h_array->print_reset_stats();
                  //break;
              } while(changed_h);
 

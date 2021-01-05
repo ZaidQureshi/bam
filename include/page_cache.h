@@ -286,8 +286,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     //uint32_t ctrl = get_smid() % (cache.n_ctrls);
                     uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
                     Controller* c = cache.d_ctrls[ctrl];
-                    uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
-
+                    uint32_t queue = (tid/32) % (c->n_qps);
+                    //uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     read_data(&cache, (c->d_qps)+queue, ((index+page_start)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
@@ -489,17 +489,22 @@ struct array_t {
     BufferPtr d_ranges_buff;
     BufferPtr d_d_ranges_buff;
 
-    void print_stats(void) {
+    void print_reset_stats(void) {
         range_d_t<T>* rdt = new range_d_t<T>[adt.n_ranges];
         cuda_err_chk(cudaMemcpy(rdt, adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
         for (size_t i = 0; i < adt.n_ranges; i++) {
 
-
+            std::cout << "*********************************" << std::endl;
             std::cout << std::dec << "# READ IOs:\t" << rdt[i].read_io_cnt << std::endl;
             std::cout << std::dec << "# Accesses:\t" << rdt[i].access_cnt << std::endl;
             std::cout << std::dec << "# Misses:\t" << rdt[i].miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt) << std::endl;
             std::cout << std::dec << "# Hits:\t" << rdt[i].hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) << std::endl;
+            rdt[i].read_io_cnt = 0;
+            rdt[i].access_cnt = 0;
+            rdt[i].miss_cnt = 0;
+            rdt[i].hit_cnt = 0;
         }
+         cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
     }
 
     array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
