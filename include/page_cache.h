@@ -245,7 +245,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     uint32_t expected_state = VALID;
     uint32_t new_state = USE;
     uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
-    access_cnt.fetch_add(count, simt::memory_order_relaxed);
+    //access_cnt.fetch_add(count, simt::memory_order_relaxed);
+    access_cnt.fetch_add(1, simt::memory_order_relaxed);
     bool fail = true;
     bool miss = false;
     T ret;
@@ -261,7 +262,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t page_trans = page_addresses[index];
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
-                    hit_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    //hit_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    hit_cnt.fetch_add(1, simt::memory_order_relaxed);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
 
                     //page_states[index].fetch_sub(1, simt::memory_order_release);
@@ -294,7 +296,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     page_addresses[index] = page_trans;
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
-                    miss_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    //miss_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    miss_cnt.fetch_add(1, simt::memory_order_relaxed);
                     new_state = ((write) ? USE_DIRTY : USE) + count - 1;
                     page_states[index].store(new_state, simt::memory_order_release);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
@@ -318,7 +321,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t page_trans = page_addresses[index];
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
-                    hit_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    //hit_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    hit_cnt.fetch_add(1, simt::memory_order_relaxed);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
                     //page_states[index].fetch_sub(1, simt::memory_order_release);
                     fail = false;
