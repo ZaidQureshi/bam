@@ -611,7 +611,7 @@ int main(int argc, char *argv[]) {
              printf("iteration %*u, ", 3, iter);
              printf("time %*f ms\n", 12, milliseconds);
 
-             h_range->print_stats();
+             h_array->print_stats();
              fflush(stdout);
 
              avg_milliseconds += (double)milliseconds;

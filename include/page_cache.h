@@ -152,19 +152,9 @@ struct range_t {
 
     range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice);
 
-    void print_stats(void);
+
 
 };
-
-template <typename T>
-void range_t<T>::print_stats(void) {
-    cuda_err_chk(cudaMemcpy(&rdt, d_range_ptr, sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
-
-    std::cout << std::dec << "# READ IOs:\t" << rdt.read_io_cnt << std::endl;
-    std::cout << std::dec << "# Accesses:\t" << rdt.access_cnt << std::endl;
-    std::cout << std::dec << "# Misses:\t" << rdt.miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt.miss_cnt/rdt.access_cnt) << std::endl;
-    std::cout << std::dec << "# Hits:\t" << rdt.hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt.hit_cnt/rdt.access_cnt) << std::endl;
-}
 
 template <typename T>
 range_t<T>::range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice) {
@@ -499,6 +489,19 @@ struct array_t {
     BufferPtr d_ranges_buff;
     BufferPtr d_d_ranges_buff;
 
+    void print_stats(void) {
+        range_d_t<T>* rdt = new range_d_t<T>[adt.n_ranges];
+        cuda_err_chk(cudaMemcpy(rdt, adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+        for (size_t i = 0; i < adt.n_ranges; i++) {
+
+
+            std::cout << std::dec << "# READ IOs:\t" << rdt[i].read_io_cnt << std::endl;
+            std::cout << std::dec << "# Accesses:\t" << rdt[i].access_cnt << std::endl;
+            std::cout << std::dec << "# Misses:\t" << rdt[i].miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt) << std::endl;
+            std::cout << std::dec << "# Hits:\t" << rdt[i].hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) << std::endl;
+        }
+    }
+
     array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
         adt.n_elems = num_elems;
         adt.start_offset = disk_start_offset;
@@ -549,6 +552,8 @@ struct page_cache_t {
 
     BufferPtr page_ticket_buf;
     BufferPtr ctrl_counter_buf;
+
+
 
 
     template <typename T>
