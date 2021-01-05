@@ -90,6 +90,12 @@ struct range_d_t {
     uint64_t page_end;
     uint8_t* src;
 
+    simt::atomic<uint64_t, simt::thread_scope_device> access_cnt;
+    simt::atomic<uint64_t, simt::thread_scope_device> miss_cnt;
+    simt::atomic<uint64_t, simt::thread_scope_device> hit_cnt;
+    simt::atomic<uint64_t, simt::thread_scope_device> read_io_cnt;
+
+
     page_states_t page_states;
     //padded_struct_pc* page_addresses;
     uint32_t* page_addresses;
@@ -146,12 +152,26 @@ struct range_t {
 
     range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice);
 
+    print_stats(void);
+
 };
 
+template <typename T>
+range_t<T>::print_stats(void) {
+    cuda_err_chk(cudaMemcpy(&rdt, d_range_ptr, sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+
+    std::cout << std::dec << "# READ IOs:\t" << rdt.read_io_cnt << std::endl;
+    std::cout << std::dec << "# Accesses:\t" << rdt.access_cnt << std::endl;
+    std::cout << std::dec << "# Misses:\t" << rdt.miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt.miss_cnt/rdt.access_cnt) << std::endl;
+    std::cout << std::dec << "# Hits:\t" << rdt.hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt.hit_cnt/rdt.access_cnt) << std::endl;
+}
 
 template <typename T>
 range_t<T>::range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice) {
-
+    rdt.access_cnt = 0;
+    rdt.miss_cnt = 0;
+    rdt.hit_cnt = 0;
+    rdt.read_io_count = 0;
     rdt.index_start = is;
     rdt.index_end = ie;
     //range_id = (c_h->range_count)++;
@@ -235,7 +255,9 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     uint32_t expected_state = VALID;
     uint32_t new_state = USE;
     uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
+    access_cnt.fetch_add(count, simt::memory_order_relaxed);
     bool fail = true;
+    bool miss = false;
     T ret;
     do {
         bool pass = false;
@@ -249,7 +271,9 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t page_trans = page_addresses[index];
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
+                    hit_cnt.fetch_add(count, simt::memory_order_relaxed);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
+
                     //page_states[index].fetch_sub(1, simt::memory_order_release);
                     fail = false;
                 }
@@ -274,12 +298,13 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     Controller* c = cache.d_ctrls[ctrl];
                     uint32_t queue = (tid/32) % (c->n_qps);
 
-
+                    read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     read_data(&cache, (c->d_qps)+queue, ((index+page_start)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
                     page_addresses[index] = page_trans;
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
+                    miss_cnt.fetch_add(count, simt::memory_order_relaxed);
                     new_state = ((write) ? USE_DIRTY : USE) + count - 1;
                     page_states[index].store(new_state, simt::memory_order_release);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
@@ -303,6 +328,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t page_trans = page_addresses[index];
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
+                    hit_cnt.fetch_add(count, simt::memory_order_relaxed);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
                     //page_states[index].fetch_sub(1, simt::memory_order_release);
                     fail = false;
