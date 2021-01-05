@@ -504,7 +504,7 @@ struct array_t {
             rdt[i].miss_cnt = 0;
             rdt[i].hit_cnt = 0;
         }
-         cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+        cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
     }
 
     array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
