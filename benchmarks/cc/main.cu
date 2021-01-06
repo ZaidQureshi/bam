@@ -51,7 +51,8 @@
 using error = std::runtime_error;
 using std::string;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-//const char* const ctrls_paths[] = {"/dev/libnvm0"};
+//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+//const char* const ctrls_paths[] = {"/dev/libnvm1"};
 
 
 #define WARP_SHIFT 5
@@ -81,7 +82,8 @@ typedef enum {
     BAFS_DIRECT= 6,
 } mem_type;
 
-__global__ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+__global__ 
+void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);

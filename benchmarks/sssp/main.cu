@@ -51,8 +51,8 @@
 
 using error = std::runtime_error;
 using std::string;
-//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 #define MYINFINITY 0xFFFFFFFF
@@ -515,7 +515,7 @@ int main(int argc, char *argv[]) {
             // h_erange = new range_t<uint64_t>((int)0 , (uint64_t)edge_count, (int) 0, (uint64_t)n_epages, (int)0, (uint64_t)pc_page_size, h_pc, settings, (uint8_t*)edgeList_d);
             // h_wrange = new range_t<WeightT>((int)0 ,     (uint64_t)weight_count, (int) 0, (uint64_t)n_wpages, (int)0,      (uint64_t)pc_page_size, h_pc, settings, (uint8_t*)weightList_d);
             h_erange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_epages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
-            h_wrange = new range_t<WeightT>((uint64_t)0 ,(uint64_t)weight_count,(uint64_t)(ceil(settings.wfileoffset*1.0/pc_page_size)),(uint64_t)n_wpages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
+            h_wrange = new range_t<WeightT>((uint64_t)0 ,(uint64_t)weight_count,(uint64_t) (ceil(settings.wfileoffset*1.0/pc_page_size)),(uint64_t)n_wpages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
             
             vec_erange[0] = h_erange;
             vec_wrange[0] = h_wrange;
@@ -572,6 +572,7 @@ int main(int argc, char *argv[]) {
                 iter++;
 
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                break;
             } while(changed_h);
 
             cuda_err_chk(cudaEventRecord(end, 0));

@@ -56,7 +56,7 @@
 
 using error = std::runtime_error;
 using std::string;
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+const char* const ctrls_paths[] = {"/dev/libnvm0","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 #define MYINFINITY 0xFFFFFFFF
