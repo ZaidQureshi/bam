@@ -605,8 +605,8 @@ int main(int argc, char *argv[]) {
          
                  if(mem == BAFS_DIRECT) {
                      h_array->print_reset_stats();
-                     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-                     std::cout << std::dec << "Time: " << elapsed.count() << std::endl;
+                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                     std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
                  }
                  //break;
              } while(changed_h);
