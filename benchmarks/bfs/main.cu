@@ -53,6 +53,8 @@
 #include <nvm_io.h>
 #include <page_cache.h>
 #include <util.h>
+#include <chrono>
+#include <iostream>
 
 using error = std::runtime_error;
 using std::string;
@@ -566,7 +568,7 @@ int main(int argc, char *argv[]) {
              do {
                  changed_h = false;
                  cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
-
+                 auto start = std::chrono::system_clock::now();
                  switch (type) {
                      case BASELINE:
                          kernel_baseline<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, globalvisitedcount_d, vertexVisitCount_d);
@@ -599,9 +601,13 @@ int main(int argc, char *argv[]) {
                  level++;
 
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                 auto end = std::chrono::system_clock::now();
          
-                 if(mem == BAFS_DIRECT)
+                 if(mem == BAFS_DIRECT) {
                      h_array->print_reset_stats();
+                     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+                     std::cout << std::dec << "Time: " << elapsed.count() << std::endl;
+                 }
                  //break;
              } while(changed_h);
 
