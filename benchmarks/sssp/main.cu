@@ -547,7 +547,7 @@ int main(int argc, char *argv[]) {
             do {
                 changed_h = false;
                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
-
+                auto start = std::chrono::system_clock::now();
                 switch (type) {
                     case COALESCE:
                         kernel_coalesce<<<blockDim_kernel, numthreads>>>(label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
@@ -572,6 +572,14 @@ int main(int argc, char *argv[]) {
                 iter++;
 
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                auto end = std::chrono::system_clock::now();
+
+                if(mem == BAFS_DIRECT) {
+                    h_earray->print_reset_stats();
+                    h_warray->print_reset_stats();
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                    std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
+                }
                 break;
             } while(changed_h);
 
