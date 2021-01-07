@@ -285,11 +285,11 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     //fill in
                     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                     //uint32_t ctrl = (tid/32) % (cache.n_ctrls);
-                    uint32_t ctrl = get_smid() % (cache.n_ctrls);
-                    //uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
+                    //uint32_t ctrl = get_smid() % (cache.n_ctrls);
+                    uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
                     Controller* c = cache.d_ctrls[ctrl];
-                    uint32_t queue = (tid/32) % (c->n_qps);
-                    //uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
+                    //uint32_t queue = (tid/32) % (c->n_qps);
+                    uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     read_data(&cache, (c->d_qps)+queue, ((index+page_start)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
@@ -824,8 +824,8 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             //writeback
                             uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                             //uint32_t ctrl = (tid/32) % (n_ctrls);
-                            uint32_t ctrl = get_smid() % (n_ctrls);
-                            //uint32_t ctrl = ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (n_ctrls);
+                            //uint32_t ctrl = get_smid() % (n_ctrls);
+                            uint32_t ctrl = ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (n_ctrls);
                             Controller* c = this->d_ctrls[ctrl];
                             uint32_t queue = (tid/32) % (c->n_qps);
 
