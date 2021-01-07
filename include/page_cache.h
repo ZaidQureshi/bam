@@ -284,7 +284,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint32_t page_trans = cache.find_slot(index, range_id);
                     //fill in
                     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-                    uint32_t ctrl = (tid/32) % (n_ctrls);
+                    uint32_t ctrl = (tid/32) % (cache.n_ctrls);
                     //uint32_t ctrl = get_smid() % (cache.n_ctrls);
                     //uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
                     Controller* c = cache.d_ctrls[ctrl];
