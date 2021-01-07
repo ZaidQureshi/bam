@@ -580,7 +580,7 @@ int main(int argc, char *argv[]) {
                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
                     std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
                 }
-                break;
+                //break;
             } while(changed_h);
 
             cuda_err_chk(cudaEventRecord(end, 0));
