@@ -69,6 +69,7 @@ typedef enum {
     BASELINE = 0,
     COALESCE = 1,
     COALESCE_CHUNK = 2,
+    BASELINE_PC = 3,
     COALESCE_PC = 4,
     COALESCE_CHUNK_PC =5,
 } impl_type;
@@ -502,7 +503,7 @@ int main(int argc, char *argv[]) {
 
         switch (type) {
             case BASELINE:
-            case BASELINE_P:
+            case BASELINE_PC:
                 numblocks = ((vertex_count+numthreads)/numthreads);
                 break;
             case COALESCE:
