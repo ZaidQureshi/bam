@@ -126,7 +126,7 @@ __global__ void kernel_baseline(uint32_t *label, const uint32_t level, const uin
 
 
 
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(128,16)
 void kernel_baseline_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count,
                         const uint64_t *vertexList, const EdgeT *edgeList, bool *changed, unsigned long long int *globalvisitedcount_d, unsigned long long int *vertexVisitCount_d
     ) {
@@ -196,7 +196,7 @@ __global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uin
 }
 
 
-__global__ __launch_bounds__(1024,2)
+__global__ __launch_bounds__(64,32)
 void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;

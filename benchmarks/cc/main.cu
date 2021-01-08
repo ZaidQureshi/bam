@@ -121,7 +121,7 @@ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ __launch_bounds__(1024,2)
 void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
