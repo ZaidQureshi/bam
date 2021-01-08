@@ -402,7 +402,7 @@ struct array_d_t {
             __syncwarp(eq_mask);
             if (master == lane)
                 d_ranges[r].release_page(page, count);
-            //__syncwarp(mask);
+            __syncwarp(mask);
 
         }
         return ret;
