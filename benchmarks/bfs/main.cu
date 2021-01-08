@@ -603,16 +603,17 @@ int main(int argc, char *argv[]) {
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
                  auto end = std::chrono::system_clock::now();
          
-
+                 if(mem == BAFS_DIRECT) {
+                     h_array->print_reset_stats();
+                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                     std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
+                 }
                  //break;
              } while(changed_h);
 
              cuda_err_chk(cudaEventRecord(end, 0));
              cuda_err_chk(cudaEventSynchronize(end));
              cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
-             if(mem == BAFS_DIRECT) {
-                 h_array->print_reset_stats();
-             }
 
              printf("run %*d: ", 3, i);
              printf("src %*u, ", 10, src);
