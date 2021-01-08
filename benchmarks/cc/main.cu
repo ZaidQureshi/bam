@@ -66,6 +66,7 @@ const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2
 typedef uint64_t EdgeT;
 
 typedef enum {
+    BASELINE = 0,
     COALESCE = 1,
     COALESCE_CHUNK = 2,
     COALESCE_PC = 4,
@@ -81,6 +82,44 @@ typedef enum {
     DRAGON_MAP = 5,
     BAFS_DIRECT= 6,
 } mem_type;
+
+
+__global__ 
+void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+ 
+    if(tid < vertex_count && curr_visit[tid] == true){
+        const uint64_t start = vertexList[tid];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[tid+1];
+
+        for(uint64_t i = shift_start; i < end; i++){
+            
+            unsigned long long comp_src = comp[tid];
+            const EdgeT next = edgeList[i];
+
+            unsigned long long comp_next = comp[next];
+            unsigned long long comp_target;
+            EdgeT next_target;
+
+            if (comp_next != comp_src) {
+                if (comp_src < comp_next) {
+                    next_target = next;
+                    comp_target = comp_src;
+                }
+                else {
+                    next_target = tid;
+                    comp_target = comp_next;
+                }
+
+                atomicMin(&comp[next_target], comp_target);
+                next_visit[next_target] = true;
+                *changed = true;
+            }
+            
+        }
+    }
+}
 
 __global__ 
 void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
@@ -462,6 +501,10 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaMemcpy(edgeList_d, edgeList_h, edge_size, cudaMemcpyHostToDevice));
 
         switch (type) {
+            case BASELINE:
+            case BASELINE_P:
+                numblocks = ((vertex_count+numthreads)/numthreads);
+                break;
             case COALESCE:
             case COALESCE_PC:
                 numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
@@ -520,6 +563,9 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
 
             switch (type) {
+                case BASELINE:
+                    kernel_baseline<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                    break;
                 case COALESCE:
                     kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
                     break;
