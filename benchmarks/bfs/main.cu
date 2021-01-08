@@ -603,11 +603,7 @@ int main(int argc, char *argv[]) {
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
                  auto end = std::chrono::system_clock::now();
          
-                 if(mem == BAFS_DIRECT) {
-                     h_array->print_reset_stats();
-                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                     std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
-                 }
+
                  //break;
              } while(changed_h);
 
@@ -620,7 +616,9 @@ int main(int argc, char *argv[]) {
              printf("iteration %*u, ", 3, iter);
              printf("time %*f ms\n", 12, milliseconds);
 
-
+             if(mem == BAFS_DIRECT) {
+                 h_array->print_reset_stats();
+             }
              fflush(stdout);
 
              avg_milliseconds += (double)milliseconds;
