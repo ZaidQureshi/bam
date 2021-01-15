@@ -76,8 +76,10 @@ typedef uint64_t EdgeT;
 typedef float ValueT;
 
 typedef enum {
+    BASELINE = 0,
     COALESCE = 1,
     COALESCE_CHUNK = 2,
+    BASELINE_PC = 3,
     COALESCE_PC = 4,
     COALESCE_CHUNK_PC =5
 } impl_type;
@@ -101,6 +103,50 @@ __global__ void initialize(bool *label, ValueT *delta, ValueT *residual, ValueT 
         label[tid] = true;
 	}
 }
+
+__global__ void kernel_baseline(bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+    const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    // const uint64_t warpIdx = tid >> WARP_SHIFT;
+    // const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+
+    if(tid < vertex_count && label[tid]) {
+        const uint64_t start = vertexList[tid];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[tid+1];
+
+        for(uint64_t i = shift_start; i < end; i += 1)
+            if (i >= start){
+                EdgeT next = edgeList[i];
+                atomicAdd(&residual[next], delta[tid]);
+            }
+        
+        label[tid] = false;
+    }
+}
+
+__global__ __launch_bounds__(1024,2)
+void kernel_baseline_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+    const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    // const uint64_t warpIdx = tid >> WARP_SHIFT;
+    // const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    // array_d_t<uint64_t> d_array = *da;
+
+    if(tid < vertex_count && label[tid]) {
+        const uint64_t start = vertexList[tid];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[tid+1];
+
+        for(uint64_t i = shift_start; i < end; i += 1)
+            if (i >= start){
+                // EdgeT next = edgeList[i];
+                EdgeT next = da->seq_read(i);
+                atomicAdd(&residual[next], delta[tid]);
+            }
+        
+        label[tid] = false;
+    }
+}
+
 
 __global__ void kernel_coalesce(bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -405,6 +451,10 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaMemcpy(edgeList_d, edgeList_h, edge_size, cudaMemcpyHostToDevice));
 
         switch (type) {
+            case BASELINE:
+            case BASELINE_PC:
+                numblocks = ((vertex_count+numthreads)/numthreads);
+                break;
             case COALESCE:
             case COALESCE_PC:
                 numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
@@ -436,7 +486,7 @@ int main(int argc, char *argv[]) {
         avg_milliseconds = 0.0f;
         iter = 0;
 
-        if ((type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)) {
+        if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
             printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
         }
 
@@ -447,7 +497,7 @@ int main(int argc, char *argv[]) {
         array_t<uint64_t>* h_array; 
         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
 
-        if((type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
@@ -468,11 +518,17 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
 
             switch (type) {
+                case BASELINE:
+                    kernel_baseline<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                    break;
                 case COALESCE:
                     kernel_coalesce<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
                     break;
                 case COALESCE_CHUNK:
                     kernel_coalesce_chunk<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                    break;
+                case BASELINE_PC:
+                    kernel_baseline_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);                    
                     break;
                 case COALESCE_PC:
                     kernel_coalesce_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
@@ -511,7 +567,7 @@ int main(int argc, char *argv[]) {
         //         printf("Value of tid: %llu is %f and delta is %f\n", tid, value_h[tid], delta_h[tid]); 
         // }
 
-        if((type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
             delete h_pc;
             delete h_range;
             delete h_array;

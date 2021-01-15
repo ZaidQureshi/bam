@@ -91,11 +91,12 @@ void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
  
     if(tid < vertex_count && curr_visit[tid] == true){
         const uint64_t start = vertexList[tid];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
         const uint64_t end = vertexList[tid+1];
 
-        for(uint64_t i = shift_start; i < end; i++){
-            if(i >= start){
+        // for(uint64_t i = shift_start; i < end; i++){
+        for(uint64_t i = start; i < end; i++){
+            // if(i >= start){
                 unsigned long long comp_src = comp[tid];
                 const EdgeT next = edgeList[i];
 
@@ -119,7 +120,7 @@ void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
                     next_visit[next_target] = true;
                     *changed = true;
                 }
-            }
+            // }
             
         }
     }
@@ -132,12 +133,13 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
  
     if(tid < vertex_count && curr_visit[tid] == true){
         const uint64_t start = vertexList[tid];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
         const uint64_t end = vertexList[tid+1];
     // array_d_t<uint64_t> d_array = *da;
 
-        for(uint64_t i = shift_start; i < end; i++){
-            if(i >= start){
+        // for(uint64_t i = shift_start; i < end; i++){
+        for(uint64_t i = start; i < end; i++){
+            // if(i >= start){
                 unsigned long long comp_src = comp[tid];
                 // const EdgeT next = edgeList[i];
                 const EdgeT next = da->seq_read(i);
@@ -162,7 +164,7 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
                     next_visit[next_target] = true;
                     *changed = true;
                 }
-            }
+            // }
             
         }
     }
