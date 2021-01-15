@@ -111,15 +111,15 @@ __global__ void kernel_baseline(bool* label, ValueT *delta, ValueT *residual, co
 
     if(tid < vertex_count && label[tid]) {
         const uint64_t start = vertexList[tid];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
         const uint64_t end = vertexList[tid+1];
 
-        for(uint64_t i = shift_start; i < end; i += 1)
-            if (i >= start){
+        for(uint64_t i = start; i < end; i += 1){
+            // if (i >= start){
                 EdgeT next = edgeList[i];
                 atomicAdd(&residual[next], delta[tid]);
-            }
-        
+            // }
+        }
         label[tid] = false;
     }
 }
@@ -133,16 +133,16 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, Val
 
     if(tid < vertex_count && label[tid]) {
         const uint64_t start = vertexList[tid];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
         const uint64_t end = vertexList[tid+1];
 
-        for(uint64_t i = shift_start; i < end; i += 1)
-            if (i >= start){
+        for(uint64_t i = start; i < end; i += 1){
+            // if (i >= start){
                 // EdgeT next = edgeList[i];
                 EdgeT next = da->seq_read(i);
                 atomicAdd(&residual[next], delta[tid]);
-            }
-        
+            // }
+        }
         label[tid] = false;
     }
 }
