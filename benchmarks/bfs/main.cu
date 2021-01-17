@@ -607,7 +607,7 @@ int main(int argc, char *argv[]) {
                  if(mem == BAFS_DIRECT) {
                      h_array->print_reset_stats();
                      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                     std::cout << "Iter Time: " << elpased.count() << " ms" << std::endl;
+                     std::cout << "Iter Time: " << elapsed.count() << " ms" << std::endl;
                  }
 
                  //break;
