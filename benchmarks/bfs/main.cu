@@ -80,8 +80,10 @@ typedef enum {
     BASELINE_PC = 3,
     COALESCE_PC = 4, 
     COALESCE_CHUNK_PC = 5,
-    FRONTIER = 6,
-    FRONTIER_PC = 7,
+    FRONTIER_BASELINE = 6,
+    FRONTIER_COALESCE = 7,
+    FRONTIER_BASELINE_PC = 8,
+    FRONTIER_COALESCE_PC = 9,
 } impl_type;
 
 typedef enum {
@@ -94,8 +96,204 @@ typedef enum {
     BAFS_DIRECT = 6,
 } mem_type;
 
+__global__ __launch_bounds__(64,32)
+void kernel_frontier_baseline(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
+                                const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long int *changed,
+                                const uint32_t *curr_frontier, uint32_t *next_frontier) {
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
+    //const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint32_t laneIdx = tid &  ((1 << WARP_SHIFT) - 1);
+
+    if (tid < curr_frontier_size) {
+        const uint32_t nid = curr_frontier[tid];
+        const uint64_t start = vertexList[nid];
+        const uint64_t end = vertexList[nid+1];
+
+        for (uint64_t i = start; i < end; i++) {
+            const EdgeT next = edgeList[i];
+
+            if(label[next] == MYINFINITY) {
+                //unsigned int prev = atomicExch(label+next, level+1);
+                //if (prev == MYINFINITY) {
+                    //performance code
+                    // unsigned int pre_val = atomicCAS(&(label[next]),(unsigned int)MYINFINITY,(unsigned int)(level+1));
+                    // if(pre_val == MYINFINITY){
+                    //     atomicAdd(&globalvisitedcount_d[0], (unsigned long long int)(vertexList[next+1] - vertexList[next]));
+                    // }
+                    // *changed = true;
+
+                    // uint32_t mask = __activemask();
+
+                    // int leader = __ffs(mask) - 1;
+                    // unsigned long long int pos;
+                    // if (laneIdx == leader) {
+                    //     pos = atomicAdd(changed, (unsigned long long int)__popc(mask));
+
+                    // }
+                    label[next] = level + 1;
+                    uint64_t mypos = atomicAdd(changed, 1);
+                    //pos = __shfl_sync(mask, pos, leader);
+
+                    //unsigned long long int mypos = (pos) + __popc(mask & ((1 << laneIdx) - 1));
+
+                    next_frontier[mypos] = next;
+
+                //}
+
+            }
+        }
+    }
+
+
+}
+
+__global__ __launch_bounds__(64,32)
+void kernel_frontier_coalesce(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
+                                const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long int *changed,
+                                const uint32_t *curr_frontier, uint32_t *next_frontier) {
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+
+    if (warpIdx < curr_frontier_size) {
+        const uint32_t nid = curr_frontier[warpIdx];
+        const uint64_t start = vertexList[nid];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[nid+1];
+
+
+        for (uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+            if (i >= start) {
+                const EdgeT next = edgeList[i];
+
+                if(label[next] == MYINFINITY) {
+                    uint32_t prev = atomicExch(label+next, level+1);
+                    if (prev == MYINFINITY) {
+
+
+                        //label[next] = level + 1;
+                        uint32_t mask = __activemask();
+                        uint32_t leader = __ffs(mask) - 1;
+                        unsigned long long pos;
+                        if (laneIdx == leader)
+                            pos = atomicAdd(changed, __popc(mask));
+                        pos = __shfl_sync(mask, pos, leader);
+                        uint64_t mypos = pos + __popc(mask & ((1 << laneIdx) - 1));
+
+                        //uint64_t mypos = atomicAdd(changed, 1);
+                        next_frontier[mypos] = next;
+                    }
+
+                }
+            }
+        }
+    }
+
+
+}
+
+__global__ __launch_bounds__(64,32)
+void kernel_frontier_baseline_pc(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
+                                const uint64_t *vertexList, array_d_t<uint64_t>* da, const uint64_t curr_frontier_size, unsigned long long int *changed,
+                                const uint32_t *curr_frontier, uint32_t *next_frontier) {
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
+    //const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint32_t laneIdx = tid &  ((1 << WARP_SHIFT) - 1);
+
+    if (tid < curr_frontier_size) {
+        const uint32_t nid = curr_frontier[tid];
+        const uint64_t start = vertexList[nid];
+        const uint64_t end = vertexList[nid+1];
+
+        for (uint64_t i = start; i < end; i++) {
+            const EdgeT next = da->seq_read(i);
+
+            if(label[next] == MYINFINITY) {
+                unsigned int prev = atomicExch(label+next, level+1);
+                if (prev == MYINFINITY) {
+                    //performance code
+                    // unsigned int pre_val = atomicCAS(&(label[next]),(unsigned int)MYINFINITY,(unsigned int)(level+1));
+                    // if(pre_val == MYINFINITY){
+                    //     atomicAdd(&globalvisitedcount_d[0], (unsigned long long int)(vertexList[next+1] - vertexList[next]));
+                    // }
+                    // *changed = true;
+
+                    uint32_t mask = __activemask();
+
+                    int leader = __ffs(mask) - 1;
+                    unsigned long long int pos;
+                    if (laneIdx == leader) {
+                        pos = atomicAdd(changed, (unsigned long long int)__popc(mask));
+
+                    }
+                    label[next] = level + 1;
+                    //uint64_t mypos = atomicAdd(changed, 1);
+                    pos = __shfl_sync(mask, pos, leader);
+
+                    unsigned long long int mypos = (pos) + __popc(mask & ((1 << laneIdx) - 1));
+
+                    next_frontier[mypos] = next;
+
+                }
+
+            }
+        }
+    }
+
+
+}
+
+__global__ __launch_bounds__(64,32)
+void kernel_frontier_coalesce_pc(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
+                                const uint64_t *vertexList, array_d_t<uint64_t>* da, const uint64_t curr_frontier_size, unsigned long long int *changed,
+                                const uint32_t *curr_frontier, uint32_t *next_frontier) {
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+
+    if (warpIdx < curr_frontier_size) {
+        const uint32_t nid = curr_frontier[warpIdx];
+        const uint64_t start = vertexList[nid];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[nid+1];
+
+
+        for (uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+            if (i >= start) {
+                const EdgeT next = da->seq_read(i);
+
+                if(label[next] == MYINFINITY) {
+                    uint32_t prev = atomicExch(label+next, level+1);
+                    if (prev == MYINFINITY) {
+
+
+                        //label[next] = level + 1;
+                        uint32_t mask = __activemask();
+                        uint32_t leader = __ffs(mask) - 1;
+                        unsigned long long pos;
+                        if (laneIdx == leader)
+                            pos = atomicAdd(changed, __popc(mask));
+                        pos = __shfl_sync(mask, pos, leader);
+                        uint64_t mypos = pos + __popc(mask & ((1 << laneIdx) - 1));
+
+                        //uint64_t mypos = atomicAdd(changed, 1);
+                        next_frontier[mypos] = next;
+                    }
+
+                }
+            }
+        }
+    }
+
+
+}
+
 __global__ void kernel_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count, 
-                        const uint64_t *vertexList, const EdgeT *edgeList, bool *changed, unsigned long long int *globalvisitedcount_d, unsigned long long int *vertexVisitCount_d
+                        const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, unsigned long long int *globalvisitedcount_d, unsigned long long int *vertexVisitCount_d
     ) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -130,7 +328,7 @@ __global__ void kernel_baseline(uint32_t *label, const uint32_t level, const uin
 
 __global__ __launch_bounds__(64,32)
 void kernel_baseline_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count,
-                        const uint64_t *vertexList, const EdgeT *edgeList, bool *changed, unsigned long long int *globalvisitedcount_d, unsigned long long int *vertexVisitCount_d
+                        const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, unsigned long long int *globalvisitedcount_d, unsigned long long int *vertexVisitCount_d
     ) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -168,7 +366,7 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t
 
 
 
-__global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
+__global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -199,7 +397,7 @@ __global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uin
 
 
 __global__ __launch_bounds__(64,32)
-void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
+void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -228,7 +426,7 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t
 }
 
 
-__global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
+__global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -264,7 +462,7 @@ __global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, con
 
 
 __global__  __launch_bounds__(1024,2)
-void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, bool *changed) {
+void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -336,7 +534,7 @@ int main(int argc, char *argv[]) {
     std::string vertex_file, edge_file;
     std::string filename;
 
-    bool changed_h, *changed_d;// no_src = false;
+    uint64_t changed_h, *changed_d;// no_src = false;
     int num_run = 1;// arg_num = 0;
     impl_type type;
     mem_type mem;
@@ -426,7 +624,7 @@ int main(int argc, char *argv[]) {
          // Allocate memory for GPU
          cuda_err_chk(cudaMalloc((void**)&vertexList_d, vertex_size));
          cuda_err_chk(cudaMalloc((void**)&label_d, vertex_count * sizeof(uint32_t)));
-         cuda_err_chk(cudaMalloc((void**)&changed_d, sizeof(bool)));
+         cuda_err_chk(cudaMalloc((void**)&changed_d, sizeof(uint64_t)));
      
          std::vector<unsigned long long int> vertexVisitCount_h;
          unsigned long long int* vertexVisitCount_d;
@@ -511,6 +709,11 @@ int main(int argc, char *argv[]) {
              case COALESCE_CHUNK_PC:
                  numblocks = ((vertex_count * (WARP_SIZE / CHUNK_SIZE) + numthreads) / numthreads);
                  break;
+             case FRONTIER_BASELINE:
+             case FRONTIER_COALESCE:
+             case FRONTIER_BASELINE_PC:
+             case FRONTIER_COALESCE_PC:
+                 break;
              default:
                  fprintf(stderr, "Invalid type\n");
                  exit(1);
@@ -523,7 +726,7 @@ int main(int argc, char *argv[]) {
          avg_milliseconds = 0.0f;
 
 
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
                  printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
          }
 
@@ -542,9 +745,11 @@ int main(int argc, char *argv[]) {
          range_t<uint64_t>* h_range;
          std::vector<range_t<uint64_t>*> vec_range(1);
          array_t<uint64_t>* h_array; 
-         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
+         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size);
+         uint32_t* curr_frontier_d;
+         uint32_t* next_frontier_d;
          
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
@@ -553,11 +758,19 @@ int main(int argc, char *argv[]) {
             printf("Page cache initialized\n");
             fflush(stdout);
          }
+         if ((type==FRONTIER_BASELINE)||(type == FRONTIER_COALESCE) ||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
+             cuda_err_chk(cudaMalloc((void**)&curr_frontier_d,  vertex_count * sizeof(uint32_t)));
+             cuda_err_chk(cudaMalloc((void**)&next_frontier_d,  vertex_count * sizeof(uint32_t)));
+         }
+         uint32_t* tmp_front;
          // Set root
          for (int i = 0; i < num_run; i++) {
              zero = 0;
              cuda_err_chk(cudaMemset(label_d, 0xFF, vertex_count * sizeof(uint32_t)));
              cuda_err_chk(cudaMemcpy(&label_d[src], &zero, sizeof(uint32_t), cudaMemcpyHostToDevice));
+             if ((type==FRONTIER_BASELINE)||(type == FRONTIER_COALESCE) ||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
+                 cuda_err_chk(cudaMemcpy(curr_frontier_d, &src, sizeof(uint32_t), cudaMemcpyHostToDevice));
+             }
 
              level = 0;
              iter = 0;
@@ -567,9 +780,12 @@ int main(int argc, char *argv[]) {
    //          fflush(stdout);
 
              // Run BFS
+             changed_h = 1;
+
              do {
-                 changed_h = false;
-                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
+                 uint64_t active = changed_h;
+                 changed_h = 0;
+                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(uint64_t), cudaMemcpyHostToDevice));
                  auto start = std::chrono::system_clock::now();
                  switch (type) {
                      case BASELINE:
@@ -593,6 +809,50 @@ int main(int argc, char *argv[]) {
                          //printf("Calling Page cache enabled coalesce chunk kernel\n");
                          kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
                          break;
+                     case FRONTIER_BASELINE:
+                          // kernel_frontier_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count,
+                          //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
+                          //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
+                         numblocks = ((active + numthreads) / numthreads);
+
+                         kernel_frontier_baseline<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, edgeList_d, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
+                         tmp_front = curr_frontier_d;
+                         curr_frontier_d = next_frontier_d;
+                         next_frontier_d = tmp_front;
+                         break;
+                     case FRONTIER_COALESCE:
+                         // kernel_frontier_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count,
+                         //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
+                         //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
+                         numblocks = ((active * WARP_SIZE + numthreads) / numthreads);
+                         //printf("numblocks: %llu\t", numblocks);
+                         kernel_frontier_coalesce<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, edgeList_d, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
+                         tmp_front = curr_frontier_d;
+                         curr_frontier_d = next_frontier_d;
+                         next_frontier_d = tmp_front;
+                         break;
+                     case FRONTIER_BASELINE_PC:
+                          // kernel_frontier_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count,
+                          //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
+                          //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
+                         numblocks = ((active + numthreads) / numthreads);
+
+                         kernel_frontier_baseline_pc<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, h_array->d_array_ptr, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
+                         tmp_front = curr_frontier_d;
+                         curr_frontier_d = next_frontier_d;
+                         next_frontier_d = tmp_front;
+                         break;
+                     case FRONTIER_COALESCE_PC:
+                         // kernel_frontier_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count,
+                         //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
+                         //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
+                         numblocks = ((active * WARP_SIZE + numthreads) / numthreads);
+                         //printf("numblocks: %llu\t", numblocks);
+                         kernel_frontier_coalesce_pc<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, h_array->d_array_ptr, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
+                         tmp_front = curr_frontier_d;
+                         curr_frontier_d = next_frontier_d;
+                         next_frontier_d = tmp_front;
+                         break;
                      default:
                          fprintf(stderr, "Invalid type\n");
                          exit(1);
@@ -602,13 +862,14 @@ int main(int argc, char *argv[]) {
                  iter++;
                  level++;
 
-                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(uint64_t), cudaMemcpyDeviceToHost));
                  auto end = std::chrono::system_clock::now();
-                 if(mem == BAFS_DIRECT) {
-                     h_array->print_reset_stats();
-                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                     std::cout << "Iter Time: " << elapsed.count() << " ms" << std::endl;
-                 }
+                 // if(mem == BAFS_DIRECT) {
+                 //     h_array->print_reset_stats();
+
+                 // }
+                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                 //std::cout << "Iter Time: " << elapsed.count() << " ms" << std::endl;
 
                  //break;
              } while(changed_h);
@@ -621,7 +882,12 @@ int main(int argc, char *argv[]) {
              printf("src %*u, ", 10, src);
              printf("iteration %*u, ", 3, iter);
              printf("time %*f ms\n", 12, milliseconds);
+             if(mem == BAFS_DIRECT) {
+                 h_array->print_reset_stats();
 
+             }
+
+            
 
              fflush(stdout);
 
@@ -632,7 +898,7 @@ int main(int argc, char *argv[]) {
          printf("\nAverage run time %f ms\n", avg_milliseconds / num_run);
          
          free(vertexList_h);
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
             delete h_pc; 
             delete h_range; 
             delete h_array;

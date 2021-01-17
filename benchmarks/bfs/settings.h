@@ -365,7 +365,7 @@ void Settings::parseArguments(int argc, char** argv)
     OptionMap parsers = {
         {'f', OptionPtr(new Option<const char*>(input, "path", "input", "File path where the vertex file is. Provide .bel path."))},
         {'l', OptionPtr(new Range(ofileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "loffset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
-        {'v', OptionPtr(new Range(type, 0, 5, "impl_type", "COALESCE = 1, COALESCE_CHUNK = 2, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5", "1"))},
+        {'v', OptionPtr(new Range(type, 0, 10, "impl_type", "COALESCE = 1, COALESCE_CHUNK = 2, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5", "1"))},
         {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
         {'r', OptionPtr(new Range(repeat, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "repeat", "number of random source iteration to run", "32"))},
         {'s', OptionPtr(new Range(src, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "src", "start node of the graph", "0"))},
