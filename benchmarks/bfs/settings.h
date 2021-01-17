@@ -368,7 +368,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'v', OptionPtr(new Range(type, 0, 5, "impl_type", "COALESCE = 1, COALESCE_CHUNK = 2, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5", "1"))},
         {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
         {'r', OptionPtr(new Range(repeat, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "repeat", "number of random source iteration to run", "32"))},
-        {'s', OptionPtr(new Range(src, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "src", "start node of the graph", "0"))},
+        {'s', OptionPtr(new Range(src, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "src", "start node of the graph", "0"))},
         
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "1024"))},
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "CUDA thread block size", "64"))},
