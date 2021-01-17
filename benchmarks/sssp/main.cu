@@ -69,8 +69,10 @@ typedef uint64_t EdgeT;
 typedef uint32_t WeightT;
 
 typedef enum {
+    BASELINE = 0,
     COALESCE = 1,
     COALESCE_CHUNK = 2,
+    BASELINE_PC = 3,
     COALESCE_PC = 4,
     COALESCE_CHUNK_PC =5,
 } impl_type;
@@ -84,6 +86,65 @@ typedef enum {
     DRAGON_MAP = 5,
     BAFS_DIRECT= 6,
 } mem_type;
+
+__global__ void kernel_baseline(bool *label, const WeightT *costList, WeightT *newCostList, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, const WeightT *weightList) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    // const uint64_t warpIdx = tid >> WARP_SHIFT;
+    // const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+
+    if (tid < vertex_count && label[tid]) {
+        uint64_t start = vertexList[tid];
+        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        uint64_t end = vertexList[tid+1];
+
+        WeightT cost = newCostList[tid];
+
+        // for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+        for(uint64_t i = start; i < end; i += 1) {
+            if (newCostList[tid] != cost)
+                break;
+            const EdgeT next = edgeList[i];
+            const WeightT weight = weightList[i];
+            if (newCostList[next] > cost + weight && i >= start)
+                atomicMin(&(newCostList[next]), cost + weight);
+        }
+
+        label[tid] = false;
+    }
+}
+__global__ __launch_bounds__(1024,2)
+void kernel_baseline_pc(array_d_t<uint64_t>* de,array_d_t<WeightT>* dw, bool *label, const WeightT *costList, WeightT *newCostList, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, const WeightT *weightList) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    // const uint64_t warpIdx = tid >> WARP_SHIFT;
+    // const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    // array_d_t<uint64_t> d_earray = *de;
+    // array_d_t<WeightT> d_warray = *dw;
+    if (tid < vertex_count && label[tid]) {
+        uint64_t start = vertexList[tid];
+        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        uint64_t end = vertexList[tid+1];
+
+        WeightT cost = newCostList[tid];
+
+        // for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+        for(uint64_t i = start; i < end; i += 1) {
+            if (newCostList[tid] != cost)
+                break;
+            // const EdgeT next = edgeList[i];
+            EdgeT next = de->seq_read(i);
+            // const WeightT weight = weightList[i];
+            WeightT weight = dw->seq_read(i);
+
+            if (newCostList[next] > cost + weight && i >= start)
+                atomicMin(&(newCostList[next]), cost + weight);
+        }
+
+        label[tid] = false;
+    }
+}
+
+
+
 
 __global__ void kernel_coalesce(bool *label, const WeightT *costList, WeightT *newCostList, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, const WeightT *weightList) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -461,6 +522,10 @@ int main(int argc, char *argv[]) {
 
 
         switch (type) {
+            case BASELINE:
+            case BASELINE_PC:
+                numblocks_kernel = ((vertex_count+numthreads)/numthreads);
+                break;
             case COALESCE:
             case COALESCE_PC:
                 numblocks_kernel = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
@@ -482,7 +547,7 @@ int main(int argc, char *argv[]) {
 
         avg_milliseconds = 0.0f;
 
-        if((type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
         }
 
@@ -510,7 +575,7 @@ int main(int argc, char *argv[]) {
         uint64_t n_wpages = ceil(((float)weight_size)/pc_page_size); 
 
 
-        if((type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             // h_erange = new range_t<uint64_t>((int)0 , (uint64_t)edge_count, (int) 0, (uint64_t)n_epages, (int)0, (uint64_t)pc_page_size, h_pc, settings, (uint8_t*)edgeList_d);
             // h_wrange = new range_t<WeightT>((int)0 ,     (uint64_t)weight_count, (int) 0, (uint64_t)n_wpages, (int)0,      (uint64_t)pc_page_size, h_pc, settings, (uint8_t*)weightList_d);
@@ -549,11 +614,17 @@ int main(int argc, char *argv[]) {
                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
                 auto start = std::chrono::system_clock::now();
                 switch (type) {
+                    case BASELINE:
+                        kernel_baseline<<<blockDim_kernel, numthreads>>>(label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
+                        break;
                     case COALESCE:
                         kernel_coalesce<<<blockDim_kernel, numthreads>>>(label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
                         break;
                     case COALESCE_CHUNK:
                         kernel_coalesce_chunk<<<blockDim_kernel, numthreads>>>(label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
+                        break;
+                    case BASELINE_PC:
+                        kernel_baseline_pc<<<blockDim_kernel, numthreads>>>(h_earray->d_array_ptr,h_warray->d_array_ptr,label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
                         break;
                     case COALESCE_PC:
                         kernel_coalesce_pc<<<blockDim_kernel, numthreads>>>(h_earray->d_array_ptr,h_warray->d_array_ptr, label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
@@ -648,13 +719,13 @@ int main(int argc, char *argv[]) {
         if (weightList_h)
             free(weightList_h);
 
-        if((type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
-        delete h_pc;
-        delete h_erange;
-        delete h_earray;
-        //    delete h_wpc;
-        delete h_wrange;
-        delete h_warray;
+        if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
+                delete h_pc;
+                delete h_erange;
+                delete h_earray;
+                //    delete h_wpc;
+                delete h_wrange;
+                delete h_warray;
         }
 
         cuda_err_chk(cudaFree(vertexList_d));
