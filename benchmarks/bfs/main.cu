@@ -79,7 +79,9 @@ typedef enum {
     COALESCE_CHUNK = 2,
     BASELINE_PC = 3,
     COALESCE_PC = 4, 
-    COALESCE_CHUNK_PC =5
+    COALESCE_CHUNK_PC = 5,
+    FRONTIER = 6,
+    FRONTIER_PC = 7,
 } impl_type;
 
 typedef enum {
@@ -89,7 +91,7 @@ typedef enum {
     UVM_READONLY_NVLINK = 3,
     UVM_DIRECT_NVLINK = 4,
     DRAGON_MAP = 5,
-    BAFS_DIRECT= 6,
+    BAFS_DIRECT = 6,
 } mem_type;
 
 __global__ void kernel_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count, 
@@ -604,6 +606,8 @@ int main(int argc, char *argv[]) {
                  auto end = std::chrono::system_clock::now();
                  if(mem == BAFS_DIRECT) {
                      h_array->print_reset_stats();
+                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                     std::cout << "Iter Time: " << elpased.count() << " ms" << std::endl;
                  }
 
                  //break;
