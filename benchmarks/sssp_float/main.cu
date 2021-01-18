@@ -349,7 +349,7 @@ int main(int argc, char *argv[]) {
     uint32_t one, iter;
     WeightT offset = 0;
     WeightT zero;
-    WeightT *costList_d, *newCostList_d, *weightList_h, *weightList_d;
+    WeightT *costList_d, *newCostList_d, *costList_h, *weightList_h, *weightList_d;
     uint64_t *vertexList_h, *vertexList_d;
     EdgeT *edgeList_h, *edgeList_d;
     uint64_t vertex_count, edge_count, weight_count, vertex_size, edge_size, weight_size;
@@ -522,6 +522,14 @@ int main(int argc, char *argv[]) {
         file.close();
         file2.close();
 
+        costList_h = (WeightT*)malloc(weight_size);
+
+        for (uint64_t i = 0; i < weight_count; i++) {
+            costList_h[i] = 1000000000.0f;
+        }
+
+    // Allocate memory for GPU
+
         // Allocate memory for GPU
         cuda_err_chk(cudaMalloc((void**)&vertexList_d, vertex_size));
         cuda_err_chk(cudaMalloc((void**)&label_d, vertex_count * sizeof(bool)));
@@ -615,10 +623,12 @@ int main(int argc, char *argv[]) {
 
         // Set root
         for (int i = 0; i < num_run; i++) {
-            zero = 0;
+            zero = 0.0f;
             one = 1;
-            cuda_err_chk(cudaMemset(costList_d, 0xFF, vertex_count * sizeof(WeightT)));
-            cuda_err_chk(cudaMemset(newCostList_d, 0xFF, vertex_count * sizeof(WeightT)));
+//            cuda_err_chk(cudaMemset(costList_d, 0xFF, vertex_count * sizeof(WeightT)));
+//            cuda_err_chk(cudaMemset(newCostList_d, 0xFF, vertex_count * sizeof(WeightT)));
+            cuda_err_chk(cudaMemcpy(costList_d, costList_h, vertex_count * sizeof(WeightT), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(newCostList_d, costList_h, vertex_count * sizeof(WeightT), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemset(label_d, 0x0, vertex_count * sizeof(bool)));
             cuda_err_chk(cudaMemcpy(&label_d[src], &one, sizeof(bool), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(&costList_d[src], &zero, sizeof(WeightT), cudaMemcpyHostToDevice));
@@ -664,13 +674,13 @@ int main(int argc, char *argv[]) {
 
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
                 auto end = std::chrono::system_clock::now();
-
+/*
                 if(mem == BAFS_DIRECT) {
                     h_earray->print_reset_stats();
                     h_warray->print_reset_stats();
                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
                     std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
-                }
+                }*/
                 //break;
             } while(changed_h);
 
@@ -738,6 +748,8 @@ int main(int argc, char *argv[]) {
             free(edgeList_h);
         if (weightList_h)
             free(weightList_h);
+        if (costList_h)
+            free(costList_h);
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
                 delete h_pc;
