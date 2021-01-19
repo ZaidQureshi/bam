@@ -87,8 +87,8 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = (tid/32) % (num_ctrls);
-    uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
+    uint32_t ctrl = smid % (pc->n_ctrls);
+    uint32_t queue = ((smid * 64) + warp_id()) % (ctrls[ctrl]->n_qps);
 
 
     if (tid < n_reqs) {
@@ -128,8 +128,8 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = (tid/32) % (num_ctrls);
-    uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
+    uint32_t ctrl = smid % (pc->n_ctrls);
+    uint32_t queue = ((smid * 64) + warp_id()) % (ctrls[ctrl]->n_qps);
 
 
     if (tid < n_reqs) {
