@@ -63,6 +63,8 @@ const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2
 
 #define BLOCK_NUM 1024ULL
 
+#define STRIDE (80*64)
+
 typedef uint64_t EdgeT;
 
 typedef enum {
@@ -72,6 +74,12 @@ typedef enum {
     BASELINE_PC = 3,
     COALESCE_PC = 4,
     COALESCE_CHUNK_PC =5,
+    BASELINE_HASH= 6, 
+    COALESCE_HASH= 7, 
+    COASLESC_CHUNK_HASH= 8, 
+    BASELINE_HASH_PC= 9, 
+    COALESCE_HASH_PC= 10, 
+    COASLESC_CHUNK_HASH_PC= 11, 
 } impl_type;
 
 typedef enum {
@@ -91,12 +99,12 @@ void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
  
     if(tid < vertex_count && curr_visit[tid] == true){
         const uint64_t start = vertexList[tid];
-        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
         const uint64_t end = vertexList[tid+1];
 
-        // for(uint64_t i = shift_start; i < end; i++){
-        for(uint64_t i = start; i < end; i++){
-            // if(i >= start){
+        for(uint64_t i = shift_start; i < end; i++){
+        //for(uint64_t i = start; i < end; i++){
+            if(i >= start){
                 unsigned long long comp_src = comp[tid];
                 const EdgeT next = edgeList[i];
 
@@ -120,26 +128,26 @@ void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
                     next_visit[next_target] = true;
                     *changed = true;
                 }
-            // }
+            }
             
         }
     }
 }
 
 
-__global__ 
+__global__ //__launch_bounds__(64,32)
 void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
  
     if(tid < vertex_count && curr_visit[tid] == true){
         const uint64_t start = vertexList[tid];
-        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
         const uint64_t end = vertexList[tid+1];
     // array_d_t<uint64_t> d_array = *da;
 
-        // for(uint64_t i = shift_start; i < end; i++){
-        for(uint64_t i = start; i < end; i++){
-            // if(i >= start){
+        for(uint64_t i = shift_start; i < end; i++){
+        //for(uint64_t i = start; i < end; i++){
+            if(i >= start){
                 unsigned long long comp_src = comp[tid];
                 // const EdgeT next = edgeList[i];
                 const EdgeT next = da->seq_read(i);
@@ -164,7 +172,7 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
                     next_visit[next_target] = true;
                     *changed = true;
                 }
-            // }
+             }
             
         }
     }
@@ -174,83 +182,107 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
 __global__ 
 void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+//    const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
 
     if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
-        const uint64_t start = vertexList[warpIdx];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
-        const uint64_t end = vertexList[warpIdx+1];
+ //       uint64_t warpIdx; 
+ //       const uint64_t nep = vertex_count/STRIDE; 
+ //       if(oldwarpIdx <(STRIDE*nep)){
+ //               warpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*STRIDE);
+ //       }
+ //       else{
+ //               warpIdx = oldwarpIdx; 
+ //       }
 
-        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
-            if (i >= start) {
-                unsigned long long comp_src = comp[warpIdx];
-                const EdgeT next = edgeList[i];
+            const uint64_t start = vertexList[warpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[warpIdx+1];
 
-                unsigned long long comp_next = comp[next];
-                unsigned long long comp_target;
-                EdgeT next_target;
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                if (i >= start) {
+                    unsigned long long comp_src = comp[warpIdx];
+                    const EdgeT next = edgeList[i];
 
-                if (comp_next != comp_src) {
-                    if (comp_src < comp_next) {
-                        next_target = next;
-                        comp_target = comp_src;
+                    unsigned long long comp_next = comp[next];
+                    unsigned long long comp_target;
+                    EdgeT next_target;
+
+                    if (comp_next != comp_src) {
+                        if (comp_src < comp_next) {
+                            next_target = next;
+                            comp_target = comp_src;
+                        }
+                        else {
+                            next_target = warpIdx;
+                            comp_target = comp_next;
+                        }
+
+                        // if(laneIdx==0 && warpIdx==0)
+                        //     printf("next_target: %llu", (uint64_t)next_target);
+
+                        atomicMin(&comp[next_target], comp_target);
+                        next_visit[next_target] = true;
+                        *changed = true;
                     }
-                    else {
-                        next_target = warpIdx;
-                        comp_target = comp_next;
-                    }
-
-                    // if(laneIdx==0 && warpIdx==0)
-                    //     printf("next_target: %llu", (uint64_t)next_target);
-
-                    atomicMin(&comp[next_target], comp_target);
-                    next_visit[next_target] = true;
-                    *changed = true;
                 }
             }
-        }
-    }
+   }
 }
 
-__global__ __launch_bounds__(1024,2)
+__global__ __launch_bounds__(128,16)
 void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-    const uint64_t warpIdx = tid >> WARP_SHIFT;
+//    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     // array_d_t<uint64_t> d_array = *da;
-    if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
-        const uint64_t start = vertexList[warpIdx];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
-        const uint64_t end = vertexList[warpIdx+1];
+    if (oldwarpIdx < vertex_count){
+    //if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
+        uint64_t warpIdx; 
+        const uint64_t nep = vertex_count/STRIDE; 
+        if(oldwarpIdx <(STRIDE*nep)){
+                warpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*STRIDE);
+        }
+        else{
+                warpIdx = oldwarpIdx; 
+        }
+        if(curr_visit[warpIdx] == true) {
+             const uint64_t start = vertexList[warpIdx];
+             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+             const uint64_t end = vertexList[warpIdx+1];
+             
+             uint64_t i = shift_start+laneIdx;
+             for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+//             {
+                 if (i >= start) {
+                     unsigned long long comp_src = comp[warpIdx];
+                     // const EdgeT next = edgeList[i];
+                     // EdgeT next = d_array.seq_read(i);
+                     EdgeT next = da->seq_read(i);
 
-        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
-            if (i >= start) {
-                unsigned long long comp_src = comp[warpIdx];
-                // const EdgeT next = edgeList[i];
-                // EdgeT next = d_array.seq_read(i);
-                EdgeT next = da->seq_read(i);
 
+                     unsigned long long comp_next = comp[next];
+                     unsigned long long comp_target;
+                     EdgeT next_target;
 
-                unsigned long long comp_next = comp[next];
-                unsigned long long comp_target;
-                EdgeT next_target;
+                     if (comp_next != comp_src) {
+                         if (comp_src < comp_next) {
+                             next_target = next;
+                             comp_target = comp_src;
+                         }
+                         else {
+                             next_target = warpIdx;
+                             comp_target = comp_next;
+                         }
 
-                if (comp_next != comp_src) {
-                    if (comp_src < comp_next) {
-                        next_target = next;
-                        comp_target = comp_src;
-                    }
-                    else {
-                        next_target = warpIdx;
-                        comp_target = comp_next;
-                    }
-
-                    atomicMin(&comp[next_target], comp_target);
-                    next_visit[next_target] = true;
-                    *changed = true;
-                }
-            }
+                         atomicMin(&comp[next_target], comp_target);
+                         next_visit[next_target] = true;
+                         *changed = true;
+                     }
+                 }
+             }
         }
     }
 }
@@ -574,6 +606,7 @@ int main(int argc, char *argv[]) {
         
         //TODO : FIX THIS. 
         dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
+        //dim3 blockDim(16, 80); //(numblocks+BLOCK_NUM)/BLOCK_NUM);
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
@@ -614,6 +647,7 @@ int main(int argc, char *argv[]) {
         do {
             changed_h = false;
             cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
+            auto itrstart = std::chrono::system_clock::now();
 
             switch (type) {
                 case BASELINE:
@@ -647,8 +681,16 @@ int main(int argc, char *argv[]) {
             next_visit_d = temp;
 
             iter++;
-
             cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+            auto itrend = std::chrono::system_clock::now();
+	        //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
+
+            if(mem == BAFS_DIRECT) {
+                     h_array->print_reset_stats();
+		     std::cout<< "itr time: "<< elapsed.count() <<std::endl; 
+            }
+          //  break; 
         } while(changed_h);
 
         cuda_err_chk(cudaEventRecord(end, 0));
