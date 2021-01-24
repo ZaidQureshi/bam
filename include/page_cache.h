@@ -240,7 +240,7 @@ void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
 template <typename T>
 __forceinline__
 __device__
-uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue_) {
+uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl, const uint32_t queue) {
     uint64_t index = pg;
     uint32_t expected_state = VALID;
     uint32_t new_state = USE;
@@ -286,12 +286,12 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                     uint32_t sm_id = get_smid();
                     //uint32_t ctrl = (tid/32) % (cache.n_ctrls);
-                    uint32_t ctrl = sm_id % (cache.n_ctrls);
+                    //uint32_t ctrl = sm_id % (cache.n_ctrls);
                     //uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
                     Controller* c = cache.d_ctrls[ctrl];
                     //uint32_t queue = (tid/32) % (c->n_qps);
                     //uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
-                    uint32_t queue = ((sm_id * 64) + warp_id()) % (c->n_qps);
+                    //uint32_t queue = ((sm_id * 64) + warp_id()) % (c->n_qps);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     read_data(&cache, (c->d_qps)+queue, ((index+page_start)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
