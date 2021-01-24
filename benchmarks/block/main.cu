@@ -80,15 +80,23 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 }
 
 */
-__global__
+__global__ __launch_bounds__(64,32)
 void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t laneid = lane_id();
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = smid % (pc->n_ctrls);
-    uint32_t queue = ((smid * 64) + warp_id()) % (ctrls[ctrl]->n_qps);
+    uint32_t ctrl;
+    uint32_t queue;
+    if (laneid == 0) {
+        ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+        queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+    }
+    ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
+    queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
+
 
 
     if (tid < n_reqs) {
@@ -121,15 +129,22 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     }
 
 }
-__global__
+__global__ __launch_bounds__(64,32)
 void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t laneid = lane_id();
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = smid % (pc->n_ctrls);
-    uint32_t queue = ((smid * 64) + warp_id()) % (ctrls[ctrl]->n_qps);
+    uint32_t ctrl;
+    uint32_t queue;
+    if (laneid == 0) {
+        ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+        queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+    }
+    ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
+    queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
 
 
     if (tid < n_reqs) {
