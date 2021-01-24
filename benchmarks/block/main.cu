@@ -87,8 +87,15 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = smid % (pc->n_ctrls);
-    uint32_t queue = ((smid * 64) + warp_id()) % (ctrls[ctrl]->n_qps);
+    uint32_t ctrl;
+    uint32_t queue;
+    if (laneid == 0) {
+        ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+        queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+    }
+    ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
+    queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
+
 
 
     if (tid < n_reqs) {
@@ -128,8 +135,14 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
-    uint32_t ctrl = smid % (pc->n_ctrls);
-    uint32_t queue = ((smid * 64) + warp_id()) % (ctrls[ctrl]->n_qps);
+    uint32_t ctrl;
+    uint32_t queue;
+    if (laneid == 0) {
+        ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+        queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+    }
+    ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
+    queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
 
 
     if (tid < n_reqs) {
