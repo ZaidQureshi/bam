@@ -120,7 +120,7 @@ struct range_d_t {
     void release_page(const size_t pg, const uint32_t count) const;
     __forceinline__
     __device__
-    uint64_t acquire_page(const size_t pg, const uint32_t count, const bool write) ;
+    uint64_t acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl, const uint32_t queue) ;
     __forceinline__
     __device__
     void write_done(const size_t pg, const uint32_t count) const;
