@@ -84,6 +84,7 @@ __global__
 void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t laneid = lane_id();
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
@@ -132,6 +133,7 @@ __global__
 void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t laneid = lane_id();
     uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
