@@ -727,7 +727,8 @@ int main(int argc, char *argv[]) {
 
 
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
-                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+                printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+                fflush(stdout);
          }
 
          std::vector<Controller*> ctrls(settings.n_ctrls);
