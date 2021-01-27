@@ -668,6 +668,7 @@ int main(int argc, char *argv[]) {
             changed_h = false;
             cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
 
+            auto itrstart = std::chrono::system_clock::now();
             switch (type) {
                 case BASELINE:
                     kernel_baseline<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
@@ -716,6 +717,13 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
 
             iter++;
+            auto itrend = std::chrono::system_clock::now();
+	        //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
+            //if(mem == BAFS_DIRECT) {
+            //       h_array->print_reset_stats();
+		    //       std::cout<< "itr time: "<< elapsed.count() <<std::endl; 
+            //}
         } while(changed_h && iter < 5000);
         
 
