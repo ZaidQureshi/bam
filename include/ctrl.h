@@ -68,7 +68,7 @@ struct Controller
 
     void reserveQueues(uint16_t numSubmissionQueues, uint16_t numCompletionQueues);
 
-    void print_reset_stats(void);
+    void print_stats(void);
 
     ~Controller();
 };
