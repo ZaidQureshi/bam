@@ -720,10 +720,13 @@ int main(int argc, char *argv[]) {
             auto itrend = std::chrono::system_clock::now();
 	        //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
-            //if(mem == BAFS_DIRECT) {
-            //       h_array->print_reset_stats();
-		    //       std::cout<< "itr time: "<< elapsed.count() <<std::endl; 
-            //}
+            if(mem == BAFS_DIRECT) {
+                  h_array->print_reset_stats();
+		          std::cout<< "itr time: "<< elapsed.count() << " ms" <<std::endl;
+                  for (auto ct : ctrls) {
+                      ct->print_reset_stats();
+                  }
+            }
         } while(changed_h && iter < 5000);
         
 

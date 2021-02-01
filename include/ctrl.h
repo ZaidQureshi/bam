@@ -68,7 +68,7 @@ struct Controller
 
     void reserveQueues(uint16_t numSubmissionQueues, uint16_t numCompletionQueues);
 
-    void print_stats(void);
+    void print_reset_stats(void);
 
     ~Controller();
 };
@@ -79,7 +79,7 @@ using error = std::runtime_error;
 using std::string;
 
 
-void Controller::print_stats(void) {
+void Controller::print_reset_stats(void) {
     cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
     std::cout << "------------------------------------" << std::endl;
     std::cout << std::dec << "# Accesses:\t" << access_counter << std::endl;
