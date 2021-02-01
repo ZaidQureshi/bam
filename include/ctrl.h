@@ -34,6 +34,7 @@
 
 struct Controller
 {
+    simt::atomic<uint64_t, simt::thread_scope_device> access_counter;
     nvm_ctrl_t*             ctrl;
     nvm_aq_ref              aq_ref;
     DmaPtr                  aq_mem;
@@ -47,6 +48,7 @@ struct Controller
     QueuePair*              d_qps;
 
     simt::atomic<uint64_t, simt::thread_scope_device> queue_counter;
+
     uint32_t page_size;
     uint32_t blk_size;
     uint32_t blk_size_log;
@@ -66,6 +68,8 @@ struct Controller
 
     void reserveQueues(uint16_t numSubmissionQueues, uint16_t numCompletionQueues);
 
+    void print_reset_stats(void);
+
     ~Controller();
 };
 
@@ -74,6 +78,14 @@ struct Controller
 using error = std::runtime_error;
 using std::string;
 
+
+void Controller::print_stats(void) {
+    cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
+    std::cout << "------------------------------------" << std::endl;
+    std::cout << std::dec << "# Accesses:\t" << access_counter << std::endl;
+
+    cuda_err_chk(cudaMemset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
+}
 
 static void initializeController(struct Controller& ctrl, uint32_t ns_id)
 {
