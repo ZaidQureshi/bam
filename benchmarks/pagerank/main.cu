@@ -711,13 +711,14 @@ int main(int argc, char *argv[]) {
                     exit(1);
                     break;
             }
+            cuda_err_chk(cudaDeviceSynchronize());
 
+            iter++;
+            auto itrend = std::chrono::system_clock::now();
             update <<<blockDim_update, numthreads>>> (label_d, delta_d, residual_d, value_d, vertex_count, vertexList_d, tolerance, alpha, changed_d);
 
             cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
 
-            iter++;
-            auto itrend = std::chrono::system_clock::now();
 	        //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
             if(mem == BAFS_DIRECT) {
