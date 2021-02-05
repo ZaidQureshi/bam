@@ -790,9 +790,9 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
         //if (count < this->n_pages)
         page = page_ticket->fetch_add(1, simt::memory_order_relaxed)  % (this->n_pages);
         //page = page_ticket->fetch_add(1, simt::memory_order_relaxed);
-        if (page < (n_cachelines_for_states*STATES_PER_CACHELINE)) {
-            page = (page/n_cachelines_for_states) + ((page%n_cachelines_for_states)*STATES_PER_CACHELINE);
-        }
+        //if (page < (n_cachelines_for_states*STATES_PER_CACHELINE)) {
+        //    page = (page/n_cachelines_for_states) + ((page%n_cachelines_for_states)*STATES_PER_CACHELINE);
+        //}
         //uint64_t unlocked = UNLOCKED;
 
         // uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
