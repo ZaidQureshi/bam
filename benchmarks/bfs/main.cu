@@ -815,7 +815,7 @@ int main(int argc, char *argv[]) {
                           //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
                           //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
                          numblocks = ((active + numthreads) / numthreads);
-
+                         assert(numblocks >= 0xFFFFFFFF);
                          kernel_frontier_baseline<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, edgeList_d, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
                          tmp_front = curr_frontier_d;
                          curr_frontier_d = next_frontier_d;
@@ -826,7 +826,8 @@ int main(int argc, char *argv[]) {
                          //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
                          //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
                          numblocks = ((active * WARP_SIZE + numthreads) / numthreads);
-                         //printf("numblocks: %llu\t", numblocks);
+                         assert(numblocks <= 0xFFFFFFFF);
+                         //printf("numblocks: %llu\n", numblocks);
                          kernel_frontier_coalesce<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, edgeList_d, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
                          tmp_front = curr_frontier_d;
                          curr_frontier_d = next_frontier_d;
@@ -837,7 +838,7 @@ int main(int argc, char *argv[]) {
                           //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
                           //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
                          numblocks = ((active + numthreads) / numthreads);
-
+                         assert(numblocks <= 0xFFFFFFFF);
                          kernel_frontier_baseline_pc<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, h_array->d_array_ptr, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
                          tmp_front = curr_frontier_d;
                          curr_frontier_d = next_frontier_d;
@@ -848,6 +849,7 @@ int main(int argc, char *argv[]) {
                          //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
                          //                          const uint32_t *curr_frontier, uint32_t *next_frontier)
                          numblocks = ((active * WARP_SIZE + numthreads) / numthreads);
+                         assert(numblocks <= 0xFFFFFFFF);
                          //printf("numblocks: %llu\t", numblocks);
                          kernel_frontier_coalesce_pc<<<numblocks, numthreads>>>((unsigned int*)label_d, (unsigned int) level, vertex_count, vertexList_d, h_array->d_array_ptr, active,(unsigned long long int*)changed_d, curr_frontier_d, next_frontier_d);
                          tmp_front = curr_frontier_d;
