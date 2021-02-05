@@ -96,7 +96,7 @@ typedef enum {
     BAFS_DIRECT = 6,
 } mem_type;
 
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(128,16)
 void kernel_frontier_baseline(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
                                 const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long int *changed,
                                 const uint32_t *curr_frontier, uint32_t *next_frontier) {
@@ -148,7 +148,7 @@ void kernel_frontier_baseline(unsigned int *label, const unsigned int level, con
 
 }
 
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(128,16)
 void kernel_frontier_coalesce(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
                                 const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long int *changed,
                                 const uint32_t *curr_frontier, uint32_t *next_frontier) {
@@ -194,7 +194,7 @@ void kernel_frontier_coalesce(unsigned int *label, const unsigned int level, con
 
 }
 
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(128,16)
 void kernel_frontier_baseline_pc(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
                                 const uint64_t *vertexList, array_d_t<uint64_t>* da, const uint64_t curr_frontier_size, unsigned long long int *changed,
                                 const uint32_t *curr_frontier, uint32_t *next_frontier) {
@@ -246,7 +246,7 @@ void kernel_frontier_baseline_pc(unsigned int *label, const unsigned int level, 
 
 }
 
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(128,16)
 void kernel_frontier_coalesce_pc(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
                                 const uint64_t *vertexList, array_d_t<uint64_t>* da, const uint64_t curr_frontier_size, unsigned long long int *changed,
                                 const uint32_t *curr_frontier, uint32_t *next_frontier) {
