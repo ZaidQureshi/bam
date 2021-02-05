@@ -62,6 +62,7 @@ struct page_cache_d_t {
     uint64_t n_ranges;
     uint64_t n_ranges_bits;
     uint64_t n_ranges_mask;
+    uint64_t n_cachelines_for_states;
 
     uint64_t* ranges_page_starts;
     simt::atomic<uint64_t, simt::thread_scope_device>* ctrl_counter;
@@ -616,7 +617,7 @@ struct page_cache_t {
         d_ctrls_buff = createBuffer(pdt.n_ctrls * sizeof(Controller*), cudaDevice);
         pdt.d_ctrls = (Controller**) d_ctrls_buff.get();
         pdt.n_blocks_per_page = (ps/ctrl.blk_size);
-
+        pdt.n_cachelines_for_states = np/STATES_PER_CACHELINE;
         for (size_t k = 0; k < pdt.n_ctrls; k++)
             cuda_err_chk(cudaMemcpy(pdt.d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
         //n_ctrls = ctrls.size();
@@ -788,6 +789,10 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
 
         //if (count < this->n_pages)
         page = page_ticket->fetch_add(1, simt::memory_order_relaxed)  % (this->n_pages);
+        //page = page_ticket->fetch_add(1, simt::memory_order_relaxed);
+        if (page < (n_cachelines_for_states*STATES_PER_CACHELINE)) {
+            page = (page/n_cachelines_for_states) + ((page%n_cachelines_for_states)*STATES_PER_CACHELINE);
+        }
         //uint64_t unlocked = UNLOCKED;
 
         // uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
