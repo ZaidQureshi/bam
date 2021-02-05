@@ -77,7 +77,7 @@ typedef struct __align__(32)
 
 typedef simt::atomic<uint32_t, simt::thread_scope_device> padded_struct_pc;
 
-#define CACHELINE_SIZE (128)
+#define CACHELINE_SIZE (128/4)
 
 #define STATES_PER_CACHELINE (CACHELINE_SIZE/sizeof(padded_struct_pc))
 /* typedef struct __align__(32) */
