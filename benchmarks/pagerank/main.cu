@@ -190,7 +190,7 @@ __global__ void kernel_baseline_hash(bool* label, ValueT *delta, ValueT *residua
     }
 }
 
-__global__ __launch_bounds__(1024,2)
+__global__ //__launch_bounds__(1024,2)
 void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
      const uint64_t oldtid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     // const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -246,7 +246,7 @@ __global__ void kernel_coalesce(bool* label, ValueT *delta, ValueT *residual, co
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -301,7 +301,7 @@ __global__ void kernel_coalesce_hash(bool* label, ValueT *delta, ValueT *residua
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
@@ -367,7 +367,7 @@ __global__ void kernel_coalesce_chunk(bool* label, ValueT *delta, ValueT *residu
     }
 }
 
-__global__ __launch_bounds__(1024,2)
+__global__ //__launch_bounds__(1024,2)
 void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
