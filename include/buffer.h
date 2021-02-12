@@ -156,7 +156,7 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
 
     int err  = posix_memalign(&buffer, 4096, size);
 
-    if (!err) {
+    if (err) {
         throw error(string("Failed to allocate host memory: ") + std::to_string(err));
     }
     int status = nvm_dma_map_host(&dma, ctrl, buffer, size);
