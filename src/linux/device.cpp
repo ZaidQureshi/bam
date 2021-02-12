@@ -135,7 +135,7 @@ int nvm_ctrl_init(nvm_ctrl_t** ctrl, int filedes)
         return errno;
     }
 
-    err = fcntl(dev->fd, F_SETFD, O_RDWR | O_NONBLOCK);
+    err = fcntl(dev->fd, F_SETFD, O_RDWR);
     if (err == -1)
     {
         close(dev->fd);

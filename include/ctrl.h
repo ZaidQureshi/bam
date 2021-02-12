@@ -146,7 +146,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, ui
     , aq_ref(nullptr)
     , deviceId(cudaDevice)
 {
-    int fd = open(path, O_RDWR | O_NONBLOCK);
+    int fd = open(path, O_RDWR);
     if (fd < 0)
     {
         throw error(string("Failed to open descriptor: ") + strerror(errno));
