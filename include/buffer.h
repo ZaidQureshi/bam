@@ -146,22 +146,31 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
     nvm_dma_t* dma = nullptr;
     void* buffer = nullptr;
 
+    /*
     cudaError_t err = cudaHostAlloc(&buffer, size, cudaHostAllocDefault);
     if (err != cudaSuccess)
     {
         throw error(string("Failed to allocate host memory: ") + cudaGetErrorString(err));
     }
+    */
 
+    int err  = posix_memalign(&buffer, 64*1024, size);
+
+    if (!err) {
+        throw error(string("Failed to allocate host memory: "));
+    }
     int status = nvm_dma_map_host(&dma, ctrl, buffer, size);
     if (!nvm_ok(status))
     {
-        cudaFreeHost(buffer);
+        //cudaFreeHost(buffer);
+        free(buffer);
         throw error(string("Failed to map host memory: ") + nvm_strerror(status));
     }
 
     return DmaPtr(dma, [buffer](nvm_dma_t* dma) {
         nvm_dma_unmap(dma);
-        cudaFreeHost(buffer);
+        //cudaFreeHost(buffer);
+        free(buffer);
     });
 }
 
