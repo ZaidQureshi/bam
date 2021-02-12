@@ -145,7 +145,7 @@ int nvm_ctrl_init(nvm_ctrl_t** ctrl, int filedes)
     }
 
     const size_t mm_size = NVM_CTRL_MEM_MINSIZE;
-    void* mm_ptr = mmap(NULL, mm_size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FILE, dev->fd, 0);
+    void* mm_ptr = mmap(NULL, mm_size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_FILE|MAP_LOCKED, dev->fd, 0);
     if (mm_ptr == NULL)
     {
         close(dev->fd);
