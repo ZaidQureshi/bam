@@ -161,7 +161,7 @@ struct range_t {
 };
 
 template <typename T>
-range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist = REPLICATE) {
+range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
     rdt.access_cnt = 0;
     rdt.miss_cnt = 0;
     rdt.hit_cnt = 0;
