@@ -179,13 +179,13 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     cache = (page_cache_d_t*) c_h->d_pc_ptr;
     page_states_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
     rdt.page_states = (page_states_t) page_states_buff.get();
-
-    padded_struct_pc* ts = new padded_struct_pc[s];
-    for (size_t i = 0; i < s; i++)
-        ts[i] = INVALID;
-    printf("S value: %llu\n", (unsigned long long)s);
-    cuda_err_chk(cudaMemcpy(rdt.page_states, ts, s * sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
-    delete ts;
+    std::vector<padded_struct_pc> ts(s, INVALID);
+    //padded_struct_pc* ts = new padded_struct_pc[s];
+    //for (size_t i = 0; i < s; i++)
+    //    ts[i] = INVALID;
+    //printf("S value: %llu\n", (unsigned long long)s);
+    cuda_err_chk(cudaMemcpy(rdt.page_states, ts.data(), s * sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
+    //delete ts;
 
     page_addresses_buff = createBuffer(s * sizeof(uint32_t), cudaDevice);
     rdt.page_addresses = (uint32_t*) page_addresses_buff.get();
@@ -526,8 +526,9 @@ struct array_t {
     BufferPtr d_d_ranges_buff;
 
     void print_reset_stats(void) {
-        range_d_t<T>* rdt = new range_d_t<T>[adt.n_ranges];
-        cuda_err_chk(cudaMemcpy(rdt, adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+        std::vector<range_d_t<T>> rdt(adt.n_ranges);
+        //range_d_t<T>* rdt = new range_d_t<T>[adt.n_ranges];
+        cuda_err_chk(cudaMemcpy(rdt.data(), adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
         for (size_t i = 0; i < adt.n_ranges; i++) {
 
             std::cout << "*********************************" << std::endl;
@@ -540,7 +541,7 @@ struct array_t {
             rdt[i].miss_cnt = 0;
             rdt[i].hit_cnt = 0;
         }
-        cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt.data(), adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
     }
 
     array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
@@ -659,12 +660,12 @@ struct page_cache_t {
 
         page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
-
-        padded_struct_pc* tps = new padded_struct_pc[np];
-        for (size_t i = 0; i < np; i++)
-            tps[i] = FREE;
-        cuda_err_chk(cudaMemcpy(pdt.page_take_lock, tps, np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
-        delete tps;
+        std::vector<padded_struct_pc> tps(np, FREE);
+        //padded_struct_pc* tps = new padded_struct_pc[np];
+        //for (size_t i = 0; i < np; i++)
+        //    tps[i] = FREE;
+        cuda_err_chk(cudaMemcpy(pdt.page_take_lock, tps.data(), np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
+        //delete tps;
 
 
 
@@ -708,9 +709,11 @@ struct page_cache_t {
             pdt.prp1 = (uint64_t*) this->prp1_buf.get();
             this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp2 = (uint64_t*) this->prp2_buf.get();
-            uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
+            //uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
+            uint64_t* temp1 = new uint64_t[np * sizeof(uint64_t)];
             std::memset(temp1, 0, np * sizeof(uint64_t));
-            uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
+            //uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
+            uint64_t* temp2 = new uint64_t[np * sizeof(uint64_t)];
             std::memset(temp2, 0, np * sizeof(uint64_t));
             for (size_t i = 0; i < np; i++) {
                 temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2]);
@@ -719,8 +722,8 @@ struct page_cache_t {
             cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
 
-            free(temp1);
-            free(temp2);
+            delete temp1;
+            delete temp2;
             pdt.prps = true;
         }
         else {
@@ -730,9 +733,9 @@ struct page_cache_t {
             this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cudaDevice);
             this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp2 = (uint64_t*) this->prp2_buf.get();
-            uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
-            uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
-            uint64_t* temp3 = (uint64_t*) malloc(prp_list_size);
+            uint64_t* temp1 = new uint64_t[np * sizeof(uint64_t)];
+            uint64_t* temp2 = new uint64_t[np * sizeof(uint64_t)];
+            uint64_t* temp3 = new uint64_t[prp_list_size];
             std::memset(temp1, 0, np * sizeof(uint64_t));
             std::memset(temp2, 0, np * sizeof(uint64_t));
             std::memset(temp3, 0, prp_list_size);
@@ -760,9 +763,9 @@ struct page_cache_t {
             cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(this->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
 
-            free(temp1);
-            free(temp2);
-            free(temp3);
+            delete temp1;
+            delete temp2;
+            delete temp3;
             pdt.prps = true;
         }
 
