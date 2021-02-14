@@ -218,7 +218,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
 
 __forceinline__
 __device__
-uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+uint64_t get_backing_page_(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
     uint64_t page = page_start;
     if (dist == STRIPE) {
         page += page_offset / n_ctrls;
@@ -234,13 +234,13 @@ template <typename T>
 __forceinline__
 __device__
 uint64_t range_d_t<T>::get_backing_page(const size_t page_offset) const {
-    return get_backing_page(page_start, page_offset, cache.n_ctrls, dist);
+    return get_backing_page_(page_start, page_offset, cache.n_ctrls, dist);
 }
 
 
 __forceinline__
 __device__
-uint64_t get_backing_ctrl(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+uint64_t get_backing_ctrl_(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
     uint64_t ctrl;
 
     if (dist == STRIPE) {
@@ -257,7 +257,7 @@ template <typename T>
 __forceinline__
 __device__
 uint64_t range_d_t<T>::get_backing_ctrl(const size_t page_offset) const {
-    return get_backing_ctrl(page_offset, cache.n_ctrls, dist);
+    return get_backing_ctrl_(page_offset, cache.n_ctrls, dist);
 }
 
 template <typename T>
@@ -730,7 +730,7 @@ struct page_cache_t {
         delete tps;
 
         ranges_dists_buf = createBuffer(max_range * sizeof(data_dist_t), cudaDevice);
-        pdt.ranges_dists = ranges_dists_buf.get();
+        pdt.ranges_dists = (data_dist_t*)ranges_dists_buf.get();
         h_ranges_dists = new data_dist_t[max_range];
 
         uint64_t cache_size = ps*np;
@@ -930,20 +930,21 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             //uint32_t ctrl = get_smid() % (n_ctrls);
                             //uint64_t get_backing_ctrl(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist)
                             //
-                            uint64_t ctrl = get_backing_ctrl(previous_address, n_ctrls, ranges_dists[previous_range]);
+                            uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
                             //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-                            uint64_t index = get_backing_page(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-                            uint32_t queue = (tid/32) % (c->n_qps);
+                            uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
+
                             if (ctrl == ALL_CTRLS) {
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
                                     Controller* c = this->d_ctrls[ctrl];
+                                    uint32_t queue = (tid/32) % (c->n_qps);
                                     write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                                 }
                             }
                             else {
 
                                 Controller* c = this->d_ctrls[ctrl];
-
+                                uint32_t queue = (tid/32) % (c->n_qps);
 
                                 //index = ranges_page_starts[previous_range] + previous_address;
 
