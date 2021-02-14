@@ -24,7 +24,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=f
 #endif
 __device__ void hexdump(void *mem, unsigned int len)
 {
-        unsigned int i, j;
+        unsigned int i;
 
         for(i = 0; i < len + ((len % HEXDUMP_COLS) ? (HEXDUMP_COLS - len % HEXDUMP_COLS) : 0); i++)
         {

@@ -118,7 +118,7 @@ struct page_cache_t {
 
 
     template <typename T>
-    void page_cache_t::add_range(range_t<T>* range) {
+    void add_range(range_t<T>* range) {
         range->rdt.range_id  = pdt.n_ranges++;
         h_ranges[range->rdt.range_id] = range->rdt.page_states;
         h_ranges_page_starts[range->rdt.range_id] = range->rdt.page_start;
