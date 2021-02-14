@@ -803,7 +803,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
         //this->page_take_lock[page].compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
         //not assigned to anyone yet
         if ( v == FREE ) {
-            lock = this->page_take_lock[page].compare_exchange_strong(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
+            lock = this->page_take_lock[page].compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if ( lock ) {
                 this->page_translation[page] = global_address;
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
@@ -814,7 +814,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
         //assigned to someone and was able to take lock
         else if ( v == UNLOCKED ) {
 
-            lock = this->page_take_lock[page].compare_exchange_strong(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
+            lock = this->page_take_lock[page].compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (lock) {
                 uint32_t previous_global_address = this->page_translation[page];
                 //uint32_t previous_global_address = this->page_translation[page].load(simt::memory_order_acquire);
@@ -832,14 +832,14 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
 
                 switch(expected_state) {
                     case VALID:
-                        pass = this->ranges[previous_range][previous_address].compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
+                        pass = this->ranges[previous_range][previous_address].compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                         if (pass) {
                             this->ranges[previous_range][previous_address].store(INVALID, simt::memory_order_release);
                             fail = false;
                         }
                         break;
                     case INVALID:
-                        pass =  this->ranges[previous_range][previous_address].compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
+                        pass =  this->ranges[previous_range][previous_address].compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                         if (pass) {
                             this->ranges[previous_range][previous_address].store(INVALID, simt::memory_order_release);
                             fail = false;
@@ -849,7 +849,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
 
 
                         //if ((count > this->n_pages)) {
-                        pass =  this->ranges[previous_range][previous_address].compare_exchange_strong(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
+                        pass =  this->ranges[previous_range][previous_address].compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                         if  (pass) {
                             //if ((this->page_dirty_start[page].load(simt::memory_order_acquire) == this->page_dirty_end[page].load(simt::memory_order_acquire))) {
 
