@@ -18,8 +18,6 @@ if accesses hit in the cache or not and if they miss to automatically fetch the 
 All of these features are developed into a header-only library in the [`include`](./include/) directory.
 These headers can be used in Cuda C/C++ application code.
 
-We give an example of such an application in the [`benchmarks/cuda`](./benchmarks/cuda) directory which implements
-a random access benchmark that incorporates all the functionality mentioned aboved.
 
 
 
@@ -153,11 +151,11 @@ Running the Example Benchmark
 The example benchmark application tests the random access read bandwidth from the GPU threads to the NVMe device.
 It assumes an array of `uint64_t` on the backing NVMe device and makes random or sequential accesses to the array.
 The application must be run with `sudo` as it needs direct access to the `/dev/libnvm0` file.
-The applicaiton will exist as the `./bin/nvm-cuda-bench` binary after compilation.
+The applicaiton will exist as the `./bin/nvm-array-bench` binary after compilation.
 The application arguments are as follows:
 
 ``` 
-$ ./bin/nvm-cuda-bench --help
+$ ./bin/nvm-array-bench --help
 OPTION            TYPE            DEFAULT   DESCRIPTION                         
   page_size       count           4096      size of page in cache               
   blk_size        count           64        CUDA thread block size              
@@ -182,13 +180,13 @@ Read Ops/sec: 5.1053e+06	Effective Bandwidth(GB/S): 0.0380374
 If I want to run a large GPU kernel on GPU 0 with many threads (262144 threads) each making 1 random request to an array with 4-billion 64-bit integers, a page cache with 262144 pages each with size 4096 bytes, 128 NVMe queues each 1024 elements deep, I would run the following command:
 
 ```
-sudo ./bin/nvm-cuda-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296
+sudo ./bin/nvm-array-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296
 ```
 
 If I want to run the same benchmark but now with each thread accessing the array sequentially, I would run the following command:
 
 ```
-sudo ./bin/nvm-cuda-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296 --random=false
+sudo ./bin/nvm-array-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296 --random=false
 ```
 
 Disclaimer: The NVMe SSD I was using supports 128 queues each with 1024 depth. However, even if your SSD supports less number of queues and/or less depth the system will automatically use the numbers reported by your device.
