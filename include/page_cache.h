@@ -32,6 +32,8 @@ enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 #define INVALID (UINT_MAX & 0x7fffffff)
 #define BUSY ((UINT_MAX & 0x7fffffff)-1)
 
+#define ALL_CTRLS 0xffffffffffffffff
+
 struct page_cache_t;
 
 struct page_cache_d_t;
@@ -67,6 +69,7 @@ struct page_cache_d_t {
     uint64_t n_cachelines_for_states;
 
     uint64_t* ranges_page_starts;
+    data_dist_t* ranges_dists;
     simt::atomic<uint64_t, simt::thread_scope_device>* ctrl_counter;
 
 
@@ -107,6 +110,12 @@ struct range_d_t {
     //void* self_ptr;
     page_cache_d_t cache;
     //range_d_t(range_t<T>* rt);
+    __forceinline__
+    __device__
+    uint64_t get_backing_page(const size_t i) const;
+    __forceinline__
+    __device__
+    uint64_t get_backing_ctrl(const size_t i) const;
     __forceinline__
     __device__
     uint64_t get_page(const size_t i) const;
@@ -171,7 +180,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     //range_id = (c_h->range_count)++;
     rdt.page_start = ps;
     rdt.page_count = pc;
-    rdt.page_size = p_size;
+    rdt.page_size = c_h->pdt.page_size;
     rdt.page_start_offset = pso;
     rdt.dist = dist;
     size_t s = pc;//(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
@@ -194,7 +203,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
 
     range_buff = createBuffer(sizeof(range_d_t<T>), cudaDevice);
     d_range_ptr = (range_d_t<T>*)range_buff.get();
-    rdt.range_id  = c_h->pdt.n_ranges++;
+    //rdt.range_id  = c_h->pdt.n_ranges++;
 
 
     cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
@@ -204,6 +213,51 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     rdt.cache = c_h->pdt;
     cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
 
+}
+
+
+__forceinline__
+__device__
+uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+    uint64_t page = page_start;
+    if (dist == STRIPE) {
+        page += page_offset / n_ctrls;
+    }
+    else if (dist == REPLICATE) {
+        page += page_offset;
+    }
+
+    return page;
+}
+
+template <typename T>
+__forceinline__
+__device__
+uint64_t range_d_t<T>::get_backing_page(const size_t page_offset) const {
+    return get_backing_page(page_start, page_offset, cache.n_ctrls, dist);
+}
+
+
+__forceinline__
+__device__
+uint64_t get_backing_ctrl(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+    uint64_t ctrl;
+
+    if (dist == STRIPE) {
+        ctrl = page_offset % n_ctrls;
+    }
+    else if (dist == REPLICATE) {
+        ctrl = ALL_CTRLS;
+    }
+    return ctrl;
+
+}
+
+template <typename T>
+__forceinline__
+__device__
+uint64_t range_d_t<T>::get_backing_ctrl(const size_t page_offset) const {
+    return get_backing_ctrl(page_offset, cache.n_ctrls, dist);
 }
 
 template <typename T>
@@ -245,7 +299,7 @@ void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
 template <typename T>
 __forceinline__
 __device__
-uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl, const uint32_t queue) {
+uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue) {
     uint64_t index = pg;
     uint32_t expected_state = VALID;
     uint32_t new_state = USE;
@@ -293,13 +347,17 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     //uint32_t ctrl = (tid/32) % (cache.n_ctrls);
                     //uint32_t ctrl = sm_id % (cache.n_ctrls);
                     //uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
+                    uint64_t ctrl = get_backing_ctrl(index);
+                    if (ctrl == ALL_CTRLS)
+                        ctrl = ctrl_;
+                    uint64_t b_page = get_backing_page(index);
                     Controller* c = cache.d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     //uint32_t queue = (tid/32) % (c->n_qps);
                     //uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
                     //uint32_t queue = ((sm_id * 64) + warp_id()) % (c->n_qps);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
-                    read_data(&cache, (c->d_qps)+queue, ((index+page_start)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
+                    read_data(&cache, (c->d_qps)+queue, ((b_page)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                     //page_addresses[index].store(page_trans, simt::memory_order_release);
                     page_addresses[index] = page_trans;
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -579,6 +637,7 @@ struct page_cache_t {
     //bool prps;
     page_states_t*   h_ranges;
     uint64_t* h_ranges_page_starts;
+    data_dist_t* h_ranges_dists;
     page_cache_d_t* d_pc_ptr;
 
     DmaPtr pages_dma;
@@ -591,6 +650,7 @@ struct page_cache_t {
     BufferPtr pc_buff;
     BufferPtr d_ctrls_buff;
     BufferPtr ranges_page_starts_buf;
+    BufferPtr ranges_dists_buf;
 
     BufferPtr page_ticket_buf;
     BufferPtr ctrl_counter_buf;
@@ -600,11 +660,13 @@ struct page_cache_t {
 
     template <typename T>
     void page_cache_t::add_range(range_t<T>* range) {
-
+        range->rdt.range_id  = pdt.n_ranges++;
         h_ranges[range->rdt.range_id] = range->rdt.page_states;
         h_ranges_page_starts[range->rdt.range_id] = range->rdt.page_start;
+        h_ranges_dists[range->rdt.range_id] = range->rdt.dist;
         cuda_err_chk(cudaMemcpy(pdt.ranges_page_starts, h_ranges_page_starts, pdt.n_ranges * sizeof(uint64_t), cudaMemcpyHostToDevice));
         cuda_err_chk(cudaMemcpy(pdt.ranges, h_ranges, pdt.n_ranges* sizeof(page_states_t), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(pdt.ranges_dists, h_ranges_dists, pdt.n_ranges* sizeof(data_dist_t), cudaMemcpyHostToDevice));
         cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
 
     }
@@ -667,7 +729,9 @@ struct page_cache_t {
         cuda_err_chk(cudaMemcpy(pdt.page_take_lock, tps, np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
         delete tps;
 
-
+        ranges_dists_buf = createBuffer(max_range * sizeof(data_dist_t), cudaDevice);
+        pdt.ranges_dists = ranges_dists_buf.get();
+        h_ranges_dists = new data_dist_t[max_range];
 
         uint64_t cache_size = ps*np;
         this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
@@ -864,13 +928,27 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                             //uint32_t ctrl = (tid/32) % (n_ctrls);
                             //uint32_t ctrl = get_smid() % (n_ctrls);
-                            uint32_t ctrl = ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (n_ctrls);
-                            Controller* c = this->d_ctrls[ctrl];
+                            //uint64_t get_backing_ctrl(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist)
+                            //
+                            uint64_t ctrl = get_backing_ctrl(previous_address, n_ctrls, ranges_dists[previous_range]);
+                            //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+                            uint64_t index = get_backing_page(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
                             uint32_t queue = (tid/32) % (c->n_qps);
+                            if (ctrl == ALL_CTRLS) {
+                                for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
+                                    Controller* c = this->d_ctrls[ctrl];
+                                    write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
+                                }
+                            }
+                            else {
 
-                            uint64_t index = ranges_page_starts[previous_range] + previous_global_address;
+                                Controller* c = this->d_ctrls[ctrl];
 
-                            write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
+
+                                //index = ranges_page_starts[previous_range] + previous_address;
+
+                                write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
+                            }
                             this->ranges[previous_range][previous_address].store(INVALID, simt::memory_order_release);
 
                             fail = false;
