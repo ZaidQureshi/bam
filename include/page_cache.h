@@ -660,12 +660,12 @@ struct page_cache_t {
 
         page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
-        std::vector<padded_struct_pc> tps(np, FREE);
-        //padded_struct_pc* tps = new padded_struct_pc[np];
-        //for (size_t i = 0; i < np; i++)
-        //    tps[i] = FREE;
-        cuda_err_chk(cudaMemcpy(pdt.page_take_lock, tps.data(), np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
-        //delete tps;
+        //std::vector<padded_struct_pc> tps(np, FREE);
+        padded_struct_pc* tps = new padded_struct_pc[np];
+        for (size_t i = 0; i < np; i++)
+            tps[i] = FREE;
+        cuda_err_chk(cudaMemcpy(pdt.page_take_lock, tps, np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
+        delete tps;
 
 
 
