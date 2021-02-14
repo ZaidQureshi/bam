@@ -23,6 +23,8 @@
 
 enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31), VALID = 0U, INVALID = (UINT_MAX & 0x7fffffff), BUSY = ((UINT_MAX & 0x7fffffff)-1)};
 
+enum data_dist_t {REPLICATE = 0, STRIPE = 1};
+
 #define USE (1U)
 #define USE_DIRTY ((1U << 31) | 1)
 #define VALID_DIRTY (1U << 31)
@@ -83,12 +85,13 @@ struct page_cache_d_t {
 template <typename T>
 struct range_d_t {
     uint64_t index_start;
-    uint64_t index_end;
+    uint64_t count;
     uint64_t range_id;
     uint64_t page_start_offset;
     uint64_t page_size;
     uint64_t page_start;
-    uint64_t page_end;
+    uint64_t page_count;
+    data_dist_t dist;
     uint8_t* src;
 
     simt::atomic<uint64_t, simt::thread_scope_device> access_cnt;
@@ -151,26 +154,27 @@ struct range_t {
 
 
 
-    range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice);
+    range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist = REPLICATE);
 
 
 
 };
 
 template <typename T>
-range_t<T>::range_t(uint64_t is, uint64_t ie, uint64_t ps, uint64_t pe, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice) {
+range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist = REPLICATE) {
     rdt.access_cnt = 0;
     rdt.miss_cnt = 0;
     rdt.hit_cnt = 0;
     rdt.read_io_cnt = 0;
     rdt.index_start = is;
-    rdt.index_end = ie;
+    rdt.count = count;
     //range_id = (c_h->range_count)++;
     rdt.page_start = ps;
-    rdt.page_end = pe;
+    rdt.page_count = pc;
     rdt.page_size = p_size;
     rdt.page_start_offset = pso;
-    size_t s = pe;//(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
+    rdt.dist = dist;
+    size_t s = pc;//(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
 
     cache = (page_cache_d_t*) c_h->d_pc_ptr;
     page_states_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
@@ -359,7 +363,7 @@ struct array_d_t {
         int64_t range = -1;
         int64_t k = 0;
         for (; k < n_ranges; k++) {
-            if ((d_ranges[k].index_start <= i) && (d_ranges[k].index_end > i)) {;
+            if ((d_ranges[k].index_start <= i) && (d_ranges[k].count > i)) {;
                 range = k;
                 break;
             }
