@@ -179,13 +179,13 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     cache = (page_cache_d_t*) c_h->d_pc_ptr;
     page_states_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
     rdt.page_states = (page_states_t) page_states_buff.get();
-    std::vector<padded_struct_pc> ts(s, INVALID);
-    //padded_struct_pc* ts = new padded_struct_pc[s];
-    //for (size_t i = 0; i < s; i++)
-    //    ts[i] = INVALID;
+    //std::vector<padded_struct_pc> ts(s, INVALID);
+    padded_struct_pc* ts = new padded_struct_pc[s];
+    for (size_t i = 0; i < s; i++)
+        ts[i] = INVALID;
     //printf("S value: %llu\n", (unsigned long long)s);
-    cuda_err_chk(cudaMemcpy(rdt.page_states, ts.data(), s * sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
-    //delete ts;
+    cuda_err_chk(cudaMemcpy(rdt.page_states, ts, s * sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
+    delete ts;
 
     page_addresses_buff = createBuffer(s * sizeof(uint32_t), cudaDevice);
     rdt.page_addresses = (uint32_t*) page_addresses_buff.get();
