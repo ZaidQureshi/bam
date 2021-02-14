@@ -532,12 +532,12 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     uint64_t index = pg;
     uint32_t expected_state = VALID;
     uint32_t new_state = USE;
-    uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
+    //uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
     //access_cnt.fetch_add(count, simt::memory_order_relaxed);
     access_cnt.fetch_add(1, simt::memory_order_relaxed);
     bool fail = true;
-    bool miss = false;
-    T ret;
+    //bool miss = false;
+    //T ret;
     do {
         bool pass = false;
         expected_state = page_states[index].load(simt::memory_order_acquire);
@@ -571,8 +571,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                 if (pass) {
                     uint32_t page_trans = cache.find_slot(index, range_id);
                     //fill in
-                    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-                    uint32_t sm_id = get_smid();
+                    //uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+                    //uint32_t sm_id = get_smid();
                     //uint32_t ctrl = (tid/32) % (cache.n_ctrls);
                     //uint32_t ctrl = sm_id % (cache.n_ctrls);
                     //uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
@@ -630,7 +630,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         }
 
     } while (fail);
-    //return ret;
+    return 0;
 }
 
 
@@ -682,15 +682,15 @@ struct array_d_t {
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
-            uint64_t p_s = d_ranges[r].page_size;
+            //uint64_t p_s = d_ranges[r].page_size;
 
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = __match_any_sync(__activemask(), gaddr);
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
-            bool memcpyflag_master;
-            bool memcpyflag;
+            //bool memcpyflag_master;
+            //bool memcpyflag;
             uint32_t count = __popc(eq_mask);
             if (master == lane) {
                 //std::pair<uint64_t, bool> base_memcpyflag;
