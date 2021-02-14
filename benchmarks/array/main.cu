@@ -40,83 +40,12 @@ const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2
 
 
 __global__
-void new_kernel(ulonglong4* dst, ulonglong4* src, size_t num) {
-    warp_memcpy<ulonglong4>(dst, src, num);
-
-}
-/*
-__device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
-    nvm_cmd_t cmd;
-    uint16_t cid = get_cid(&(qp->sq));
-    //printf("cid: %u\n", (unsigned int) cid);
-
-
-    nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) threadIdx.x, (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
-    nvm_cmd_data_ptr(&cmd, prp1, prp2);
-    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    sq_dequeue(&qp->sq, sq_pos);
-    cq_dequeue(&qp->cq, cq_pos);
-
-
-    put_cid(&qp->sq, cid);
-
-
-}
-
-*/
-__global__
-void access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread) {
-    //printf("in threads\n");
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    uint32_t bid = blockIdx.x;
-    uint32_t smid = get_smid();
-
-    uint32_t ctrl = (tid/32) % (num_ctrls);
-    uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
-
-
-    if (tid < n_reqs) {
-        uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-        //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-        //start_block = tid;
-        uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-        //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
-
-        for (size_t i = 0; i < reqs_per_thread; i++)
-            read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //__syncthreads();
-        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
-        //printf("tid: %llu finished\n", (unsigned long long) tid);
-
-    }
-
-}
-__global__
 void sequential_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t reqs_per_thread) {
 
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         for (size_t i = 0; i < reqs_per_thread; i++)
-            req_count += dr->seq_read(tid);
+            req_count += (*dr)[(tid)];
 
     }
 
@@ -128,7 +57,7 @@ void random_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned lon
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         for (size_t i = 0; i < reqs_per_thread; i++)
-            req_count += dr->seq_read(assignment[tid]);
+            req_count += (*dr)[(assignment[tid])];
 
     }
 
