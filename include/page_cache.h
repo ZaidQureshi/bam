@@ -685,7 +685,8 @@ struct array_d_t {
             //uint64_t p_s = d_ranges[r].page_size;
 
             uint32_t active_cnt = __popc(mask);
-            uint32_t eq_mask = __match_any_sync(__activemask(), gaddr);
+            uint32_t eq_mask = __match_any_sync(mask, gaddr);
+            eq_mask &= __match_any_sync(mask, this);
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
@@ -738,7 +739,8 @@ struct array_d_t {
             uint64_t p_s = d_ranges[r].page_size;
 
             uint32_t active_cnt = __popc(mask);
-            uint32_t eq_mask = __match_any_sync(__activemask(), gaddr);
+            uint32_t eq_mask = __match_any_sync(mask, gaddr);
+            eq_mask &= __match_any_sync(mask, this);
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
