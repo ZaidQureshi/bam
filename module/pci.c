@@ -256,7 +256,7 @@ static int add_pci_dev(struct pci_dev* dev, const struct pci_device_id* id)
 static void remove_pci_dev(struct pci_dev* dev)
 {
     struct ctrl* ctrl = NULL;
-
+    printk(KERN_DEBUG DRIVER_NAME "Starting remove_pci_dev\n");
     if (dev == NULL)
     {
         printk(KERN_WARNING "Remove controller device was invoked with NULL\n");
@@ -367,7 +367,7 @@ static void __exit libnvm_helper_exit(void)
     {
         printk(KERN_NOTICE "%lu host memory mappings were still in use on unload\n", remaining);
     }
-
+    printk(KERN_DEBUG DRIVER_NAME " Before pci_unregister_driver\n");
     pci_unregister_driver(&driver);
     class_destroy(dev_class);
     unregister_chrdev_region(dev_first, num_ctrls);
