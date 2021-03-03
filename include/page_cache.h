@@ -686,7 +686,7 @@ struct array_d_t {
 
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = __match_any_sync(mask, gaddr);
-            eq_mask &= __match_any_sync(mask, this);
+            eq_mask &= __match_any_sync(mask, (uint64_t)this);
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
@@ -740,7 +740,7 @@ struct array_d_t {
 
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = __match_any_sync(mask, gaddr);
-            eq_mask &= __match_any_sync(mask, this);
+            eq_mask &= __match_any_sync(mask, (uint64_t)this);
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
