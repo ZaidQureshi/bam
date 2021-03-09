@@ -1,5 +1,9 @@
 #ifndef __BENCHMARK_QUEUEPAIR_H__
 #define __BENCHMARK_QUEUEPAIR_H__
+// #ifndef __CUDACC__
+// #define __device__
+// #define __host__
+// #endif
 
 #include <algorithm>
 #include <cstdint>

@@ -1,5 +1,9 @@
 #ifndef __NVM_PARALLEL_QUEUE_H_
 #define __NVM_PARALLEL_QUEUE_H_
+#ifndef __CUDACC__
+#define __device__
+#define __host__
+#endif
 
 #include "nvm_types.h"
 #include "nvm_util.h"

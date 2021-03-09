@@ -1,5 +1,9 @@
 #ifndef __BENCHMARK_EVENT_H__
 #define __BENCHMARK_EVENT_H__
+// #ifndef __CUDACC__
+// #define __device__
+// #define __host__
+// #endif
 
 #include "cuda.h"
 #include <string>

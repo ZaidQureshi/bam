@@ -2,6 +2,10 @@
 #ifndef __BENCHMARK_CTRL_H__
 #define __BENCHMARK_CTRL_H__
 
+// #ifndef __CUDACC__
+// #define __device__
+// #define __host__
+// #endif
 
 #include <cstdint>
 #include "buffer.h"

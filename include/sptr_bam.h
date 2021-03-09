@@ -1,5 +1,9 @@
 #ifndef __SPTR_H__
 #define __SPTR_H__
+#ifndef __CUDACC__
+#define __device__
+#define __host__
+#endif
 
 #include <iostream> 
 #include <cstdint> 

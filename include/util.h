@@ -1,5 +1,9 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
+#ifndef __CUDACC__
+#define __device__
+#define __host__
+#endif
 
 #include "cuda.h"
 #include "nvm_util.h"

@@ -2,6 +2,11 @@
 #define __BENCHMARK_BUFFER_H__
 
 
+// #ifndef __CUDACC__
+// #define __device__
+// #define __host__
+// #endif
+
 #include <memory>
 #include <cstddef>
 #include <cstdint>
