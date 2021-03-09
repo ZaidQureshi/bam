@@ -799,6 +799,66 @@ struct array_d_t {
     }
 
 
+    __forceinline__
+    __device__
+    T AtomicAdd(const size_t i, const T val) const {
+        uint32_t lane = lane_id();
+        int64_t r = find_range(i);
+
+        T old_val = 0; 
+
+        uint32_t ctrl;
+        uint32_t queue;
+
+        if (r != -1) {
+            uint32_t mask = __activemask();
+            uint32_t leader = __ffs(mask) - 1;
+            if (lane == leader) {
+                page_cache_d_t* pc = &(d_ranges[r].cache);
+                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                queue = pc->d_ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (pc->d_ctrls[ctrl]->n_qps);
+            }
+            ctrl = __shfl_sync(mask, ctrl, leader);
+            queue = __shfl_sync(mask, queue, leader);
+
+            uint64_t page = d_ranges[r].get_page(i);
+            uint64_t subindex = d_ranges[r].get_subindex(i);
+            uint64_t gaddr = d_ranges[r].get_global_address(page);
+            uint64_t p_s = d_ranges[r].page_size;
+
+            uint32_t active_cnt = __popc(mask);
+            uint32_t eq_mask = __match_any_sync(mask, gaddr);
+            eq_mask &= __match_any_sync(mask, (uint64_t)this);
+            int master = __ffs(eq_mask) - 1;
+            uint64_t base_master;
+            uint64_t base;
+            bool memcpyflag_master;
+            bool memcpyflag;
+            uint32_t count = __popc(eq_mask);
+            if (master == lane) {
+                base = d_ranges[r].acquire_page(page, count, true, ctrl, queue);
+                base_master = base;
+            //    printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
+            }
+            base_master = __shfl_sync(eq_mask,  base_master, master);
+
+            //if (threadIdx.x == 63) {
+            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            //}
+            // ((T*)(base_master+subindex))[0] = val;
+            old_val = ((simt::atomic<T, simt::thread_scope_device>*)(base_master+subindex))->fetch_add(val, simt::memory_order_relaxed);
+            __syncwarp(eq_mask);
+            if (master == lane)
+                d_ranges[r].release_page(page, count);
+            __syncwarp(mask);
+        }
+
+        return old_val;
+    }
+
+
+
+
 };
 
 template<typename T>
@@ -934,7 +994,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             //if ((this->page_dirty_start[page].load(simt::memory_order_acquire) == this->page_dirty_end[page].load(simt::memory_order_acquire))) {
 
                             //writeback
-                            uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+                            // uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                             //uint32_t ctrl = (tid/32) % (n_ctrls);
                             //uint32_t ctrl = get_smid() % (n_ctrls);
                             //uint64_t get_backing_ctrl(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist)
@@ -946,7 +1006,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             if (ctrl == ALL_CTRLS) {
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
                                     Controller* c = this->d_ctrls[ctrl];
-                                    uint32_t queue = (tid/32) % (c->n_qps);
+                                    // uint32_t queue = (tid/32) % (c->n_qps);
                                     write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                                 }
                             }
