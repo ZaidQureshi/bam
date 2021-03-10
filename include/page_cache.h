@@ -850,7 +850,7 @@ struct array_d_t {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             // ((T*)(base_master+subindex))[0] = val;
-            old_val = ((simt::atomic<T, simt::thread_scope_device>*)(base_master+subindex))->fetch_add(val, simt::memory_order_relaxed);
+            old_val = atomicAdd((T*)(base_master+subindex), val);
             __syncwarp(eq_mask);
             if (master == lane)
                 d_ranges[r].release_page(page, count);
