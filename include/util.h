@@ -2,7 +2,7 @@
 #define __UTIL_H__
 
 
-#endif
+
 
 #include "cuda.h"
 #include "nvm_util.h"
