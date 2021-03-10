@@ -1,9 +1,8 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
-//#ifndef __CUDACC__
-//#define __device__
-//#define __host__
-//#endif
+
+
+#endif
 
 #include "cuda.h"
 #include "nvm_util.h"
@@ -26,7 +25,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=f
 #ifndef HEXDUMP_COLS
 #define HEXDUMP_COLS 16
 #endif
-__device__ void hexdump(void *mem, unsigned int len)
+inline __device__ void hexdump(void *mem, unsigned int len)
 {
         unsigned int i;
 
@@ -76,7 +75,7 @@ void __ignore(T &&)
 { }
 /*warp memcpy, assumes alignment at type T and num is a count in type T*/
 template <typename T>
-__device__
+inline __device__
 void warp_memcpy(T* dest, const T* src, size_t num) {
         uint32_t mask = __activemask();
         uint32_t active_cnt = __popc(mask);

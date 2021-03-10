@@ -146,7 +146,7 @@ static void getDeviceMemory2(int device, void*& bufferPtr, size_t size)
 
 
 
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
+inline DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
 {
     nvm_dma_t* dma = nullptr;
     void* buffer = nullptr;
@@ -181,7 +181,7 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
 
 
 
-DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
+inline DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
 {
     if (cudaDevice < 0)
     {
@@ -221,7 +221,7 @@ DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size, int cudaDevice)
 
 
 
-BufferPtr createBuffer(size_t size)
+inline BufferPtr createBuffer(size_t size)
 {
     void* buffer = nullptr;
 
@@ -239,7 +239,7 @@ BufferPtr createBuffer(size_t size)
 
 
 
-BufferPtr createBuffer(size_t size, int cudaDevice)
+inline BufferPtr createBuffer(size_t size, int cudaDevice)
 {
     if (cudaDevice < 0)
     {

@@ -14,7 +14,7 @@ struct Event
 {
     cudaEvent_t event;
 
-    Event(cudaStream_t stream = 0)
+    inline Event(cudaStream_t stream = 0)
     {
         auto err = cudaEventCreateWithFlags(&event, cudaEventDefault);
         if (err != cudaSuccess)
@@ -31,13 +31,13 @@ struct Event
     }
 
 
-    ~Event()
+    inline ~Event()
     {
         cudaEventDestroy(event);
     }
 
 
-    double operator-(const Event& other) const
+    inline double operator-(const Event& other) const
     {
         float msecs = 0;
         auto err = cudaEventElapsedTime(&msecs, other.event, event);

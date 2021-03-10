@@ -83,7 +83,7 @@ using error = std::runtime_error;
 using std::string;
 
 
-void Controller::print_reset_stats(void) {
+inline void Controller::print_reset_stats(void) {
     cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
     std::cout << "------------------------------------" << std::endl;
     std::cout << std::dec << "# Accesses:\t" << access_counter << std::endl;
@@ -145,7 +145,7 @@ Controller::Controller(uint64_t ctrl_id, uint32_t ns_id, uint32_t)
 
 
 
-Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues)
+inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues)
     : ctrl(nullptr)
     , aq_ref(nullptr)
     , deviceId(cudaDevice)
@@ -200,7 +200,7 @@ Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, ui
 
 
 
-Controller::~Controller()
+inline Controller::~Controller()
 {
     cudaFree(d_qps);
     for (size_t i = 0; i < n_qps; i++) {
@@ -214,21 +214,21 @@ Controller::~Controller()
 
 
 
-void Controller::reserveQueues()
+inline void Controller::reserveQueues()
 {
     reserveQueues(n_sqs, n_cqs);
 }
 
 
 
-void Controller::reserveQueues(uint16_t numSubmissionQueues)
+inline void Controller::reserveQueues(uint16_t numSubmissionQueues)
 {
     reserveQueues(numSubmissionQueues, n_cqs);
 }
 
 
 
-void Controller::reserveQueues(uint16_t numSubs, uint16_t numCpls)
+inline void Controller::reserveQueues(uint16_t numSubs, uint16_t numCpls)
 {
     int status = nvm_admin_request_num_queues(aq_ref, &numSubs, &numCpls);
     if (!nvm_ok(status))

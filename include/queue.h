@@ -53,7 +53,7 @@ struct QueuePair
 #define MAX_SQ_ENTRIES_64K  (64*1024/64)
 #define MAX_CQ_ENTRIES_64K  (64*1024/16)
 
-    void init_gpu_specific_struct( const uint32_t cudaDevice) {
+    inline void init_gpu_specific_struct( const uint32_t cudaDevice) {
         this->sq_tickets = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
         this->sq_head_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
         this->sq_tail_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
@@ -80,7 +80,7 @@ struct QueuePair
 
 
 
-    QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth)
+    inline QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth)
     {
         //this->this = (QueuePairThis*) malloc(sizeof(QueuePairThis));
 

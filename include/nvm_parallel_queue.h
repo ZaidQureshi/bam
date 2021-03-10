@@ -17,7 +17,7 @@ __forceinline__ __device__ uint64_t get_id(uint64_t x, uint64_t y) {
 
 
 
-__device__
+inline __device__
 uint16_t get_cid(nvm_queue_t* sq) {
     bool not_found = true;
     uint16_t id;
@@ -36,12 +36,12 @@ uint16_t get_cid(nvm_queue_t* sq) {
 
 }
 
-__device__
+inline __device__
 void put_cid(nvm_queue_t* sq, uint16_t id) {
     sq->cid[id].val.store(UNLOCKED, simt::memory_order_release);
 }
 
-__device__
+inline __device__
 uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
     uint32_t count = 0;
 
@@ -56,7 +56,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
     return (count-1);
 }
 
-__device__
+inline __device__
 uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head) {
     uint32_t count = 0;
 
@@ -74,7 +74,7 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head) {
 
 }
 
-__device__
+inline __device__
 uint32_t move_head_sq(nvm_queue_t* q, uint32_t in_cur_head) {
     uint32_t count = 0;
     uint32_t cur_head = q->head.load(simt::memory_order_acquire);
@@ -97,7 +97,7 @@ uint32_t move_head_sq(nvm_queue_t* q, uint32_t in_cur_head) {
     return (count-1);
 
 }
-__device__
+inline __device__
 uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
     //uint32_t mask = __activemask();
@@ -191,7 +191,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
 }
 
-__device__
+inline __device__
 void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 
     sq->head_mark[pos].val.store(LOCKED, simt::memory_order_release);
@@ -219,7 +219,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 
 }
 
-__device__
+inline __device__
 uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
     uint64_t j = 0;
     //uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -258,7 +258,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
     }
 }
 
-__device__
+inline __device__
 void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
 
     //uint32_t pos = cq_poll(cq, cid);
