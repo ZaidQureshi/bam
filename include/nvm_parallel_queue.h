@@ -123,12 +123,16 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                    (unsigned long long) threadIdx.x, (unsigned long long) pos,
                    (unsigned long long)ticket, (unsigned long long)id, (unsigned long long) (sq->tickets[pos].val.load(simt::memory_order_acquire)),
                    (unsigned long long)(sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1)), (unsigned long long)(sq->tail.load(simt::memory_order_acquire) & (sq->qs_minus_1)));
-        }*/
+                   }*/
+#if __CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)
         __nanosleep(100);
+#endif
     }
 
     while (((pos+1) & sq->qs_minus_1) == (sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1))) {
+#if __CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)
         __nanosleep(100);
+#endif
     }
 
     volatile nvm_cmd_t* queue_loc = ((volatile nvm_cmd_t*)(sq->vaddr)) + pos;
@@ -248,8 +252,9 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             //__nanosleep(1000);
         }
         j++;
-
+#if __CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)
         __nanosleep(100);
+#endif
     }
 }
 
