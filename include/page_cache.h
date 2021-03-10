@@ -998,7 +998,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             //if ((this->page_dirty_start[page].load(simt::memory_order_acquire) == this->page_dirty_end[page].load(simt::memory_order_acquire))) {
 
                             //writeback
-                            // uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+                            uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
                             //uint32_t ctrl = (tid/32) % (n_ctrls);
                             //uint32_t ctrl = get_smid() % (n_ctrls);
                             //uint64_t get_backing_ctrl(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist)
@@ -1010,7 +1010,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             if (ctrl == ALL_CTRLS) {
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
                                     Controller* c = this->d_ctrls[ctrl];
-                                    // uint32_t queue = (tid/32) % (c->n_qps);
+                                    uint32_t queue = (tid/32) % (c->n_qps);
                                     write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                                 }
                             }
