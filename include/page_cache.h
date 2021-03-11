@@ -771,10 +771,6 @@ struct array_d_t {
     __forceinline__
     __device__
     T operator[](size_t i) const {
-        uint64_t tid  = threadIdx.x + blockIdx.x * blockDim.x;
-        if (tid == 0) {
-            printf("inside reading\n");
-        }
         return seq_read(i);
         // size_t k = 0;
         // bool found = false;
