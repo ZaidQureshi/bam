@@ -25,7 +25,9 @@
 //   }
 // }
 
-enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31), VALID = 0U, INVALID = (UINT_MAX & 0x7fffffff), BUSY = ((UINT_MAX & 0x7fffffff)-1)};
+enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31),
+    VALID = 0U, INVALID = (UINT_MAX & 0x7fffffff),
+    BUSY = ((UINT_MAX & 0x7fffffff)-1)};
 
 enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 
@@ -33,8 +35,8 @@ enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 #define USE_DIRTY ((1U << 31) | 1)
 #define VALID_DIRTY (1U << 31)
 #define VALID (0U)
-#define INVALID (UINT_MAX & 0x7fffffff)
-#define BUSY ((UINT_MAX & 0x7fffffff)-1)
+#define INVALID (UINT_MAX & 0xffffffff)
+#define BUSY ((UINT_MAX & 0xffffffff)-1)
 
 #define ALL_CTRLS 0xffffffffffffffff
 
@@ -1006,7 +1008,9 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
                             //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
                             uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-
+                            printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                                   (unsigned long long) previous_range, (unsigned long long)previous_address,
+                                   (unsigned long long) ctrl, (unsigned long long) index);
                             if (ctrl == ALL_CTRLS) {
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
                                     Controller* c = this->d_ctrls[ctrl];
@@ -1020,6 +1024,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                                 uint32_t queue = (tid/32) % (c->n_qps);
 
                                 //index = ranges_page_starts[previous_range] + previous_address;
+
 
                                 write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                             }
