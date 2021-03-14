@@ -1008,9 +1008,9 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id) {
                             uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
                             //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
                             uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-                            printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
-                                   (unsigned long long) previous_range, (unsigned long long)previous_address,
-                                   (unsigned long long) ctrl, (unsigned long long) index);
+                            // printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                            //        (unsigned long long) previous_range, (unsigned long long)previous_address,
+                            //        (unsigned long long) ctrl, (unsigned long long) index);
                             if (ctrl == ALL_CTRLS) {
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
                                     Controller* c = this->d_ctrls[ctrl];
