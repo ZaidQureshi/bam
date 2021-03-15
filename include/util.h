@@ -34,7 +34,7 @@ inline __device__ void hexdump(void *mem, unsigned int len)
                 /* print offset */
                 if(i % HEXDUMP_COLS == 0)
                 {
-                        printf("0x%06x: ", i);
+                        printf("\n0x%06x: ", i);
                 }
 
                 /* print hex data */
