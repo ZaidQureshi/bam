@@ -831,8 +831,7 @@ struct array_d_t {
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
 
-            printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\n",
-                   (unsigned long long) tid, (unsigned long long) page, (unsigned long long) subindex);
+
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             uint64_t p_s = d_ranges[r].page_size;
 
@@ -857,6 +856,9 @@ struct array_d_t {
             //}
             // ((T*)(base_master+subindex))[0] = val;
             old_val = atomicAdd((T*)(base_master+subindex), val);
+            printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\tval: %llu\told_val: %llu\tbase_master: %llx\n",
+                   (unsigned long long) tid, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) val,
+                (unsigned long long) old_val, (unsigned long long) base_master);
             __syncwarp(eq_mask);
             if (master == lane)
                 d_ranges[r].release_page(page, count);

@@ -68,6 +68,7 @@ inline __device__ void hexdump(void *mem, unsigned int len)
 //                        putchar('\n');
 //                }
         }
+        printf("\n");
 }
 
 template <typename T>
