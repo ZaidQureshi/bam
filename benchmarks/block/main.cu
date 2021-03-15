@@ -12,9 +12,11 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
+#include <map>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <ctrl.h>
 #include <buffer.h>
 #include "settings.h"
@@ -26,6 +28,7 @@
 #include <util.h>
 #include <iostream>
 #include <fstream>
+#include <byteswap.h>
 #ifdef __DIS_CLUSTER__
 #include <sisci_api.h>
 #endif
@@ -203,6 +206,32 @@ int main(int argc, char** argv) {
     }
 
     try {
+
+        const char* input_f;
+
+        input_f = settings.input;
+
+        void* map_in;
+        int fd_in;
+        struct stat sb_in;
+
+        if (input_f != nullptr) {
+            if((fd_in = open(input_f, O_RDWR)) == -1){
+                fprintf(stderr, "Input file cannot be opened\n");
+                return 1;
+            }
+
+            fstat(fd_in, &sb_in);
+
+            map_in = mmap(NULL, sb_in.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_in, 0);
+
+            if((map_in == (void*)-1)){
+                fprintf(stderr,"Input file map failed %d\n",map_in);
+                return 1;
+            }
+
+            close(fd_in);
+        }
         //Controller ctrl(settings.controllerPath, settings.nvmNamespace, settings.cudaDevice);
         
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
@@ -299,7 +328,10 @@ int main(int argc, char** argv) {
 
         //cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
         cuda_err_chk(cudaDeviceSynchronize());
-
+        if (input_f != nullptr) {
+            cuda_err_chk(cudaMemcpy(map_in, h_pc.pdt.base_addr,  std::min((uint64_t)sb_in.st_size, total_cache_size), cudaMemcpyDeviceToHost));
+            munmap(map_in, sb_in.st_size);
+        }
 
         double elapsed = after - before;
         uint64_t ios = g_size*b_size*settings.numReqs;

@@ -20,9 +20,6 @@
 #include <getopt.h>
 #include <limits>
 
-#define READ 0
-#define WRITE 1
-#define MIXED 2
 
 struct Settings
 {
@@ -49,11 +46,8 @@ struct Settings
     size_t queueDepth;
     size_t numQueues;
     size_t pageSize;
-    uint64_t numBlks;
+    uint64_t numElems;
     bool random;
-    uint64_t accessType;
-    uint64_t ratio;
-    const char*     input;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -368,7 +362,6 @@ void Settings::parseArguments(int argc, char** argv)
 #else
         //{'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
 #endif
-        {'f', OptionPtr(new Option<const char*>(input, "path", "input", "Input dataset path used to write to NVMe SSD"))},
         {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
         {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
         //{'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
@@ -381,13 +374,11 @@ void Settings::parseArguments(int argc, char** argv)
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "CUDA thread block size", "64"))},
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth per queue", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
-        {'e', OptionPtr(new Range(numBlks, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_blks", "number of pages in backing array", "2097152"))},
+        {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
         {'r', OptionPtr(new Option<bool>(random, "bool", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "true"))},
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
-        //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
-        {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write, 2->mixed", "0"))},
-        {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
+        //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
     };
 
     string optionString;
@@ -479,11 +470,8 @@ Settings::Settings()
     queueDepth = 16;
     numQueues = 1;
     pageSize = 4096;
-    numBlks = 2097152;
+    numElems = 2147483648;
     random = true;
-    accessType = READ;
-    ratio = 100;
-    input = nullptr;
 }
 
 
