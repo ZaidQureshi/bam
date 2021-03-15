@@ -77,34 +77,37 @@ void flush_kernel(page_cache_d_t* cache) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint64_t page = tid;
     if (page < cache->n_pages) {
-        uint32_t previous_global_address = cache->page_translation[page];
-        uint32_t previous_range = previous_global_address & cache->n_ranges_mask;
-        uint32_t previous_address = previous_global_address >> cache->n_ranges_bits;
-        uint32_t expected_state = cache->ranges[previous_range][previous_address].load(simt::memory_order_acquire);
-        if (expected_state == VALID_DIRTY) {
-            uint64_t ctrl = get_backing_ctrl_(previous_address, cache->n_ctrls, cache->ranges_dists[previous_range]);
-            //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-            uint64_t index = get_backing_page_(cache->ranges_page_starts[previous_range], previous_address,
-                                               cache->n_ctrls, cache->ranges_dists[previous_range]);
-            // printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
-            //        (unsigned long long) previous_range, (unsigned long long)previous_address,
-            //        (unsigned long long) ctrl, (unsigned long long) index);
-            if (ctrl == ALL_CTRLS) {
-                for (ctrl = 0; ctrl < cache->n_ctrls; ctrl++) {
+        uint32_t v = this->page_take_lock[page].load(simt::memory_order_acquire);
+        if (v != FREE) {
+            uint32_t previous_global_address = cache->page_translation[page];
+            uint32_t previous_range = previous_global_address & cache->n_ranges_mask;
+            uint32_t previous_address = previous_global_address >> cache->n_ranges_bits;
+            uint32_t expected_state = cache->ranges[previous_range][previous_address].load(simt::memory_order_acquire);
+            if (expected_state == VALID_DIRTY) {
+                uint64_t ctrl = get_backing_ctrl_(previous_address, cache->n_ctrls, cache->ranges_dists[previous_range]);
+                //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+                uint64_t index = get_backing_page_(cache->ranges_page_starts[previous_range], previous_address,
+                                                   cache->n_ctrls, cache->ranges_dists[previous_range]);
+                // printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                //        (unsigned long long) previous_range, (unsigned long long)previous_address,
+                //        (unsigned long long) ctrl, (unsigned long long) index);
+                if (ctrl == ALL_CTRLS) {
+                    for (ctrl = 0; ctrl < cache->n_ctrls; ctrl++) {
+                        Controller* c = cache->d_ctrls[ctrl];
+                        uint32_t queue = (tid/32) % (c->n_qps);
+                        write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
+                    }
+                }
+                else {
+
                     Controller* c = cache->d_ctrls[ctrl];
                     uint32_t queue = (tid/32) % (c->n_qps);
+
+                    //index = ranges_page_starts[previous_range] + previous_address;
+
+
                     write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
                 }
-            }
-            else {
-
-                Controller* c = cache->d_ctrls[ctrl];
-                uint32_t queue = (tid/32) % (c->n_qps);
-
-                //index = ranges_page_starts[previous_range] + previous_address;
-
-
-                write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
             }
         }
 
