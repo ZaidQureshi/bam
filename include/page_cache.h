@@ -1108,7 +1108,8 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
     //printf("cid: %u\n", (unsigned int) cid);
-
+    printf("startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %f\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
+           ((float*)pc->base_addr)[0]);
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
