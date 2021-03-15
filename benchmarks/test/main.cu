@@ -76,6 +76,9 @@ __global__
 void flush_kernel(page_cache_d_t* cache) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint64_t page = tid;
+    if (tid == 0) {
+        hexdump(cache->base_addr, 4096);
+    }
     if (page < cache->n_pages) {
         uint32_t v = cache->page_take_lock[page].load(simt::memory_order_acquire);
         if (v != FREE) {
