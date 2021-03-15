@@ -77,7 +77,7 @@ void flush_kernel(page_cache_d_t* cache) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint64_t page = tid;
     if (page < cache->n_pages) {
-        uint32_t v = this->page_take_lock[page].load(simt::memory_order_acquire);
+        uint32_t v = cache->page_take_lock[page].load(simt::memory_order_acquire);
         if (v != FREE) {
             uint32_t previous_global_address = cache->page_translation[page];
             uint32_t previous_range = previous_global_address & cache->n_ranges_mask;
