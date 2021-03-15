@@ -808,6 +808,7 @@ struct array_d_t {
     __forceinline__
     __device__
     T AtomicAdd(const size_t i, const T val) const {
+        uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
 
@@ -829,6 +830,9 @@ struct array_d_t {
 
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
+
+            printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\n",
+                   (unsigned long long) tid, (unsigned long long) page, (unsigned long long) subindex);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             uint64_t p_s = d_ranges[r].page_size;
 
@@ -1108,8 +1112,8 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
     //printf("cid: %u\n", (unsigned int) cid);
-    printf("startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %u\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
-           (unsigned) (((uint32_t*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
+    printf("startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
+           (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
