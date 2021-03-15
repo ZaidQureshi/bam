@@ -64,10 +64,10 @@ void random_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned lon
 }
 
 __global__
-void write_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs) {
+void write_kernel(array_d_t<unsigned>* dr, uint64_t n_reqs) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
-        dr->AtomicAdd(tid * (dr->d_ranges[0].page_size/sizeof(unsigned int)), (unsigned int)(tid+1));
+        dr->AtomicAdd(tid * (dr->d_ranges[0].page_size/sizeof(unsigned)), (unsigned)(tid+1));
 
     }
 }
@@ -182,13 +182,13 @@ int main(int argc, char** argv) {
         uint64_t n_elems = settings.numElems;
         uint64_t t_size = n_elems * sizeof(TYPE);
 
-        range_t<unsigned int> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
-        range_t<unsigned int>* d_range = (range_t<unsigned int>*) h_range.d_range_ptr;
+        range_t<unsigned> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
+        range_t<unsigned>* d_range = (range_t<unsigned>*) h_range.d_range_ptr;
 
-        std::vector<range_t<unsigned int>*> vr(1);
+        std::vector<range_t<unsigned>*> vr(1);
         vr[0] = & h_range;
         //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
-        array_t<unsigned int> a(n_elems, 0, vr, settings.cudaDevice);
+        array_t<unsigned> a(n_elems, 0, vr, settings.cudaDevice);
 
 
         std::cout << "finished creating range\n";
