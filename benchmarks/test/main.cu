@@ -67,7 +67,7 @@ __global__
 void write_kernel(array_d_t<float>* dr, uint64_t n_reqs) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
-        dr->AtomicAdd(tid * (dr->d_ranges[0].page_size/sizeof(float)), tid);
+        dr->AtomicAdd(tid * (dr->d_ranges[0].page_size/sizeof(float)), tid+1);
 
     }
 }
