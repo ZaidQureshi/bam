@@ -259,6 +259,7 @@ int main(int argc, char** argv) {
             //     if (assignment[i] >= n_threads)
             //         std::cout <<std::dec << "i : " << i << " val: " << assignment[i] << std::endl;
             // }
+            std::cout << std::dec << "max elem: " << *std::max_element(assignment.begin(), assignment.end()) << std::endl;
             std::shuffle(assignment.begin(), assignment.end(), std::mt19937{std::random_device{}()});
             std::cout << "Finished shuffle\n";
 
