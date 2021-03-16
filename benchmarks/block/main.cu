@@ -41,7 +41,7 @@ using std::string;
 //uint32_t n_ctrls = 1;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 
-#define SIZE 4096
+#define SIZE (8*4096)
 
 __global__
 void print_cache_kernel(page_cache_d_t* pc) {
