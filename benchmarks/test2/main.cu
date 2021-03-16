@@ -247,12 +247,17 @@ int main(int argc, char** argv) {
         if (settings.random) {
             std::vector<uint64_t> assignment(n_threads);
             std::iota(assignment.begin(), assignment.end(), 0);
+            for (size_t i = 0; i < assignment.size(); i++) {
+                if (assignment[i] >= n_threads)
+                    std::cout << "i : " << i << " val: " << assignment[i] << std::endl;
+            }
             std::shuffle(assignment.begin(), assignment.end(), std::mt19937{std::random_device{}()});
 
 
             cuda_err_chk(cudaMallocManaged(&d_assignment, n_threads*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_assignment, assignment.data(),  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
         }
+        return 1;
         Event before;
         //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
         if (settings.random)
