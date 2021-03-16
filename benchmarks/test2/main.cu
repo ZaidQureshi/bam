@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
         //uint64_t* assignment;
         uint64_t* d_assignment;
         if (settings.random) {
-            std::vector<uint64_t> assignment(n_threads, 0);
+            std::vector<uint64_t> assignment(n_threads);
             uint64_t start = 0;
             std::iota(assignment.begin(), assignment.end(), start);
             for (size_t i = 0; i < assignment.size(); i++) {
