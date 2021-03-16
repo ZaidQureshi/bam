@@ -249,16 +249,18 @@ int main(int argc, char** argv) {
         if (settings.random) {
             std::vector<uint64_t> assignment(n_threads);
             uint64_t start = 0;
-            //std::iota(assignment.begin(), assignment.end(), start);
-            for (size_t i = 0; i < assignment.size(); i++) {
-                assignment[i] = start++;
-            }
-            for (size_t i = 0; i < assignment.size(); i++) {
-                if (assignment[i] >= n_threads)
-                    std::cout <<std::dec << "i : " << i << " val: " << assignment[i] << std::endl;
-            }
+            std::iota(assignment.begin(), assignment.end(), start);
+            std::cout << "Finished iota\n";
+            // for (size_t i = 0; i < assignment.size(); i++) {
+            //     assignment[i] = start++;
+            // }
+            std::cout <<std::dec << "last vec elem i : " << assignment.size()-1 << " val: " << assignment[assignment.size()-1] << std::endl;
+            // for (size_t i = 0; i < assignment.size(); i++) {
+            //     if (assignment[i] >= n_threads)
+            //         std::cout <<std::dec << "i : " << i << " val: " << assignment[i] << std::endl;
+            // }
             std::shuffle(assignment.begin(), assignment.end(), std::mt19937{std::random_device{}()});
-
+            std::cout << "Finished shuffle\n";
 
             cuda_err_chk(cudaMallocManaged(&d_assignment, n_threads*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_assignment, assignment.data(),  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
