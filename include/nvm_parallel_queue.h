@@ -243,8 +243,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             /*            (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire)); */
 
             if ((cid == search_cid) && (phase == search_phase)){
-                 /* if ((cpl_entry >> 17) != 0) */
-                 /*     printf("NVM Error: %llx\ttid: %llu\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) tid, (unsigned long long) search_cid); */
+                 if ((cpl_entry >> 17) != 0)
+                     printf("NVM Error: %llx\ttid: %llu\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) tid, (unsigned long long) search_cid);
                 return loc;
             }
             if (phase != search_phase)
