@@ -327,6 +327,7 @@ if (CUDA_FOUND AND NOT no_cuda)
   add_subdirectory ("${benchmarks_root}/sssp")
   add_subdirectory ("${benchmarks_root}/sssp_float")
   add_subdirectory ("${benchmarks_root}/test")
+  add_subdirectory ("${benchmarks_root}/test2")
   add_custom_target (benchmarks DEPENDS ${benchmark_targets})
 endif ()
 
