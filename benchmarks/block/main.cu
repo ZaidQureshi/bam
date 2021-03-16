@@ -41,6 +41,16 @@ using std::string;
 //uint32_t n_ctrls = 1;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 
+#define SIZE 4096
+
+__global__
+void print_cache_kernel(page_cache_d_t* pc) {
+    uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid == 0) {
+        hexdump(pc->base_addr, SIZE);
+    }
+}
 
 __global__
 void new_kernel(ulonglong4* dst, ulonglong4* src, size_t num) {
@@ -323,6 +333,8 @@ int main(int argc, char** argv) {
         else
             sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
         Event after;
+
+        print_cache_kernel<<<1,1>>>(d_pc);
         //new_kernel<<<1,1>>>();
         //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
