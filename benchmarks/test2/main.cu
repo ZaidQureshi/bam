@@ -262,8 +262,11 @@ int main(int argc, char** argv) {
         //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
         if (settings.random)
             random_access_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, d_req_count, d_assignment, settings.numReqs, f_in_d);
+        cuda_err_chk(cudaDeviceSynchronize());
+        std::cout << "Finished Random access kernel\n";
+
         flush_kernel<<<n_pages, 1>>>(d_pc);
-        Event after;
+
         //new_kernel<<<1,1>>>();
         //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);
 
@@ -271,7 +274,7 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaDeviceSynchronize());
 
 
-        double elapsed = after - before;
+        double elapsed = 0;
         uint64_t ios = g_size*b_size*settings.numReqs;
         uint64_t data = ios*sizeof(uint64_t);
         double iops = ((double)ios)/(elapsed/1000000);
