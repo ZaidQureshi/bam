@@ -242,12 +242,17 @@ int main(int argc, char** argv) {
         char st[15];
         cuda_err_chk(cudaDeviceGetPCIBusId(st, 15, settings.cudaDevice));
         std::cout << st << std::endl;
+        std::cout << std::dec << "File Size: " << t_size << " Num Elems In File: " <<
+            (t_size/sizeof(TYPE)) << " Num elems in vec: " << n_threads << std::endl;
         //uint64_t* assignment;
         uint64_t* d_assignment;
         if (settings.random) {
             std::vector<uint64_t> assignment(n_threads);
             uint64_t start = 0;
-            std::iota(assignment.begin(), assignment.end(), start);
+            //std::iota(assignment.begin(), assignment.end(), start);
+            for (size_t i = 0; i < assignment.size(); i++) {
+                assignment[i] = start++;
+            }
             for (size_t i = 0; i < assignment.size(); i++) {
                 if (assignment[i] >= n_threads)
                     std::cout <<std::dec << "i : " << i << " val: " << assignment[i] << std::endl;
