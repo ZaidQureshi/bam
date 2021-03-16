@@ -103,7 +103,7 @@ void random_access_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs, unsigned
         for (size_t i = 0; i < reqs_per_thread; i++)
             uint64_t idx = assignment[tid];
             dr->AtomicAdd(idx, f_in[idx]);
-            req_count += (*dr)[(assignment[tid])];
+
 
     }
 
@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
-        page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
+        page_cache_d_t* d_pc = (h_pc.d_pc_ptr);
 
 
         range_t<unsigned int> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)((t_size+page_size-1)/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
