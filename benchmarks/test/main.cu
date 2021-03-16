@@ -64,10 +64,10 @@ void random_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned lon
 }
 
 __global__
-void write_kernel(array_d_t<unsigned>* dr, uint64_t n_reqs) {
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+void write_kernel(array_d_t<unsigned>* dr, uint64_t n_reqs, uint64_t start = 0) {
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x + start;
     if (tid < n_reqs) {
-        dr->AtomicAdd(tid * (dr->d_ranges[0].page_size/sizeof(unsigned)), (unsigned)(tid+1));
+        dr->AtomicAdd(tid * (dr->d_ranges[0].page_size/sizeof(unsigned)), 1);
 
     }
 }
@@ -206,7 +206,9 @@ int main(int argc, char** argv) {
 
         Event before;
         //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
-        write_kernel<<<g_size, b_size>>>(a.d_array_ptr, settings.numThreads);
+        write_kernel<<<g_size, b_size>>>(a.d_array_ptr, 6, 0);
+        write_kernel<<<g_size, b_size>>>(a.d_array_ptr, 10, 4);
+        write_kernel<<<g_size, b_size>>>(a.d_array_ptr, 8, 2);
         flush_kernel<<<n_pages, 1>>>(d_pc);
         Event after;
         //new_kernel<<<1,1>>>();
