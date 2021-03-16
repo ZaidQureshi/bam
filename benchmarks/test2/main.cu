@@ -188,7 +188,7 @@ int main(int argc, char** argv) {
 
         unsigned int* f_in_d;
         cuda_err_chk(cudaHostRegister(map_in, t_size, cudaHostRegisterDefault));
-        cuda_err-chk(cudaHostGetDevicePointer(&f_in_d, map_in, 0));
+        cuda_err_chk(cudaHostGetDevicePointer(&f_in_d, map_in, 0));
 
         std::vector<Controller*> ctrls(settings.n_ctrls);
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
