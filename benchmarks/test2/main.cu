@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
         #define TYPE unsigned long long int
-        uint64_t n_elems = settings.numElems;
+        uint64_t n_elems = settings.numThreads;
         uint64_t t_size = n_elems * sizeof(TYPE);
         const char* input_f;
 
@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
             std::iota(assignment.begin(), assignment.end(), 0);
             for (size_t i = 0; i < assignment.size(); i++) {
                 if (assignment[i] >= n_threads)
-                    std::cout << "i : " << i << " val: " << assignment[i] << std::endl;
+                    std::cout <<std::dec << "i : " << i << " val: " << assignment[i] << std::endl;
             }
             std::shuffle(assignment.begin(), assignment.end(), std::mt19937{std::random_device{}()});
 
