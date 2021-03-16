@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
             //         std::cout <<std::dec << "i : " << i << " val: " << assignment[i] << std::endl;
             // }
             std::cout << std::dec << "max elem: " << *std::max_element(assignment.begin(), assignment.end()) << std::endl;
-            std::shuffle(assignment.begin(), assignment.end(), std::mt19937{std::random_device{}()});
+            std::shuffle(assignment.begin(), assignment.end(), std::mt19937_64{std::random_device{}()});
             std::cout << "Finished shuffle\n";
 
             cuda_err_chk(cudaMallocManaged(&d_assignment, n_threads*sizeof(uint64_t)));
