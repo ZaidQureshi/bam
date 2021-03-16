@@ -27,6 +27,17 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <algorithm>
+#include <iostream>
+#include <list>
+#include <numeric>
+#include <random>
+#include <vector>
+#include <map>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #ifdef __DIS_CLUSTER__
 #include <sisci_api.h>
 #endif
@@ -100,9 +111,10 @@ void random_access_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs, unsigned
 
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
-        for (size_t i = 0; i < reqs_per_thread; i++)
+        for (size_t i = 0; i < reqs_per_thread; i++) {
             uint64_t idx = assignment[tid];
             dr->AtomicAdd(idx, f_in[idx]);
+        }
 
 
     }
