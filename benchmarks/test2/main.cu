@@ -95,7 +95,7 @@ void flush_kernel(page_cache_d_t* cache) {
     }
 }
 __global__
-void sequential_access_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t reqs_per_thread) {
+void sequential_access_kernel(array_d_t<unsigned long long int>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t reqs_per_thread) {
 
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
@@ -107,13 +107,13 @@ void sequential_access_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs, unsi
 }
 
 __global__
-void random_access_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment, uint64_t reqs_per_thread, unsigned int* f_in) {
+void random_access_kernel(array_d_t<unsigned long long int>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment, uint64_t reqs_per_thread, unsigned long long int* f_in) {
 
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         for (size_t i = 0; i < reqs_per_thread; i++) {
             uint64_t idx = assignment[tid];
-            unsigned int v = f_in[idx];
+            unsigned long long int v = f_in[idx];
             dr->AtomicAdd(idx, v);
         }
 
@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
         uint64_t page_size = settings.pageSize;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
-        #define TYPE unsigned int
+        #define TYPE unsigned long long int
         uint64_t n_elems = settings.numElems;
         uint64_t t_size = n_elems * sizeof(TYPE);
         const char* input_f;
@@ -187,7 +187,7 @@ int main(int argc, char** argv) {
 
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
 
-        unsigned int* f_in_d;
+        unsigned long long int* f_in_d;
         cuda_err_chk(cudaHostRegister(map_in, t_size, cudaHostRegisterDefault));
         cuda_err_chk(cudaHostGetDevicePointer(&f_in_d, map_in, 0));
 
@@ -221,13 +221,13 @@ int main(int argc, char** argv) {
         page_cache_d_t* d_pc = (h_pc.d_pc_ptr);
 
 
-        range_t<unsigned int> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)((t_size+page_size-1)/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
-        range_t<unsigned int>* d_range = (range_t<unsigned int>*) h_range.d_range_ptr;
+        range_t<unsigned long long int> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)((t_size+page_size-1)/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
+        range_t<unsigned long long int>* d_range = (range_t<unsigned long long int>*) h_range.d_range_ptr;
 
-        std::vector<range_t<unsigned int>*> vr(1);
+        std::vector<range_t<unsigned long long int>*> vr(1);
         vr[0] = & h_range;
         //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
-        array_t<unsigned int> a(n_elems, 0, vr, settings.cudaDevice);
+        array_t<unsigned long long int> a(n_elems, 0, vr, settings.cudaDevice);
 
 
         std::cout << "finished creating range\n";
