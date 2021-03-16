@@ -113,7 +113,8 @@ void random_access_kernel(array_d_t<unsigned int>* dr, uint64_t n_reqs, unsigned
     if (tid < n_reqs) {
         for (size_t i = 0; i < reqs_per_thread; i++) {
             uint64_t idx = assignment[tid];
-            dr->AtomicAdd(idx, f_in[idx]);
+            unsigned int v = f_in[idx];
+            dr->AtomicAdd(idx, v);
         }
 
 
@@ -244,7 +245,7 @@ int main(int argc, char** argv) {
         //uint64_t* assignment;
         uint64_t* d_assignment;
         if (settings.random) {
-            std::vector<unsigned int> assignment(n_threads);
+            std::vector<uint64_t> assignment(n_threads);
             std::iota(assignment.begin(), assignment.end(), 0);
             std::shuffle(assignment.begin(), assignment.end(), std::mt19937{std::random_device{}()});
 
