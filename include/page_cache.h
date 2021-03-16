@@ -856,9 +856,9 @@ struct array_d_t {
             //}
             // ((T*)(base_master+subindex))[0] = val;
             old_val = atomicAdd((T*)(base_master+subindex), val);
-            printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\tval: %llu\told_val: %llu\tbase_master: %llx\n",
-                   (unsigned long long) tid, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) val,
-                (unsigned long long) old_val, (unsigned long long) base_master);
+            // printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\tval: %llu\told_val: %llu\tbase_master: %llx\n",
+            //        (unsigned long long) tid, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) val,
+            //     (unsigned long long) old_val, (unsigned long long) base_master);
             __syncwarp(eq_mask);
             if (master == lane)
                 d_ranges[r].release_page(page, count);
@@ -1114,8 +1114,8 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
     //printf("cid: %u\n", (unsigned int) cid);
-    printf("write_data startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
-           (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
+    // printf("write_data startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
+    //        (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
