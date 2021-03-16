@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMallocManaged(&d_assignment, n_threads*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_assignment, assignment.data(),  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
         }
-        return 1;
+        //return 1;
         Event before;
         //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
         if (settings.random)
