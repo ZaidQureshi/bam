@@ -1,4 +1,4 @@
-make benchmarks
+make benchmarks -j
 sudo ./bin/nvm-readwrite-bench -f /nvme0/graphs/EMOGI/GAP-kron.bel.dst -p $((1024*1024*2)) -t $((1024*1024*2)) -b 128 -i 16  --queue_depth 4096 --num_queues 128 -l $((1024*1024*1024*0)) -o 1
 sudo ./bin/nvm-readwrite-bench -f /nvme0/graphs/EMOGI/GAP-kron.bel.val -p $((1024*1024*2)) -t $((1024*1024*2)) -b 128 -i 16  --queue_depth 4096 --num_queues 128 -l $((1024*1024*1024*32)) -o 1
 sudo ./bin/nvm-readwrite-bench -f /nvme0/graphs/EMOGI/GAP-urand.bel.dst -p $((1024*1024*2)) -t $((1024*1024*2)) -b 128 -i 16  --queue_depth 4096 --num_queues 128 -l $((1024*1024*1024*64)) -o 1
