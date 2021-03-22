@@ -31,12 +31,12 @@ enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31
 
 enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 
-#define USE (1U)
-#define USE_DIRTY ((1U << 31) | 1)
-#define VALID_DIRTY (1U << 31)
-#define VALID (0U)
-#define INVALID (UINT_MAX & 0xffffffff)
-#define BUSY ((UINT_MAX & 0xffffffff)-1)
+#define USE (1ULL)
+#define VALID_DIRTY (1ULL << 31)
+#define USE_DIRTY (VALID_DIRTY | USE)
+#define VALID (0ULL)
+#define INVALID (0xffffffffULL)
+#define BUSY ((0xffffffffULL)-1)
 
 #define ALL_CTRLS 0xffffffffffffffff
 
@@ -540,7 +540,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     uint32_t new_state = USE;
     //uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
     //access_cnt.fetch_add(count, simt::memory_order_relaxed);
-    access_cnt.fetch_add(1, simt::memory_order_relaxed);
+    access_cnt.fetch_add(count, simt::memory_order_relaxed);
     bool fail = true;
     //bool miss = false;
     //T ret;
@@ -549,7 +549,9 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         expected_state = page_states[index].load(simt::memory_order_acquire);
         switch (expected_state) {
             case VALID:
-                new_state = ((write) ? USE_DIRTY : USE) + count - 1;
+                new_state = count;
+                if (write)
+                    new_state |= VALID_DIRTY;
                 pass = page_states[index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                 if (pass) {
                     //uint32_t page_trans = page_addresses[index].load(simt::memory_order_acquire);
@@ -557,7 +559,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
                     //hit_cnt.fetch_add(count, simt::memory_order_relaxed);
-                    hit_cnt.fetch_add(1, simt::memory_order_relaxed);
+                    hit_cnt.fetch_add(count, simt::memory_order_relaxed);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
 
                     //page_states[index].fetch_sub(1, simt::memory_order_release);
@@ -598,8 +600,10 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
                     //miss_cnt.fetch_add(count, simt::memory_order_relaxed);
-                    miss_cnt.fetch_add(1, simt::memory_order_relaxed);
-                    new_state = ((write) ? USE_DIRTY : USE) + count - 1;
+                    miss_cnt.fetch_add(count, simt::memory_order_relaxed);
+                    new_state = count;
+                    if (write)
+                        new_state |= VALID_DIRTY;
                     page_states[index].store(new_state, simt::memory_order_release);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
 
@@ -623,7 +627,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
                     //     __nanosleep(100);
                     //hit_cnt.fetch_add(count, simt::memory_order_relaxed);
-                    hit_cnt.fetch_add(1, simt::memory_order_relaxed);
+                    hit_cnt.fetch_add(count, simt::memory_order_relaxed);
                     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
                     //page_states[index].fetch_sub(1, simt::memory_order_release);
                     fail = false;
