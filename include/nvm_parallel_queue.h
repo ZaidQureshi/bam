@@ -1,12 +1,22 @@
 #ifndef __NVM_PARALLEL_QUEUE_H_
 #define __NVM_PARALLEL_QUEUE_H_
 
-
-#ifndef __CUDACC__
+#ifndef __device__ 
 #define __device__
+#endif 
+#ifndef __host__
 #define __host__
+#endif
+#ifndef __forceinline__  
 #define __forceinline__ inline
 #endif
+
+
+//#ifndef __CUDACC__
+//#define __device__
+//#define __host__
+//#define __forceinline__ inline
+//#endif
 
 #include "host_util.h"
 #include "nvm_types.h"
@@ -297,10 +307,10 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
 
 }
 
-#ifndef __CUDACC__
-#undef __device__
-#undef __host__
-#undef __forceinline__
-#endif
+//#ifndef __CUDACC__
+//#undef __device__
+//#undef __host__
+//#undef __forceinline__
+//#endif
 
 #endif // __NVM_PARALLEL_QUEUE_H_

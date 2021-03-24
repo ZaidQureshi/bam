@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <simt/atomic>
 
-#ifndef __CUDACC__
+#ifndef __align__ 
 #define __align__(x)
 #endif
 
@@ -237,8 +237,8 @@ struct nvm_ns_info
 
 
 
-#ifndef __CUDACC__
-#undef __align__
-#endif
+//#ifndef __CUDACC__
+//#undef __align__
+//#endif
 
 #endif /* __NVM_TYPES_H__ */

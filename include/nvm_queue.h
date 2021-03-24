@@ -1,8 +1,10 @@
 #ifndef __NVM_QUEUE_H__
 #define __NVM_QUEUE_H__
 
-#ifndef __CUDACC__
+#ifndef __device__ 
 #define __device__
+#endif 
+#ifndef __host__
 #define __host__
 #endif
 
@@ -284,9 +286,9 @@ void nvm_cq_update(nvm_queue_t* cq)
 }
 
 
-#ifndef __CUDACC__
-#undef __device__
-#undef __host__
-#endif
+//#ifndef __CUDACC__
+//#undef __device__
+//#undef __host__
+//#endif
 
 #endif /* __NVM_QUEUE_H__ */
