@@ -70,7 +70,7 @@ int nvm_dma_map_host(nvm_dma_t** map, const nvm_ctrl_t* ctrl, void* vaddr, size_
 
 
 
-#if ( defined( __CUDA__ ) || defined( __CUDACC__ ) )
+//#if ( defined( __CUDA__ ) || defined( __CUDACC__ ) )
 
 /*
  * Create DMA mapping descriptor from CUDA device pointer using the kernel
@@ -84,7 +84,7 @@ int nvm_dma_map_host(nvm_dma_t** map, const nvm_ctrl_t* ctrl, void* vaddr, size_
  */
 int nvm_dma_map_device(nvm_dma_t** map, const nvm_ctrl_t* ctrl, void* devptr, size_t size);
 
-#endif /* __CUDA__ */
+//#endif /* __CUDA__ */
 
 
 
