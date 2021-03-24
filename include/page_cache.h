@@ -1,11 +1,15 @@
 #ifndef __PAGE_CACHE_H__
 #define __PAGE_CACHE_H__
-// #ifndef __CUDACC__
-// #define __device__
-// #define __host__
-// #endif
+
+
+#ifndef __CUDACC__
+#define __device__
+#define __host__
+#define __forceinline__ inline
+#endif
 
 #include "util.h"
+#include "host_util.h"
 #include "nvm_types.h"
 #include "nvm_util.h"
 #include "buffer.h"
@@ -1178,6 +1182,12 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
 }
 
 
+
+#ifndef __CUDACC__
+#undef __device__
+#undef __host__
+#undef __forceinline__
+#endif
 
 
 #endif // __PAGE_CACHE_H__

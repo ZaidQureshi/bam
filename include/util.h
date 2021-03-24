@@ -1,15 +1,35 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 
+#ifndef __CUDACC__
+#define __device__
+#define __host__
+#define __forceinline__ inline
+#endif
+
 
 
 
 #include "cuda.h"
 #include "nvm_util.h"
+#include "host_util.h"
 //#include <ctype>
 #include <cstdio>
 
+
 #define cuda_err_chk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+
+#ifndef __CUDACC__
+inline void gpuAssert(int code, const char *file, int line, bool abort=false)
+{
+    if (code != 0)
+    {
+	fprintf(stderr,"Assert: %i %s %d\n", code, file, line);
+	if (abort) exit(1);
+    }
+}
+#else
+
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=false)
 {
     if (code != cudaSuccess)
@@ -18,6 +38,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=f
 	if (abort) exit(1);
     }
 }
+#endif
 
 #define CEIL(X, Y, Z) ((X + Y - 1) >> Z)
 
@@ -87,5 +108,11 @@ void warp_memcpy(T* dest, const T* src, size_t num) {
         for(size_t i = prior_count; i < num; i+=active_cnt)
                 dest[i] = src[i];
 }
+
+#ifndef __CUDACC__
+#undef __device__
+#undef __host__
+#undef __forceinline__
+#endif
 
 #endif // __UTIL_H__
