@@ -16,13 +16,13 @@ set (KERNEL "/lib/modules/${CMAKE_SYSTEM_VERSION}/build" CACHE PATH "Path to ker
 set (FIO "" CACHE PATH "Path to FIO installation")
 
 set (nvidia_archs "70" CACHE STRING "NVIDIA compute architectures")
-set (no_smartio_samples false CACHE BOOL "Do not use SISCI for examples")
-set (no_smartio_benchmarks false CACHE BOOL "Do not use SISCI for benchmarks")
-set (no_smartio false CACHE BOOL "Do not use SISCI for library or examples")
-set (no_module false CACHE BOOL "Do not build kernel module")
+set (no_smartio_samples true CACHE BOOL "Do not use SISCI for examples")
+set (no_smartio_benchmarks true CACHE BOOL "Do not use SISCI for benchmarks")
+set (no_smartio true CACHE BOOL "Do not use SISCI for library or examples")
+set (no_module true CACHE BOOL "Do not build kernel module")
 set (no_cuda false CACHE BOOL "Do not build library with CUDA support")
 set (no_cc false CACHE BOOL "Do not assume cache-coherent architecture")
-set (no_fio false CACHE BOOL "Do not build FIO plugin")
+set (no_fio true CACHE BOOL "Do not build FIO plugin")
 set (BUILD_SHARED_LIBS true CACHE BOOL "Build shared library, set to false for static")
 
 if (no_smartio)
@@ -303,10 +303,10 @@ endmacro ()
 
 
 # Add individual samples
-add_subdirectory ("${samples_root}/rpc")
-add_subdirectory ("${samples_root}/read-blocks")
-add_subdirectory ("${samples_root}/identify")
-add_subdirectory ("${samples_root}/integrity")
+#add_subdirectory ("${samples_root}/rpc")
+#add_subdirectory ("${samples_root}/read-blocks")
+#add_subdirectory ("${samples_root}/identify")
+#add_subdirectory ("${samples_root}/integrity")
 
 # Build all samples
 add_custom_target (samples DEPENDS ${sample_targets})

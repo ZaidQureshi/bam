@@ -1,12 +1,15 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 
-#ifndef __CUDACC__
+#ifndef __device__ 
 #define __device__
+#endif 
+#ifndef __host__
 #define __host__
+#endif
+#ifndef __forceinline__
 #define __forceinline__ inline
 #endif
-
 
 
 
@@ -109,10 +112,10 @@ void warp_memcpy(T* dest, const T* src, size_t num) {
                 dest[i] = src[i];
 }
 
-#ifndef __CUDACC__
-#undef __device__
-#undef __host__
-#undef __forceinline__
-#endif
+//#ifndef __CUDACC__
+//#undef __device__
+//#undef __host__
+//#undef __forceinline__
+//#endif
 
 #endif // __UTIL_H__

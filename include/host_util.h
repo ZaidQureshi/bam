@@ -1,13 +1,17 @@
 #ifndef __HOST_UTIL_H_
 #define __HOST_UTIL_H_
 
-#ifndef __CUDACC__
+#ifndef __device__ 
 #define __device__
+#endif 
+#ifndef __host__
 #define __host__
+#endif
+#ifndef __forceinline__
 #define __forceinline__ inline
 #endif
 
-#include <ctime.h>
+#include <ctime>
 
 inline __host__
 void __nanosleep(unsigned ns) {
@@ -59,10 +63,10 @@ unsigned int __match_any_sync(unsigned mask, T var) {
 
 
 
-#ifndef __CUDACC__
-#undef __device__
-#undef __host__
-#undef __forceinline__
-#endif
+//#ifndef __CUDACC__
+//#undef __device__
+//#undef __host__
+//#undef __forceinline__
+//#endif
 
 #endif // __HOST_UTIL_H_

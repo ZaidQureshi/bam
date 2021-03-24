@@ -187,8 +187,8 @@ int nvm_admin_ns_info(nvm_aq_ref ref, struct nvm_ns_info* info, uint32_t ns_id, 
 
     const unsigned char* bytes = (const unsigned char*) ptr;
     info->size = *((uint64_t*) ptr);
-    info->capacity = *((uint64_t*) (ptr + 8));
-    info->utilization = *((uint64_t*) (ptr + 16));
+    info->capacity = *((uint64_t*) ((uint64_t)ptr + 8));
+    info->utilization = *((uint64_t*) ((uint64_t)ptr + 16));
 
     uint8_t format_idx = _RB(bytes[26], 3, 0);
 

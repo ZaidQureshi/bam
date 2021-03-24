@@ -1,14 +1,18 @@
 #ifndef __BAFS_PTR_H__
 #define __BAFS_PTR_H__
 
-#ifndef __CUDACC__
+#ifndef __device__ 
 #define __device__
+#endif 
+#ifndef __host__
 #define __host__
+#endif
+#ifndef __forceinline__  
 #define __forceinline__ inline
 #endif
 
 #include "page_cache.h"
-#include <cstdint> 
+#include <cstdint>
 
 template<class T>
 class bafs_ptr {
@@ -92,12 +96,11 @@ public:
     }
 };
 
-   
 
-#ifndef __CUDACC__
-#undef __device__
-#undef __host__
-#undef __forceinline__
-#endif
-     
-#endif
+//#ifndef __CUDACC__
+//#undef __device__
+//#undef __host__
+//#undef __forceinline__
+//#endif
+
+#endif //__BAFS_PTR_H__

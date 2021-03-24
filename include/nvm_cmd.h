@@ -1,8 +1,10 @@
 #ifndef __NVM_COMMAND_H__
 #define __NVM_COMMAND_H__
 
-#ifndef __CUDACC__
+#ifndef __device__ 
 #define __device__
+#endif 
+#ifndef __host__
 #define __host__
 #endif
 
@@ -236,9 +238,9 @@ size_t nvm_cmd_data(nvm_cmd_t* cmd, size_t n_lists, const nvm_prp_list_t* lists,
 
 
 
-#ifndef __CUDACC__
-#undef __device__
-#undef __host__
-#endif
+//#ifndef __CUDACC__
+//#undef __device__
+//#undef __host__
+//#endif
 
 #endif /* __NVM_COMMAND_H__ */
