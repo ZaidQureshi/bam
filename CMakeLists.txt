@@ -19,7 +19,7 @@ set (nvidia_archs "70" CACHE STRING "NVIDIA compute architectures")
 set (no_smartio_samples true CACHE BOOL "Do not use SISCI for examples")
 set (no_smartio_benchmarks true CACHE BOOL "Do not use SISCI for benchmarks")
 set (no_smartio true CACHE BOOL "Do not use SISCI for library or examples")
-set (no_module true CACHE BOOL "Do not build kernel module")
+set (no_module false CACHE BOOL "Do not build kernel module")
 set (no_cuda false CACHE BOOL "Do not build library with CUDA support")
 set (no_cc false CACHE BOOL "Do not assume cache-coherent architecture")
 set (no_fio true CACHE BOOL "Do not build FIO plugin")
@@ -181,7 +181,7 @@ if (NOT no_module)
 
     configure_file ("${module_root}/Makefile.in" "${module_output}/Makefile" @ONLY)
 
-    add_custom_target (module "${CMAKE_MAKE_PROGRAM}" WORKING_DIRECTORY "${module_output}")
+    add_custom_target (kernel_module "${CMAKE_MAKE_PROGRAM}" WORKING_DIRECTORY "${module_output}")
 endif ()
 
 
