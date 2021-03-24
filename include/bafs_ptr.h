@@ -48,7 +48,10 @@ public:
         return *this;
     }
 
-    __host__ __device__ T operator[](const uint64_t i){
+    __host__ __device__ void operator()(const uint64_t i, const T val) {
+        (*pData)(i, val);
+    }
+    __host__ __device__ T operator[](const uint64_t i) {
         return (*pData)[start_idx+i];
     }
 
