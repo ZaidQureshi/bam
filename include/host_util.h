@@ -13,7 +13,7 @@
 
 #include <ctime>
 
-inline __host__
+static inline __host__
 void __nanosleep(unsigned ns) {
         struct timespec time1,time2;
         time1.tv_sec  = 0;
@@ -21,23 +21,23 @@ void __nanosleep(unsigned ns) {
         nanosleep(&time1, &time2);
 }
 
-inline __host__
+static inline __host__
 unsigned __activemask() {
         return 1;
 }
 
-inline __host__
+static inline __host__
 int __popc(unsigned v) {
    return __builtin_popcount(v);
 }
 
-inline __host__
+static inline __host__
 int __ffs(int x) {
     return __builtin_ffs(x);
 }
 
 
-inline __host__
+static inline __host__
 void __syncwarp(unsigned mask) {
     (void) mask;
     return;

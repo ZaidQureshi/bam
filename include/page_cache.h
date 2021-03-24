@@ -19,6 +19,8 @@
 #include "buffer.h"
 #include "ctrl.h"
 #include <iostream>
+#include "nvm_parallel_queue.h"
+#include "nvm_cmd.h"
 
 #define FREE 2
 // enum locality {HIGH_SPATIAL, LOW_SPATIAL, MEDIUM_SPATIAL};
