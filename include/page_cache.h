@@ -689,7 +689,11 @@ struct array_d_t {
         uint32_t queue;
 
         if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
             uint32_t mask = __activemask();
+#endif
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
@@ -743,7 +747,11 @@ struct array_d_t {
         uint32_t queue;
 
         if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
             uint32_t mask = __activemask();
+#endif
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
@@ -832,7 +840,11 @@ struct array_d_t {
         uint32_t queue;
 
         if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
             uint32_t mask = __activemask();
+#endif
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);

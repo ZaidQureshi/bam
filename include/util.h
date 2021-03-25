@@ -102,7 +102,11 @@ void __ignore(T &&)
 template <typename T>
 inline __device__
 void warp_memcpy(T* dest, const T* src, size_t num) {
-        uint32_t mask = __activemask();
+#ifndef __CUDACC__
+    uint32_t mask = 1;
+#else
+    uint32_t mask = __activemask();
+#endif
         uint32_t active_cnt = __popc(mask);
         uint32_t lane = lane_id();
         uint32_t prior_mask = mask >> (32 - lane);
