@@ -30,14 +30,26 @@ T __activemask() {
     return (T)1;
 }
 
-static inline __host__
-int __popc(unsigned v) {
-   return __builtin_popcount(v);
+template<typename T>
+inline __host__
+int __popc(T v) {
+    if (sizeof(T) == 4)
+        return __builtin_popcount((unsigned)v);
+    if (sizeof(T) == 8)
+        return __builtin_popcountll((unsigned long long)v);
+    return 0;
+
 }
 
-static inline __host__
-int __ffs(int x) {
-    return __builtin_ffs(x);
+template<typename T>
+inline __host__
+int __ffs(T v) {
+    if (sizeof(T) == 4)
+        return __builtin_ffs((int)v);
+    if (sizeof(T) == 8)
+        return __builtin_ffsll((long long)v);
+    return 0;
+
 }
 
 template<typename T>

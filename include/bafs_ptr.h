@@ -105,11 +105,13 @@ public:
 
 
 template<typename T_>
+__host__ __device__
 bool operator==(const bafs_ptr<T_>& lhs, const bafs_ptr<T_>& rhs){
    return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx);
 }
 
 template<typename T_>
+__host__ __device__
 bool operator==(bafs_ptr<T_>* lhs, const bafs_ptr<T_>& rhs){
    return (lhs->pData == rhs.pData && lhs->start_idx == rhs.start_idx);
 }
