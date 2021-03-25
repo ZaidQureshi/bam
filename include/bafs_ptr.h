@@ -104,12 +104,12 @@ public:
 
 
 
-template<class T>
+template<typename T>
 bool operator==(const bafs_ptr<T>& lhs, const bafs_ptr<T>& rhs){
    return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx);
 }
 
-template<class T>
+template<typename T>
 bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T>& rhs){
    return (lhs->pData == rhs.pData && lhs->start_idx == rhs.start_idx);
 }
