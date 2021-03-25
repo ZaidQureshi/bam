@@ -67,7 +67,7 @@ typedef struct nvm_admin_reference* nvm_aq_ref;
  * Note: This structure will be allocated by the API and needs to be released
  *       by the API.
  */
-typedef struct __align__(32) 
+typedef struct
 {
     void*                   vaddr;          // Virtual address to start of region (NB! can be NULL)
     int8_t                  local;          // Is this local memory
@@ -75,7 +75,7 @@ typedef struct __align__(32)
     size_t                  page_size;      // Controller's page size (MPS)
     size_t                  n_ioaddrs;      // Number of MPS-sized pages
     uint64_t                ioaddrs[];      // Physical/IO addresses of the memory pages
-} __attribute__((aligned (32))) nvm_dma_t;
+}  nvm_dma_t;
 
 
 
@@ -120,7 +120,7 @@ typedef struct __align__(32)
  *
  * Note: This descriptor represents both completion and submission queues.
  */
-typedef struct __align__(64) 
+typedef struct
 {
     simt::atomic<uint32_t, simt::thread_scope_system> head_lock;
     uint8_t pad0[124];
@@ -155,7 +155,7 @@ typedef struct __align__(64)
     volatile uint32_t*      db;             // Pointer to doorbell register (NB! write only)
     volatile void*          vaddr;          // Virtual address to start of queue memory
     uint64_t                ioaddr;         // Physical/IO address to start of queue memory
-} __attribute__((aligned (64))) nvm_queue_t;
+} nvm_queue_t;
 
 
 
