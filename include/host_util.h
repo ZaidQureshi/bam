@@ -24,10 +24,10 @@ void __nanosleep(T ns) {
 
 template<typename T>
 inline __host__
-unsigned __activemask() {
+T __activemask() {
     T var;
     (void) var;
-    return 1;
+    return (T)1;
 }
 
 static inline __host__
