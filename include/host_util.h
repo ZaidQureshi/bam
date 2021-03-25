@@ -13,16 +13,18 @@
 
 #include <ctime>
 
-static inline __host__
-void __nanosleep(unsigned ns) {
+template<typename T>
+inline __host__
+void __nanosleep(T ns) {
         struct timespec time1,time2;
         time1.tv_sec  = 0;
         time2.tv_nsec = ns;
         nanosleep(&time1, &time2);
 }
 
-static inline __host__
-unsigned __activemask() {
+template<typename T>
+inline __host__
+T __activemask() {
         return 1;
 }
 
@@ -36,9 +38,9 @@ int __ffs(int x) {
     return __builtin_ffs(x);
 }
 
-
-static inline __host__
-void __syncwarp(unsigned mask) {
+template<typename T>
+inline __host__
+void __syncwarp(T mask) {
     (void) mask;
     return;
 }
