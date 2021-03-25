@@ -97,7 +97,7 @@ struct page_cache_d_t {
 
     __forceinline__
     __device__
-    uint32_t find_slot(uint64_t address, uint64_t range_id);
+    uint32_t find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
 };
 
 struct page_cache_t {
