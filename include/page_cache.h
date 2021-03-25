@@ -764,7 +764,7 @@ struct array_d_t {
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
-            uint64_t p_s = d_ranges[r].page_size;
+            //uint64_t p_s = d_ranges[r].page_size;
 
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = __match_any_sync(mask, gaddr);
@@ -772,8 +772,8 @@ struct array_d_t {
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
-            bool memcpyflag_master;
-            bool memcpyflag;
+            //bool memcpyflag_master;
+            //bool memcpyflag;
             uint32_t count = __popc(eq_mask);
             if (master == lane) {
                 base = d_ranges[r].acquire_page(page, count, true, ctrl, queue);
@@ -859,7 +859,7 @@ struct array_d_t {
 
 
             uint64_t gaddr = d_ranges[r].get_global_address(page);
-            uint64_t p_s = d_ranges[r].page_size;
+            //uint64_t p_s = d_ranges[r].page_size;
 
             uint32_t active_cnt = __popc(mask);
             uint32_t eq_mask = __match_any_sync(mask, gaddr);
@@ -867,8 +867,8 @@ struct array_d_t {
             int master = __ffs(eq_mask) - 1;
             uint64_t base_master;
             uint64_t base;
-            bool memcpyflag_master;
-            bool memcpyflag;
+            //bool memcpyflag_master;
+            //bool memcpyflag;
             uint32_t count = __popc(eq_mask);
             if (master == lane) {
                 base = d_ranges[r].acquire_page(page, count, true, ctrl, queue);
