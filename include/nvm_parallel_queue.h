@@ -218,6 +218,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
 
                 uint32_t head_move_count = move_head_sq(sq, cur_head);
+                (void) head_move_count;
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
                 /* if (head_move_count) { */
                 /*     uint32_t new_head = cur_head + head_move_count; */
