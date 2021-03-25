@@ -14,7 +14,7 @@
 #include "page_cache.h"
 #include <cstdint>
 
-template<class T>
+template<typename T>
 class bafs_ptr {
 private:
     array_d_t<T>* pData;
@@ -52,11 +52,11 @@ public:
         return *this;
     }
 
-    template<typename T>
-    friend __host__ __device__ bool operator==(const bafs_ptr<T>& lhs, const bafs_ptr<T>& rhs);
+    template<typename T_>
+    friend __host__ __device__ bool operator==(const bafs_ptr<T_>& lhs, const bafs_ptr<T_>& rhs);
 
-    template<typename T>
-    friend __host__ __device__ bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T>& rhs);
+    template<typename T_>
+    friend __host__ __device__ bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T_>& rhs);
 
     __host__ __device__ void operator()(const uint64_t i, const T val) {
         (*pData)(i, val);
@@ -104,13 +104,13 @@ public:
 
 
 
-template<typename T>
-bool operator==(const bafs_ptr<T>& lhs, const bafs_ptr<T>& rhs){
+template<typename T_>
+bool operator==(const bafs_ptr<T_>& lhs, const bafs_ptr<T_>& rhs){
    return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx);
 }
 
-template<typename T>
-bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T>& rhs){
+template<typename T_>
+bool operator==(bafs_ptr<T_>* lhs, const bafs_ptr<T_>& rhs){
    return (lhs->pData == rhs.pData && lhs->start_idx == rhs.start_idx);
 }
 
