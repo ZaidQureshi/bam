@@ -52,6 +52,12 @@ public:
         return *this;
     }
 
+    template<typename T>
+    friend __host__ __device__ bool operator==(const bafs_ptr<T>& lhs, const bafs_ptr<T>& rhs);
+
+    template<typename T>
+    friend __host__ __device__ bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T>& rhs);
+
     __host__ __device__ void operator()(const uint64_t i, const T val) {
         (*pData)(i, val);
     }
@@ -95,6 +101,18 @@ public:
         return *this;
     }
 };
+
+
+
+template<class T>
+bool operator==(const bafs_ptr<T>& lhs, const bafs_ptr<T>& rhs){
+   return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx);
+}
+
+template<class T>
+bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T>& rhs){
+   return (lhs->pData == rhs.pData && lhs->start_idx == rhs.start_idx);
+}
 
 
 //#ifndef __CUDACC__
