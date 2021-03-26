@@ -13,6 +13,8 @@
 
 #include <ctime>
 
+#ifndef __CUDACC__
+
 template<typename T>
 inline __host__
 void __nanosleep(T ns) {
@@ -77,7 +79,7 @@ unsigned int __match_any_sync(unsigned mask, T var) {
     return 1;
 }
 
-
+#endif 
 
 //#ifndef __CUDACC__
 //#undef __device__
