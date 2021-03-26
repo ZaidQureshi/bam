@@ -43,7 +43,7 @@ public:
     }
 
     __host__ __device__ bafs_ptr<T>& operator=(const bafs_ptr<T>& obj) {
-        if(this == obj)
+        if(this == &obj)
             return *this;
         else{
             this->pData = obj.pData;
@@ -55,8 +55,8 @@ public:
     template<typename T_>
     friend __host__ __device__ bool operator==(const bafs_ptr<T_>& lhs, const bafs_ptr<T_>& rhs);
 
-    template<typename T_>
-    friend __host__ __device__ bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T_>& rhs);
+    // template<typename T_>
+    // friend __host__ __device__ bool operator==(bafs_ptr<T>* lhs, const bafs_ptr<T_>& rhs);
 
     __host__ __device__ void operator()(const uint64_t i, const T val) {
         (*pData)(i, val);
@@ -110,11 +110,11 @@ bool operator==(const bafs_ptr<T_>& lhs, const bafs_ptr<T_>& rhs){
    return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx);
 }
 
-template<typename T_>
-__host__ __device__
-bool operator==(bafs_ptr<T_>* lhs, const bafs_ptr<T_>& rhs){
-   return (lhs->pData == rhs.pData && lhs->start_idx == rhs.start_idx);
-}
+// template<typename T_>
+// __host__ __device__
+// bool operator==(bafs_ptr<T_>* lhs, const bafs_ptr<T_>& rhs){
+//    return (lhs->pData == rhs.pData && lhs->start_idx == rhs.start_idx);
+// }
 
 
 //#ifndef __CUDACC__
