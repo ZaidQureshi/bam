@@ -98,13 +98,11 @@ static void ioctl_unmap(const struct device* dev, const struct va_range* va)
     uint64_t addr = (uintptr_t) m->buffer;
     
 
-#ifndef NDEBUG
     int err = ioctl(dev->fd, NVM_UNMAP_MEMORY, &addr);
     if (err < 0)
     {
         dprintf("Page unmapping kernel request failed: %s\n", strerror(errno));
     }
-#endif
 }
 
 
