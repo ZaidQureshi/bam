@@ -101,7 +101,7 @@ public:
         return *this;
     }
 
-    __host__ __device__ memcpy_to_array_aligned(const uint64_t src_idx, const uint64_t count, T* dest) {
+    __host__ __device__ void memcpy_to_array_aligned(const uint64_t src_idx, const uint64_t count, T* dest) {
         pData->memcpy(src_idx, count, dest);
     }
 };

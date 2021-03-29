@@ -668,9 +668,9 @@ struct array_d_t {
 
     __forceinline__
     __device__
-    void memcpy(const uint64_t srcidx, const uint64_t count, T* dest) {
+    void memcpy(const uint64_t i, const uint64_t count, T* dest) {
         uint32_t lane = lane_id();
-        int64_t r = find_range(srcidx);
+        int64_t r = find_range(i);
 
         uint32_t ctrl;
         uint32_t queue;
@@ -734,7 +734,7 @@ struct array_d_t {
         int64_t range = -1;
         int64_t k = 0;
         for (; k < n_ranges; k++) {
-            if ((d_ranges[k].index_start <= i) && (d_ranges[k].count > i)) {;
+            if ((d_ranges[k].index_start <= i) && (d_ranges[k].count > i)) {
                 range = k;
                 break;
             }
