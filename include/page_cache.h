@@ -685,7 +685,7 @@ struct array_d_t {
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = pc->d_ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (pc->d_ctrls[ctrl]->n_qps);
+                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
             ctrl = __shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
@@ -761,7 +761,7 @@ struct array_d_t {
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = pc->d_ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (pc->d_ctrls[ctrl]->n_qps);
+                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
             ctrl = __shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
@@ -819,7 +819,7 @@ struct array_d_t {
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = pc->d_ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (pc->d_ctrls[ctrl]->n_qps);
+                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
             ctrl = __shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
@@ -912,7 +912,7 @@ struct array_d_t {
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = pc->d_ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (pc->d_ctrls[ctrl]->n_qps);
+                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
             ctrl = __shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
