@@ -679,9 +679,9 @@ struct array_d_t {
 #ifndef __CUDACC__
             uint32_t mask = 1;
 #else
-            uint32_t mask = __activemask();
+            uint32_t mask = 0xffffffff;
 #endif
-            uint32_t leader = __ffs(mask) - 1;
+            uint32_t leader = 0;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
@@ -695,15 +695,14 @@ struct array_d_t {
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             //uint64_t p_s = d_ranges[r].page_size;
 
-            uint32_t active_cnt = __popc(mask);
-            uint32_t eq_mask = __match_any_sync(mask, gaddr);
-            eq_mask &= __match_any_sync(mask, (uint64_t)this);
-            int master = __ffs(eq_mask) - 1;
+            uint32_t active_cnt = 32;
+            uint32_t eq_mask = mask;
+            int master = 0;
             uint64_t base_master;
             uint64_t base;
             //bool memcpyflag_master;
             //bool memcpyflag;
-            uint32_t count = __popc(eq_mask);
+            uint32_t count = 1;
             if (master == lane) {
                 //std::pair<uint64_t, bool> base_memcpyflag;
                 base = d_ranges[r].acquire_page(page, count, false, ctrl, queue);
