@@ -18,22 +18,37 @@ template<typename T>
 class bafs_ptr {
 private:
     array_d_t<T>* pData;
+    array_t<T>* h_pData;
     uint64_t start_idx;
 public:
+    __host__
+    void print_stats() {
+        if (h_pData)
+            h_pData->print_reset_stats();
+    }
     __host__ __device__ bafs_ptr():
-        pData(NULL),start_idx(0){
+        h_pData(NULL), pData(NULL),start_idx(0){
     }
     __host__ __device__ bafs_ptr(array_d_t<T>* const pValue):
-        pData(pValue),start_idx(0){
+        h_pData(NULL), pData(pValue),start_idx(0){
     }
 
     __host__ __device__ bafs_ptr(array_d_t<T>* const pValue, const uint64_t start_off):
-        pData(pValue),start_idx(start_off){
+        h_pData(NULL), pData(pValue),start_idx(start_off){
+    }
+
+    __host__ __device__ bafs_ptr(array_t<T>* const pValue):
+        h_pData(pValue), pData(pValue->d_array_ptr),start_idx(0){
+    }
+
+    __host__ __device__ bafs_ptr(array_t<T>* const pValue, const uint64_t start_off):
+        h_pData(pValue), pData(pValue->d_array_ptr),start_idx(start_off){
     }
 
     __host__ __device__ ~bafs_ptr(){}
 
     __host__ __device__ bafs_ptr(const bafs_ptr &var){
+        h_pData = var.h_pData;
         pData = var.pData;
         start_idx = var.start_idx;
     }
@@ -46,6 +61,7 @@ public:
         if(*this == obj)
             return *this;
         else{
+            this->h_pData = obj.h_pData;
             this->pData = obj.pData;
             this->start_idx = obj.start_idx;
         }
@@ -111,7 +127,7 @@ public:
 template<typename T_>
 __host__ __device__
 bool operator==(const bafs_ptr<T_>& lhs, const bafs_ptr<T_>& rhs){
-   return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx);
+   return (lhs.pData == rhs.pData && lhs.start_idx == rhs.start_idx && lhs.h_pData == rhs.h_pData);
 }
 
 // template<typename T_>
