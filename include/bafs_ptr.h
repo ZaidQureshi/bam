@@ -37,8 +37,8 @@ public:
         h_pData(NULL), pData(pValue),start_idx(start_off){
     }
 
-    __host__ __device__ bafs_ptr(array_t<T>* const pValue):
-        h_pData(pValue), pData(pValue->d_array_ptr),start_idx(0){
+    __host__ __device__ bafs_ptr(array_t<T>& pValue):
+        h_pData(&pValue), pData(pValue.d_array_ptr),start_idx(0){
     }
 
     __host__ __device__ bafs_ptr(array_t<T>* const pValue, const uint64_t start_off):
