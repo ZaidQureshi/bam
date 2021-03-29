@@ -17,8 +17,8 @@
 template<typename T>
 class bafs_ptr {
 private:
-    array_d_t<T>* pData;
     array_t<T>* h_pData;
+    array_d_t<T>* pData;
     uint64_t start_idx;
 public:
     __host__
