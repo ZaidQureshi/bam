@@ -664,6 +664,70 @@ struct array_d_t {
     uint8_t *src;
 
     range_d_t<T>* d_ranges;
+
+
+    __forceinline__
+    __device__
+    void memcpy(const uint64_t srcidx, const uint64_t count, T* dest) {
+        uint32_t lane = lane_id();
+        int64_t r = find_range(srcidx);
+
+        uint32_t ctrl;
+        uint32_t queue;
+
+        if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
+            uint32_t mask = __activemask();
+#endif
+            uint32_t leader = __ffs(mask) - 1;
+            if (lane == leader) {
+                page_cache_d_t* pc = &(d_ranges[r].cache);
+                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                queue = pc->d_ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (pc->d_ctrls[ctrl]->n_qps);
+            }
+            ctrl = __shfl_sync(mask, ctrl, leader);
+            queue = __shfl_sync(mask, queue, leader);
+
+            uint64_t page = d_ranges[r].get_page(i);
+            //uint64_t subindex = d_ranges[r].get_subindex(i);
+            uint64_t gaddr = d_ranges[r].get_global_address(page);
+            //uint64_t p_s = d_ranges[r].page_size;
+
+            uint32_t active_cnt = __popc(mask);
+            uint32_t eq_mask = __match_any_sync(mask, gaddr);
+            eq_mask &= __match_any_sync(mask, (uint64_t)this);
+            int master = __ffs(eq_mask) - 1;
+            uint64_t base_master;
+            uint64_t base;
+            //bool memcpyflag_master;
+            //bool memcpyflag;
+            uint32_t count = __popc(eq_mask);
+            if (master == lane) {
+                //std::pair<uint64_t, bool> base_memcpyflag;
+                base = d_ranges[r].acquire_page(page, count, false, ctrl, queue);
+                base_master = base;
+//                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+            }
+            base_master = __shfl_sync(eq_mask,  base_master, master);
+
+            //if (threadIdx.x == 63) {
+            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            //}
+            //
+            ulonglong4* src_ = (ulonglong4*) base_master;
+            ulonglong4* dst_ = (ulonglong4*) dest;
+            warp_memcpy<ulonglong4>(dst_, src_, 512/32);
+
+            __syncwarp(eq_mask);
+            if (master == lane)
+                d_ranges[r].release_page(page, count);
+            __syncwarp(mask);
+
+        }
+
+    }
     __forceinline__
     __device__
     int64_t find_range(const size_t i) const {

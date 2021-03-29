@@ -43,7 +43,7 @@ public:
     }
 
     __host__ __device__ bafs_ptr<T>& operator=(const bafs_ptr<T>& obj) {
-        if(this == &obj)
+        if(*this == obj)
             return *this;
         else{
             this->pData = obj.pData;
@@ -99,6 +99,10 @@ public:
     __host__ __device__ bafs_ptr<T>& operator--(){
         this->start_idx -= 1;
         return *this;
+    }
+
+    __host__ __device__ memcpy_to_array_aligned(const uint64_t src_idx, const uint64_t count, T* dest) {
+        pData->memcpy(src_idx, count, dest);
     }
 };
 
