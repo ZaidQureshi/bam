@@ -22,7 +22,7 @@ private:
     uint64_t start_idx;
 public:
     __host__
-    void print_stats() {
+    void print_stats() const {
         if (h_pData)
             h_pData->print_reset_stats();
     }
