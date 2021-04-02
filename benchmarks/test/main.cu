@@ -111,7 +111,7 @@ void flush_kernel(page_cache_d_t* cache) {
 
                     write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
                 }
-                cache->ranges[previous_range][previous_address].store(VALID, simt::memory_order_release)
+                cache->ranges[previous_range][previous_address].store(VALID, simt::memory_order_release);
             }
         }
 
