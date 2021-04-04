@@ -301,7 +301,7 @@ int main(int argc, char** argv) {
         unsigned long long* d_req_count;
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
-        std::cout << "atlaunch kernel\n";
+
         char st[15];
         cuda_err_chk(cudaDeviceGetPCIBusId(st, 15, settings.cudaDevice));
         std::cout << st << std::endl;
@@ -328,6 +328,7 @@ int main(int argc, char** argv) {
             cuda_err_chk(cudaMalloc(&d_access_assignment, n_threads*sizeof(uint8_t)));
             cuda_err_chk(cudaMemcpy(d_access_assignment, access_assignment, n_threads*sizeof(uint8_t), cudaMemcpyHostToDevice));
         }
+        std::cout << "atlaunch kernel\n";
         if (settings.random)
             random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
         else
