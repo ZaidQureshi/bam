@@ -161,6 +161,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     queue_loc->dword[9] = cmd->dword[9];
     queue_loc->dword[10] = cmd->dword[10];
     queue_loc->dword[11] = cmd->dword[11];
+    queue_loc->dword[12] = cmd->dword[12];
 
 /* #pragma unroll */
 /*     for (uint32_t i = 0; i < 16; i++) { */
