@@ -153,8 +153,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     //printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
     //printf("sq->loc: %p\n", queue_loc);
-    *(queue_loc->dword+0) =   *((ulonglong4*) (cmd->dword+0));
-    *(queue_loc->dword+1) =   *((ulonglong4*) (cmd->dword+8));
+    queue_loc[0] =   *((ulonglong4*) (cmd->dword+0));
+    queue_loc[1] =   *((ulonglong4*) (cmd->dword+8));
     //queue_loc->dword[0] = cmd->dword[0];
     //queue_loc->dword[1] = cmd->dword[1];
     //queue_loc->dword[6] = cmd->dword[6];
