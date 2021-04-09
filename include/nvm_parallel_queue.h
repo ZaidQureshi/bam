@@ -149,12 +149,13 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 #endif
     }
 
-    ulonglong4* queue_loc = ((ulonglong4*)(sq->vaddr)) + pos;
+    volatile ulonglong4* queue_loc = ((volatile ulonglong4*)(sq->vaddr)) + pos;
+    ulonglong4* cmd_ = ((ulonglong4*)(cmd->dword));
     //printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
     //printf("sq->loc: %p\n", queue_loc);
-    queue_loc[0] =   *((ulonglong4*) (cmd->dword+0));
-    queue_loc[1] =   *((ulonglong4*) (cmd->dword+8));
+    //queue_loc[0] =   *((ulonglong4*) (cmd->dword+0));
+    //queue_loc[1] =   *((ulonglong4*) (cmd->dword+8));
     //queue_loc->dword[0] = cmd->dword[0];
     //queue_loc->dword[1] = cmd->dword[1];
     //queue_loc->dword[6] = cmd->dword[6];
@@ -167,10 +168,10 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     //queue_loc->dword[11] = cmd->dword[11];
     //queue_loc->dword[12] = cmd->dword[12];
 
-/* #pragma unroll */
-/*     for (uint32_t i = 0; i < 16; i++) { */
-/*         queue_loc->dword[i] = cmd->dword[i]; */
-/*     } */
+#pragma unroll
+    for (uint32_t i = 0; i < 64/sizeof(ulonglong4); i++) {
+        queue_loc[i] = cmd[i];
+    }
 
 
 
