@@ -170,7 +170,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
 #pragma unroll
     for (uint32_t i = 0; i < 64/sizeof(ulonglong4); i++) {
-        queue_loc[i] = cmd[i];
+        queue_loc[i] = cmd_[i];
     }
 
 
