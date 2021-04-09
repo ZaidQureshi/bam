@@ -261,7 +261,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             uint32_t cur_head = head + i;
             bool search_phase = ((~(head >> cq->qs_log2)) & 0x01);
             uint32_t loc = cur_head & (cq->qs_minus_1);
-            uint32_t cpl_entry = ((volatile nvm_cpl_t*)cq->vaddr)[loc].dword[3];
+            uint32_t cpl_entry = ((nvm_cpl_t*)cq->vaddr)[loc].dword[3];
             uint32_t cid = (cpl_entry & 0x0000ffff);
             bool phase = (cpl_entry & 0x00010000) >> 16;
             /* if (j % 100 == 0) */
