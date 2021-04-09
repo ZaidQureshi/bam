@@ -149,7 +149,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 #endif
     }
 
-    volatile ulonglong4* queue_loc = ((volatile ulonglong4*)(sq->vaddr)) + pos;
+    ulonglong4* queue_loc = ((ulonglong4*)(((nvm_cmd_t*)(sq->vaddr)) + pos));
     ulonglong4* cmd_ = ((ulonglong4*)(cmd->dword));
     //printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
