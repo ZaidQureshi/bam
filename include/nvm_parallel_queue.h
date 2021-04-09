@@ -153,10 +153,17 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     //printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
     //printf("sq->loc: %p\n", queue_loc);
-#pragma unroll
-    for (uint32_t i = 0; i < 16; i++) {
-        queue_loc->dword[i] = cmd->dword[i];
-    }
+    queue_loc->dword[0] = cmd->dword[0];
+    queue_loc->dword[1] = cmd->dword[1];
+    queue_loc->dword[6] = cmd->dword[6];
+    queue_loc->dword[7] = cmd->dword[7];
+    queue_loc->dword[8] = cmd->dword[8];
+    queue_loc->dword[9] = cmd->dword[9];
+
+/* #pragma unroll */
+/*     for (uint32_t i = 0; i < 16; i++) { */
+/*         queue_loc->dword[i] = cmd->dword[i]; */
+/*     } */
 
 
 
@@ -258,8 +265,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             /*            (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire)); */
 
             if ((cid == search_cid) && (phase == search_phase)){
-                 if ((cpl_entry >> 17) != 0)
-                     printf("NVM Error: %llx\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) search_cid);
+                 //if ((cpl_entry >> 17) != 0)
+                      //printf("NVM Error: %llx\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) search_cid);
                 return loc;
             }
             if (phase != search_phase)
