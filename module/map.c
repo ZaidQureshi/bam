@@ -26,7 +26,7 @@ struct gpu_region
 #define GPU_PAGE_SIZE   (1UL << GPU_PAGE_SHIFT)
 #define GPU_PAGE_MASK   ~(GPU_PAGE_SIZE - 1)
 
-uint32_t num_ctrls = 8;
+uint32_t max_num_ctrls = 64;
 
 
 static struct map* create_descriptor(const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages)
@@ -319,14 +319,15 @@ int map_gpu_memory(struct map* map, struct list* list)
         return -ENOMEM;
     }
 
-    gd->mappings = (nvidia_p2p_dma_mapping_t**)  kmalloc(sizeof(nvidia_p2p_dma_mapping_t*) * num_ctrls, GFP_KERNEL);
+    gd->mappings = (nvidia_p2p_dma_mapping_t**)  kmalloc(sizeof(nvidia_p2p_dma_mapping_t*) * max_num_ctrls, GFP_KERNEL);
+    
     if (gd->mappings == NULL)
     {
         printk(KERN_CRIT "Failed to allocate mapping descriptor\n");
         kfree(gd);
         return -ENOMEM;
     }
-    for (j = 0; j < num_ctrls; j++)
+    for (j = 0; j < max_num_ctrls; j++)
         gd->mappings[j] = NULL;
 
     gd->pages = NULL;

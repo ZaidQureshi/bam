@@ -56,9 +56,9 @@ static struct list device_list;
 
 
 /* Number of devices */
-static int num_ctrls = 8;
-module_param(num_ctrls, int, 0);
-MODULE_PARM_DESC(num_ctrls, "Number of controller devices");
+static int max_num_ctrls = 64;
+module_param(max_num_ctrls, int, 0);
+MODULE_PARM_DESC(max_num_ctrls, "Number of controller devices");
 
 static int curr_ctrls = 0;
 
@@ -200,7 +200,7 @@ static int add_pci_dev(struct pci_dev* dev, const struct pci_device_id* id)
     int err;
     struct ctrl* ctrl = NULL;
 
-    if (curr_ctrls >= num_ctrls)
+    if (curr_ctrls >= max_num_ctrls)
     {
         printk(KERN_NOTICE "Maximum number of controller devices added\n");
         return 0;
@@ -320,7 +320,7 @@ static int __init libnvm_helper_entry(void)
     list_init(&device_list);
 
     // Set up character device creation
-    err = alloc_chrdev_region(&dev_first, 0, num_ctrls, DRIVER_NAME);
+    err = alloc_chrdev_region(&dev_first, 0, max_num_ctrls, DRIVER_NAME);
     if (err < 0)
     {
         printk(KERN_CRIT "Failed to allocate character device region\n");
@@ -331,7 +331,7 @@ static int __init libnvm_helper_entry(void)
     dev_class = class_create(THIS_MODULE, DRIVER_NAME);
     if (IS_ERR(dev_class))
     {
-        unregister_chrdev_region(dev_first, num_ctrls);
+        unregister_chrdev_region(dev_first, max_num_ctrls);
         printk(KERN_CRIT "Failed to create character device class\n");
         return PTR_ERR(dev_class);
     }
@@ -341,7 +341,7 @@ static int __init libnvm_helper_entry(void)
     if (err != 0)
     {
         class_destroy(dev_class);
-        unregister_chrdev_region(dev_first, num_ctrls);
+        unregister_chrdev_region(dev_first, max_num_ctrls);
         printk(KERN_ERR "Failed to register as PCI driver\n");
         return err;
     }
@@ -371,7 +371,7 @@ static void __exit libnvm_helper_exit(void)
     pci_unregister_driver(&driver);
     printk(KERN_DEBUG DRIVER_NAME " After pci_unregister_driver\n");
     class_destroy(dev_class);
-    unregister_chrdev_region(dev_first, num_ctrls);
+    unregister_chrdev_region(dev_first, max_num_ctrls);
 
     printk(KERN_DEBUG DRIVER_NAME " unloaded\n");
 }
