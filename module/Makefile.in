@@ -21,7 +21,7 @@ unload:
 	-rmmod @CMAKE_PROJECT_NAME@.ko
 
 load:
-	insmod @CMAKE_PROJECT_NAME@.ko num_ctrls=64
+	insmod @CMAKE_PROJECT_NAME@.ko max_num_ctrls=64
 
 install: default
 	$(MAKE) -C @KERNEL@ M=@module_output@ modules_install
