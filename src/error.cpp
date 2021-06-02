@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 
 
 static const char* generic_status[] =
@@ -171,7 +172,9 @@ const char* nvm_strerror(int status)
 
     if (sct != 0 || sc != 0)
     {
+        printf("sct: %x\tsc: %x\n", sct, sc);
         return lookup_string(sct, sc);
+
     }
 
     return strerror(err);
