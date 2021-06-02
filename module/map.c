@@ -359,11 +359,11 @@ int map_gpu_memory(struct map* map, struct list* list)
             //printk(KERN_ERR "nvidia_p2p_dma_map_pages() failed for nvme%u: %d\n", j-1, err);
             return err;
         }
-        //for (i = 0; i < map->n_addrs; ++i)
-        //{
+        for (i = 0; i < map->n_addrs; ++i)
+        {
 
-           // printk("device : %u\tpaddr: %llx\n", (j-1), (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
-        //}
+           printk("device : %u\tpaddr: %llx\n", (j-1), (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
+        }
         if (j == 1) {
             for (i = 0; i < map->n_addrs; ++i)
             {
