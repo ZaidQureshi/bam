@@ -484,8 +484,8 @@ int nvm_aq_create(nvm_aq_ref* handle, const nvm_ctrl_t* ctrl, const nvm_dma_t* w
     // Reset controller
     const struct local_admin* admin = (const struct local_admin*) ref->data;
     nvm_raw_ctrl_reset(ctrl, admin->qmem->ioaddrs[0], admin->qmem->ioaddrs[1]);
-    printf("admin sq vaddr: %p\tsq ioaddr: %llx\n", admin->qmem->vaddr, admin->qmem->ioaddrs[0]);
-    printf("admin cq vaddr: %p\tcq ioaddr: %llx\n", admin->qmem->vaddr+4096, admin->qmem->ioaddrs[1]);
+    printf("admin sq vaddr: %p\tsq ioaddr: %lx\n", admin->qmem->vaddr, admin->qmem->ioaddrs[0]);
+    printf("admin cq vaddr: %p\tcq ioaddr: %lx\n", admin->qmem->vaddr+4096, admin->qmem->ioaddrs[1]);
     
     *handle = ref;
     return 0;
