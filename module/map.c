@@ -362,7 +362,7 @@ int map_gpu_memory(struct map* map, struct list* list)
         for (i = 0; i < map->n_addrs; ++i)
         {
 
-           printk("device : %u\tpaddr: %llx\n", (j-1), (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
+           printk("device: %u\ti: %u\tpaddr: %llx\n", (j-1), i, (uint64_t)  gd->mappings[j-1]->dma_addresses[i]);
         }
         if (j == 1) {
             for (i = 0; i < map->n_addrs; ++i)
