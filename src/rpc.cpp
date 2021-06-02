@@ -289,6 +289,10 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     *NVM_CMD_CID(&local_copy) = in_queue_id;
     *in_queue_cmd = local_copy;
 
+    for (int i = 0; i < 16; i++) {
+        printf("cmd dword[%d] = %x\n", i, local_copy.dword[i]);
+    }
+
     // Submit command and wait for completion
     nvm_sq_submit(&admin->asq);
 
