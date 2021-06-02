@@ -264,6 +264,9 @@ int nvm_raw_ctrl_reset(const nvm_ctrl_t* ctrl, uint64_t acq_addr, uint64_t asq_a
         remaining = _nvm_delay_remain(remaining);
     }
 
+    uint64_t asqaddr = *asq;
+    uint64_t acqaddr = *acq;
+    printf("reset: asqaddr: %llx\tacqaddr: %llx\n", asqaddr, acqaddr);
     return 0;
 }
 
