@@ -290,7 +290,7 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     *in_queue_cmd = local_copy;
 
     for (int i = 0; i < 16; i++) {
-        printf("cmd dword[%d] = %x\n", i, local_copy.dword[i]);
+        printf("cmd: %p\tdword[%d] = %x\n", in_queue_cmd, i, local_copy.dword[i]);
     }
 
     // Submit command and wait for completion
@@ -303,7 +303,7 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
         return ETIME;
     }
     for (int i = 0; i < 4; i++) {
-        printf("cpl dword[%d] = %x\n", i, in_queue_cpl->dword[i]);
+        printf("cpl: %p\tdword[%d] = %x\n", in_queue_cpl, i, in_queue_cpl->dword[i]);
 
     }
     //printf("cpl cmd_id: %u\tstatus and phase: %x\n", in_queue_cpl->dword[3] & 0x0000ffff, in_queue_cpl->dword[3] >> 16);
