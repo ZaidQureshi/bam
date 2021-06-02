@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <atomic>
 #include "mutex.h"
 #include "lib_ctrl.h"
 #include "lib_util.h"
@@ -215,7 +216,7 @@ int nvm_raw_ctrl_reset(const nvm_ctrl_t* ctrl, uint64_t acq_addr, uint64_t asq_a
     // Wait for CSTS.RDY to transition from 1 to 0
     uint64_t timeout = ctrl->timeout * 1000000UL;
     uint64_t remaining = _nvm_delay_remain(timeout);
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     while (CSTS$RDY(ctrl->mm_ptr) != 0)
     {
         if (remaining == 0)
@@ -226,6 +227,7 @@ int nvm_raw_ctrl_reset(const nvm_ctrl_t* ctrl, uint64_t acq_addr, uint64_t asq_a
 
         remaining = _nvm_delay_remain(remaining);
     }
+    std::atomic_thread_fence(std::memory_order_seq_cst);
 
     // Set admin queue attributes
     volatile uint32_t* aqa = AQA(ctrl->mm_ptr);
@@ -241,17 +243,18 @@ int nvm_raw_ctrl_reset(const nvm_ctrl_t* ctrl, uint64_t acq_addr, uint64_t asq_a
     // Set admin submission queue
     volatile uint64_t* asq = ASQ(ctrl->mm_ptr);
     *asq = asq_addr;
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     // Set CC.MPS to pagesize and CC.EN to 1
     uint32_t cqes = encode_entry_size(sizeof(nvm_cpl_t)); 
     uint32_t sqes = encode_entry_size(sizeof(nvm_cmd_t)); 
     *cc = CC$IOCQES(cqes) | CC$IOSQES(sqes) | CC$MPS(encode_page_size(ctrl->page_size)) | CC$CSS(0) | CC$EN(1);
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     // Wait for CSTS.RDY to transition from 0 to 1
     remaining = _nvm_delay_remain(timeout);
 
     while (CSTS$RDY(ctrl->mm_ptr) != 1)
     {
+        std::atomic_thread_fence(std::memory_order_seq_cst);
         if (remaining == 0)
         {
             dprintf("Timeout exceeded while waiting for controller enable\n");
