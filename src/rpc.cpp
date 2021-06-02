@@ -302,7 +302,11 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
         dprintf("Waiting for admin queue completion timed out\n");
         return ETIME;
     }
-    printf("cpl cmd_id: %u\tstatus and phase: %x\n", in_queue_cpl->dword[3] & 0x0000ffff, in_queue_cpl->dword[3] >> 16);
+    for (int i = 0; i < 4; i++) {
+        printf("cpl dword[%d] = %x\n", i, in_queue_cpl->dword[i]);
+
+    }
+    //printf("cpl cmd_id: %u\tstatus and phase: %x\n", in_queue_cpl->dword[3] & 0x0000ffff, in_queue_cpl->dword[3] >> 16);
 
     nvm_sq_update(&admin->asq);
 
