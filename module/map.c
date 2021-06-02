@@ -178,7 +178,7 @@ static long map_user_pages(struct map* map)
             return retval;
         }
         printk("map_user_page: device: %02x:%02x.%1x\tvaddr: %p\ti: %lu\tdma_addr: %llx\n", map->pdev->bus->number, PCI_SLOT(map->pdev->devfn), PCI_FUNC(map->pdev->devfn),
-            map->vaddr, i, map->addrs[i]);
+            (void*) map->vaddr, i, map->addrs[i]);
     }
 
     return 0;
