@@ -313,9 +313,10 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     std::atomic_thread_fence(std::memory_order_seq_cst);
     // Copy completion and return
     *cpl = *in_queue_cpl;
-    nvm_cq_update(&admin->acq);
     std::atomic_thread_fence(std::memory_order_seq_cst);
-    *NVM_CPL_CID(cpl) = *NVM_CMD_CID(cmd);
+    nvm_cq_update(&admin->acq);
+
+    //*NVM_CPL_CID(cpl) = *NVM_CMD_CID(cmd);
 
     return 0;
 }
