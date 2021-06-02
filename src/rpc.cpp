@@ -282,7 +282,7 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     }
 
     // Copy command into queue slot (but keep original id)
-    uint16_t in_queue_id = NVM_DEFAULT_CID(&admin->asq);
+    uint16_t in_queue_id = 1024;//NVM_DEFAULT_CID(&admin->asq);
 
     memcpy(&local_copy, cmd, sizeof(nvm_cmd_t));
 
@@ -298,6 +298,7 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
         dprintf("Waiting for admin queue completion timed out\n");
         return ETIME;
     }
+    printf("cpl cmd_id: %u\n", in_queue_cpl->dword[3] & 0x0000ffff);
 
     nvm_sq_update(&admin->asq);
 
