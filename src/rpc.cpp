@@ -28,7 +28,7 @@
 #include "lib_ctrl.h"
 #include "lib_util.h"
 #include "dprintf.h"
-
+#include <atomic>
 
 
 /*
@@ -292,16 +292,17 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     for (int i = 0; i < 16; i++) {
         printf("cmd: %p\tdword[%d] = %x\n", in_queue_cmd, i, local_copy.dword[i]);
     }
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     // Submit command and wait for completion
     nvm_sq_submit(&admin->asq);
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     in_queue_cpl = nvm_cq_dequeue_block(&admin->acq, admin->timeout);
     if (in_queue_cpl == NULL)
     {
         dprintf("Waiting for admin queue completion timed out\n");
         return ETIME;
     }
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     for (int i = 0; i < 4; i++) {
         printf("cpl: %p\tdword[%d] = %x\n", in_queue_cpl, i, in_queue_cpl->dword[i]);
 
@@ -309,11 +310,11 @@ static int execute_command(struct local_admin* admin, const nvm_cmd_t* cmd, nvm_
     //printf("cpl cmd_id: %u\tstatus and phase: %x\n", in_queue_cpl->dword[3] & 0x0000ffff, in_queue_cpl->dword[3] >> 16);
 
     nvm_sq_update(&admin->asq);
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     // Copy completion and return
     *cpl = *in_queue_cpl;
     nvm_cq_update(&admin->acq);
-
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     *NVM_CPL_CID(cpl) = *NVM_CMD_CID(cmd);
 
     return 0;
