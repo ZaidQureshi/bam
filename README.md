@@ -139,7 +139,7 @@ $ cd module
 $ sudo make load
 ```
 
-This should create a `/dev/libnvm**` device file for each controller that isn't bound to the NVMe driver.
+This should create a `/dev/libnvm*` device file for each controller that isn't bound to the NVMe driver.
 
 The module can be unloaded from the `build` directory with the following:
 
