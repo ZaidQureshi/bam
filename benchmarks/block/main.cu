@@ -276,6 +276,11 @@ int main(int argc, char** argv) {
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
         //uint64_t n_pages = total_cache_size/page_size;
+        //
+        if (n_pages < n_threads) {
+            std::cerr << "Please provide enough pages. Number of pages must be greater than or equal to the number of threads!\n";
+            exit(1);
+        }
 
 
         page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);

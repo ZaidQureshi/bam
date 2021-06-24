@@ -129,6 +129,8 @@ To unbind the NVMe driver for this device we need to do the following as the `ro
 ```
 # echo -n "0000:65:00.0" > /sys/bus/pci/devices/0000\:65\:00.0/driver/unbind
 ```
+Please do this for each NVMe device you want to use with this system.
+
 
 Now we can load the custom kernel module from the `build` directory with the following:
 
@@ -137,7 +139,7 @@ $ cd module
 $ sudo make load
 ```
 
-This should create a `/dev/libnvm0` device file for the controller.
+This should create a `/dev/libnvm**` device file for each controller that isn't bound to the NVMe driver.
 
 The module can be unloaded from the `build` directory with the following:
 
@@ -148,45 +150,49 @@ $ sudo make unload
 
 Running the Example Benchmark
 -------------------------------------------------------------------------------
-The example benchmark application tests the random access read bandwidth from the GPU threads to the NVMe device.
-It assumes an array of `uint64_t` on the backing NVMe device and makes random or sequential accesses to the array.
-The application must be run with `sudo` as it needs direct access to the `/dev/libnvm0` file.
-The applicaiton will exist as the `./bin/nvm-array-bench` binary after compilation.
+The fio like benchmark application is compiled as `./bin/nvm-block-bench` binary.
+It basically assigns NVMe block IDs (randomly or sequentially) to each GPU thread and then a  GPU kernel is launched in which the GPU threads make the appropriate IO requests.
+When multiple NVMe devices are available, the threads (in group of 32) self-assign a SSD in round-robin fashion, so we get uniform distribution of requests to the NVMe devices.
+The application must be run with `sudo` as it needs direct access to the `/dev/libnvm*` files.
 The application arguments are as follows:
 
 ``` 
-$ ./bin/nvm-array-bench --help
-OPTION            TYPE            DEFAULT   DESCRIPTION                         
+$ ./bin/nvm-block-bench --help
+OPTION            TYPE            DEFAULT   DESCRIPTION                       
   page_size       count           4096      size of page in cache               
   blk_size        count           64        CUDA thread block size              
   queue_depth     count           16        queue depth per queue               
-  num_elems       count           2147483648number of 64-bit elements in backing array
+  num_blks        count           2097152   number of pages in backing array    
+  input           path                      Input dataset path used to write to NVMe SSD
   gpu             number          0         specify CUDA device                 
+  n_ctrls         number          1         specify number of NVMe controllers  
   reqs            count           1         number of reqs per thread           
+  access_type     count           0         type of access to make: 0->read, 1->write, 2->mixed
   pages           count           1024      number of pages in cache            
   num_queues      count           1         number of queues per controller     
   random          bool            true      if true the random access benchmark runs, if false the sequential access benchmark runs
-  threads         count           1024      number of CUDA threads
+  ratio           count           100       ratio split for % of mixed accesses that are read
+  threads         count           1024      number of CUDA threads       
 ```
 
 The application prints many things during initalization as it helps in debugging, however near the end it prints some
 statistics of the GPU kernel, as shown below:
 
 ```
-Elapsed Time: 200.576	Number of Read Ops: 1024	Data Size (bytes): 8192
-Read Ops/sec: 5.1053e+06	Effective Bandwidth(GB/S): 0.0380374
+Elapsed Time: 169567	Number of Ops: 262144	Data Size (bytes): 134217728
+Ops/sec: 1.54596e+06	Effective Bandwidth(GB/S): 0.73717
 ```
 
-If I want to run a large GPU kernel on GPU 0 with many threads (262144 threads) each making 1 random request to an array with 4-billion 64-bit integers, a page cache with 262144 pages each with size 4096 bytes, 128 NVMe queues each 1024 elements deep, I would run the following command:
+If I want to run a large GPU kernel on GPU 5 with many threads (262144 threads grouped into GPU block size of 64) each making 1 random request to the first 2097152 NVME blocks, an NVMe block size of 512 bytes, 128 NVMe queues each 1024 elements deep, I would run the following command:
 
 ```
-sudo ./bin/nvm-array-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=5 --n_ctrls=1 --num_queues=128 --random=true
 ```
 
 If I want to run the same benchmark but now with each thread accessing the array sequentially, I would run the following command:
 
 ```
-sudo ./bin/nvm-array-bench --threads=262144 --blk_size=1024 --reqs=1 --pages=262144 --queue_depth=1024 --num_queues=128 --page_size=4096 --gpu=0 --num_elems=4294967296 --random=false
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=5 --n_ctrls=1 --num_queues=128 --random=false
 ```
 
 Disclaimer: The NVMe SSD I was using supports 128 queues each with 1024 depth. However, even if your SSD supports less number of queues and/or less depth the system will automatically use the numbers reported by your device.
