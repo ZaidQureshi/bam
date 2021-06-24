@@ -159,7 +159,7 @@ The application arguments are as follows:
 ``` 
 $ ./bin/nvm-block-bench --help
 OPTION            TYPE            DEFAULT   DESCRIPTION                       
-  page_size       count           4096      size of page in cache               
+  page_size       count           4096      size of each IO request               
   blk_size        count           64        CUDA thread block size              
   queue_depth     count           16        queue depth per queue               
   num_blks        count           2097152   number of pages in backing array    
@@ -183,7 +183,7 @@ Elapsed Time: 169567	Number of Ops: 262144	Data Size (bytes): 134217728
 Ops/sec: 1.54596e+06	Effective Bandwidth(GB/S): 0.73717
 ```
 
-If I want to run a large GPU kernel on GPU 5 with many threads (262144 threads grouped into GPU block size of 64) each making 1 random request to the first 2097152 NVME blocks, an NVMe block size of 512 bytes, 128 NVMe queues each 1024 elements deep, I would run the following command:
+If I want to run a large GPU kernel on GPU 5 with many threads (262144 threads grouped into GPU block size of 64) each making 1 random request to the first 2097152 NVME blocks, an NVMe IO read size of 512 bytes (page_size), 128 NVMe queues each 1024 elements deep, I would run the following command:
 
 ```
 sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=5 --n_ctrls=1 --num_queues=128 --random=true
