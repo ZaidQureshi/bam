@@ -319,6 +319,7 @@ endif ()
 # Add individual benchmarks
 if (CUDA_FOUND AND NOT no_cuda)
   add_subdirectory ("${benchmarks_root}/array")
+  add_subdirectory ("${benchmarks_root}/iodepth-block")
   add_subdirectory ("${benchmarks_root}/block")
   add_subdirectory ("${benchmarks_root}/readwrite")
   add_subdirectory ("${benchmarks_root}/bfs")
