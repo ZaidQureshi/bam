@@ -89,26 +89,28 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head) {
 }
 
 inline __device__
-uint32_t move_head_sq(nvm_queue_t* q, uint32_t in_cur_head) {
+uint32_t move_head_sq(nvm_queue_t* q) {
     uint32_t count = 0;
     uint32_t cur_head = q->head.load(simt::memory_order_acquire);
 
     bool pass = true;
     //uint32_t old_head;
     while (pass) {
-        count++;
+//        count++;
 
-        uint64_t loc = (cur_head)&q->qs_minus_1;
+        uint64_t loc = (cur_head++)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
         if (pass) {
-            cur_head = q->head.fetch_add(1, simt::memory_order_acq_rel);
+//            cur_head = q->head.fetch_add(1, simt::memory_order_acq_rel);
+//	    cur_head++;
+	    count++;
             q->tickets[loc].val.fetch_add(2, simt::memory_order_release);
 
         }
 
 
     }
-    return (count-1);
+    return (count);
 
 }
 inline __device__
@@ -143,14 +145,22 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 #endif
     }
 
+    ulonglong4* queue_loc = ((ulonglong4*)(((nvm_cmd_t*)(sq->vaddr)) + pos));
+    ulonglong4* cmd_ = ((ulonglong4*)(cmd->dword));
+#pragma unroll
+    for (uint32_t i = 0; i < 64/sizeof(ulonglong4); i++) {
+        queue_loc[i] = cmd_[i];
+    }
+
+
     while (((pos+1) & sq->qs_minus_1) == (sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1))) {
 #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
         __nanosleep(100);
 #endif
     }
 
-    ulonglong4* queue_loc = ((ulonglong4*)(((nvm_cmd_t*)(sq->vaddr)) + pos));
-    ulonglong4* cmd_ = ((ulonglong4*)(cmd->dword));
+//    ulonglong4* queue_loc = ((ulonglong4*)(((nvm_cmd_t*)(sq->vaddr)) + pos));
+//    ulonglong4* cmd_ = ((ulonglong4*)(cmd->dword));
     //printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
     //printf("sq->loc: %p\n", queue_loc);
@@ -168,10 +178,10 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     //queue_loc->dword[11] = cmd->dword[11];
     //queue_loc->dword[12] = cmd->dword[12];
 
-#pragma unroll
-    for (uint32_t i = 0; i < 64/sizeof(ulonglong4); i++) {
-        queue_loc[i] = cmd_[i];
-    }
+//#pragma unroll
+//    for (uint32_t i = 0; i < 64/sizeof(ulonglong4); i++) {
+//        queue_loc[i] = cmd_[i];
+//    }
 
 
 
@@ -206,6 +216,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     uint32_t new_tail = cur_tail + tail_move_count;
                     uint32_t new_db = (new_tail) & (sq->qs_minus_1);
                     *(sq->db) = new_db;
+
+		    sq->tail_copy.store(new_tail, simt::memory_order_release);
                     //printf("wrote sq_db: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
                     sq->tail.store(new_tail, simt::memory_order_release);
                 }
@@ -228,20 +240,22 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
     while (cont) {
         cont = sq->head_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
-            cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
-            if (!cont){
-                uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
+            //cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
+            //if (!cont){
+//                uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
 
-                uint32_t head_move_count = move_head_sq(sq, cur_head);
+                uint32_t head_move_count = move_head_sq(sq);
                 (void) head_move_count;
+                sq->head.fetch_add(head_move_count, simt::memory_order_release); 
+
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
                 /* if (head_move_count) { */
                 /*     uint32_t new_head = cur_head + head_move_count; */
                 /*     //printf("sq new_head: %llu\n", (unsigned long long) new_head); */
                 /*     sq->head.store(new_head, simt::memory_order_release); */
                 /* } */
-                sq->head_lock.store(UNLOCKED, simt::memory_order_release);
-            }
+                //sq->head_lock.store(UNLOCKED, simt::memory_order_release);
+            //}
         }
     }
 
@@ -311,6 +325,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
                     uint32_t new_db = (new_head) & (cq->qs_minus_1);
 
                     *(cq->db) = new_db;
+		    cq->head_copy.store(new_head, simt::memory_order_release);
                     //printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_release);
                 }

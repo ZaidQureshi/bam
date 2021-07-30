@@ -122,20 +122,25 @@ typedef struct __align__(32)
  */
 typedef struct
 {
-    simt::atomic<uint32_t, simt::thread_scope_system> head_lock;
+    simt::atomic<uint32_t, simt::thread_scope_device> head_lock;
     uint8_t pad0[124];
-    simt::atomic<uint32_t, simt::thread_scope_system> tail_lock;
+    simt::atomic<uint32_t, simt::thread_scope_device> tail_lock;
     uint8_t pad1[124];
-    simt::atomic<uint32_t, simt::thread_scope_system> head;
+    simt::atomic<uint32_t, simt::thread_scope_device> head;
     uint8_t pad2[124];
-    simt::atomic<uint32_t, simt::thread_scope_system> tail;
+    simt::atomic<uint32_t, simt::thread_scope_device> tail;
     uint8_t pad3[124];
+    simt::atomic<uint32_t, simt::thread_scope_system> tail_copy;
+    uint8_t pad4[124];
+    simt::atomic<uint32_t, simt::thread_scope_system> head_copy;
+    uint8_t pad5[124];
+
     /* padded_struct<simt::atomic<uint32_t, simt::thread_scope_system>> head; */
     /* padded_struct<simt::atomic<uint32_t, simt::thread_scope_system>> tail; */
-    simt::atomic<uint32_t, simt::thread_scope_system> in_ticket;
-    uint8_t pad4[124];
-    simt::atomic<uint32_t, simt::thread_scope_system> cid_ticket;
-    uint8_t pad5[124];
+    simt::atomic<uint32_t, simt::thread_scope_device> in_ticket;
+    uint8_t pad6[124];
+    simt::atomic<uint32_t, simt::thread_scope_device> cid_ticket;
+    uint8_t pad7[124];
     padded_struct* tickets;
 
     padded_struct* head_mark;
