@@ -222,7 +222,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     sq->tail_copy.store(new_tail, simt::memory_order_release);
                     //printf("wrote sq_db: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
                     sq->tail.store(new_tail, simt::memory_order_release);
-                    cont = false;
+                    //cont = false;
                 }
                 //sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
             //}
@@ -253,7 +253,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                     sq->head.store(cur_head + head_move_count, simt::memory_order_release);
                     for (uint16_t i = 0; i < head_move_count; i++)
                         sq->tickets[(cur_head+i) & sq->qs_minus_1].val.fetch_add(1, simt::memory_order_release);
-                    cont = false;
+                    //cont = false;
                 }
 
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
@@ -336,7 +336,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
                     cq->head_copy.store(new_head, simt::memory_order_release);
                     //printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_release);
-                    cont = false;
+                    //cont = false;
                 }
                 //cq->head_lock.store(UNLOCKED, simt::memory_order_release);
             //}
