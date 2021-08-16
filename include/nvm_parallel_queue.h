@@ -39,7 +39,7 @@ uint16_t get_cid(nvm_queue_t* sq) {
     do {
         id = sq->cid_ticket.fetch_add(1, simt::memory_order_relaxed) & (65535);
         //printf("in thread: %p\n", (void*) ((sq->cid)+id));
-        uint64_t old = sq->cid[id].val.exchange(LOCKED, simt::memory_order_acquire);
+        uint64_t old = sq->cid[id].val.exchange(LOCKED, simt::memory_order_relaxed);
         not_found = old == LOCKED;
     } while (not_found);
 
@@ -50,7 +50,7 @@ uint16_t get_cid(nvm_queue_t* sq) {
 
 inline __device__
 void put_cid(nvm_queue_t* sq, uint16_t id) {
-    sq->cid[id].val.store(UNLOCKED, simt::memory_order_release);
+    sq->cid[id].val.store(UNLOCKED, simt::memory_order_relaxed);
 }
 
 inline __device__
