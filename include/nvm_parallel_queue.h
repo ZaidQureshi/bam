@@ -99,8 +99,8 @@ uint32_t move_head_sq(nvm_queue_t* q) {
         uint64_t loc = (cur_head)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
         if (pass) {
-            cur_head = q->head.fetch_add(1, simt::memory_order_acq_rel);
-//	    cur_head++;
+            //cur_head = q->head.fetch_add(1, simt::memory_order_acq_rel);
+            cur_head++;
             count++;
             q->tickets[loc].val.fetch_add(2, simt::memory_order_release);
 
@@ -244,7 +244,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 
                 uint32_t head_move_count = move_head_sq(sq);
                 (void) head_move_count;
-                //sq->head.fetch_add(head_move_count, simt::memory_order_release);
+                sq->head.fetch_add(head_move_count, simt::memory_order_release);
 
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
                 /* if (head_move_count) { */
