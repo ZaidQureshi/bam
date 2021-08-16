@@ -180,7 +180,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     //queue_loc->dword[12] = cmd->dword[12];
 
 #pragma unroll
-    for (uint32_t i = 0; i < 64/sizeof(ulonglong4); i++) {
+    for (uint32_t i = 0; i < 64/sizeof(copy_type); i++) {
         queue_loc[i] = cmd_[i];
     }
 
