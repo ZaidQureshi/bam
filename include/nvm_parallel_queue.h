@@ -87,9 +87,9 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head) {
 }
 
 inline __device__
-uint32_t move_head_sq(nvm_queue_t* q) {
+uint32_t move_head_sq(nvm_queue_t* q, uint32_t cur_head) {
     uint32_t count = 0;
-    uint32_t cur_head = q->head.load(simt::memory_order_acquire);
+//    uint32_t cur_head = q->head.load(simt::memory_order_acquire);
 
     bool pass = true;
     //uint32_t old_head;
@@ -218,6 +218,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     sq->tail_copy.store(new_tail, simt::memory_order_release);
                     //printf("wrote sq_db: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
                     sq->tail.store(new_tail, simt::memory_order_release);
+                    cont = false;
                 }
                 //sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
             //}
@@ -243,8 +244,11 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 //                uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
 
                 uint32_t head_move_count = move_head_sq(sq);
-                (void) head_move_count;
-                sq->head.fetch_add(head_move_count, simt::memory_order_release);
+                //(void) head_move_count;
+                if (head_move_count) {
+                    sq->head.store(cur_head + head_move_count, simt::memory_order_release);
+                    cont = false;
+                }
 
                 //printf("sq head_move_count: %llu\n", (unsigned long long) head_move_count);
                 /* if (head_move_count) { */
@@ -326,6 +330,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos) {
                     cq->head_copy.store(new_head, simt::memory_order_release);
                     //printf("wrote cq_db: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_release);
+                    cont = false;
                 }
                 //cq->head_lock.store(UNLOCKED, simt::memory_order_release);
             //}
