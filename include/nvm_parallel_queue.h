@@ -241,9 +241,9 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
         if (cont) {
             //cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
             //if (!cont){
-//                uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
+                uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
 
-                uint32_t head_move_count = move_head_sq(sq);
+                uint32_t head_move_count = move_head_sq(sq, cur_head);
                 //(void) head_move_count;
                 if (head_move_count) {
                     sq->head.store(cur_head + head_move_count, simt::memory_order_release);
