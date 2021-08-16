@@ -111,6 +111,9 @@ uint32_t move_head_sq(nvm_queue_t* q, uint32_t cur_head) {
     return (count);
 
 }
+
+typedef ulonglong4 copy_type;
+
 inline __device__
 uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
@@ -157,8 +160,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 #endif
     }
 
-    ulonglong4* queue_loc = ((ulonglong4*)(((nvm_cmd_t*)(sq->vaddr)) + pos));
-    ulonglong4* cmd_ = ((ulonglong4*)(cmd->dword));
+    copy_type* queue_loc = ((copy_type*)(((nvm_cmd_t*)(sq->vaddr)) + pos));
+    copy_type* cmd_ = ((copy_type*)(cmd->dword));
     //printf("+++tid: %llu\tcid: %llu\tsq_loc: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (cmd->dword[0] >> 16), (uint64_t) queue_loc);
 
     //printf("sq->loc: %p\n", queue_loc);
