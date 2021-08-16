@@ -112,7 +112,7 @@ uint32_t move_head_sq(nvm_queue_t* q, uint32_t cur_head) {
 
 }
 
-typedef ulonglong4 copy_type;
+typedef volatile uint64_t copy_type;
 
 inline __device__
 uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
