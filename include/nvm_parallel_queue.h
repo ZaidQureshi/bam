@@ -37,13 +37,14 @@ uint16_t get_cid(nvm_queue_t* sq) {
     bool not_found = true;
     uint16_t id;
 
-    do {
-        id = sq->cid_ticket.fetch_add(1, simt::memory_order_relaxed) & (65535);
-        //printf("in thread: %p\n", (void*) ((sq->cid)+id));
+    unsigned count = 0;
+    {do
+            id = sq->cid_ticket.fetch_add(1, simt::memory_order_relaxed) & (65535);
+        //printf("SQ # %llu\tin thread: %p\n", (unsigned long long) sq->no, (void*) ((sq->cid)+id));
         uint64_t old = sq->cid[id].val.exchange(LOCKED, simt::memory_order_acquire);
         not_found = old == LOCKED;
-        if (not_found)
-               printf("still looking\n");
+        if (not_found && (((++count) % (1024*1024)) == 0 ))
+            printf("SQ # %llu\tstill looking for cid, count: %llu\n", (unsigned long long) sq->no, (unsigned long long) count);
     } while (not_found);
 
 
