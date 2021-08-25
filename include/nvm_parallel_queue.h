@@ -228,7 +228,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     *(sq->db) = new_db;
 
                     sq->tail_copy.store(new_tail, simt::memory_order_release);
-                    printf("wrote SQ#: %llu\tSQ_db: %llu\tcur_tail: %llu\tmove_count: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) sq->no, (unsigned long long) new_db, (unsigned long long) cur_tail, (unsigned long long) tail_move_count, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
+                    //printf("wrote SQ#: %llu\tSQ_db: %llu\tcur_tail: %llu\tmove_count: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) sq->no, (unsigned long long) new_db, (unsigned long long) cur_tail, (unsigned long long) tail_move_count, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
                     sq->tail.store(new_tail, simt::memory_order_release);
                     //cont = false;
                 }
@@ -344,7 +344,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 
                     *(cq->db) = new_db;
                     cq->head_copy.store(new_head, simt::memory_order_release);
-                    printf("wrote CQ#: %llu\tCQ_db: %llu\tcur_head: %llu\tmove_count: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) cq->no, (unsigned long long) new_db, (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
+                    //printf("wrote CQ#: %llu\tCQ_db: %llu\tcur_head: %llu\tmove_count: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) cq->no, (unsigned long long) new_db, (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_release);
                     //cont = false;
                 }
