@@ -6,7 +6,7 @@
 #include <time.h>
 #include "regs.h"
 #include "lib_util.h"
-
+#include <simt/atomic>
 
 
 int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, bool cq, uint16_t no, uint32_t qs, 
@@ -25,7 +25,7 @@ int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, bool cq, uint16_
     queue->last = 0;
     queue->phase = 1;
     queue->local = !!local;
-    queue->db = cq ? CQ_DBL(ctrl->mm_ptr, queue->no, ctrl->dstrd) : SQ_DBL(ctrl->mm_ptr, queue->no, ctrl->dstrd);
+    queue->db = (volatile simt::atomic<uint32_t, simt::thread_scope_system>*)(cq ? CQ_DBL(ctrl->mm_ptr, queue->no, ctrl->dstrd) : SQ_DBL(ctrl->mm_ptr, queue->no, ctrl->dstrd));
     queue->vaddr = vaddr;
     queue->ioaddr = ioaddr;
     

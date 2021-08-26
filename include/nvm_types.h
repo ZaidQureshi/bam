@@ -157,7 +157,7 @@ typedef struct
     int8_t                  phase;          // Current phase tag
     int8_t                  local;          // Is the queue allocated in local memory
     uint32_t                last;           // Used internally to check db writes
-    volatile uint32_t*      db;             // Pointer to doorbell register (NB! write only)
+    volatile simt::atomic<uint32_t, simt::thread_scope_system>*      db;             // Pointer to doorbell register (NB! write only)
     volatile void*          vaddr;          // Virtual address to start of queue memory
     uint64_t                ioaddr;         // Physical/IO address to start of queue memory
 } nvm_queue_t;
@@ -182,7 +182,7 @@ typedef struct __align__(32)
  */
 typedef struct __align__(16) 
 {
-    uint32_t                dword[4];       // The name DWORD is chosen to reflect the specification
+    volatile uint32_t                dword[4];       // The name DWORD is chosen to reflect the specification
 } __attribute__((aligned (16))) nvm_cpl_t;
 
 
