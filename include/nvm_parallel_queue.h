@@ -56,7 +56,7 @@ uint16_t get_cid(nvm_queue_t* sq) {
 
 inline __device__
 void put_cid(nvm_queue_t* sq, uint16_t id) {
-//    sq->cid[id].val.store(UNLOCKED, simt::memory_order_release);
+    sq->cid[id].val.store(UNLOCKED, simt::memory_order_release);
 }
 
 inline __device__
@@ -135,8 +135,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, uint16_t & cid) {
     //uint32_t leader = __ffs(mask) - 1;
     //uint32_t lane = lane_id();
     uint32_t ticket;
-    //ticket = sq->in_ticket.fetch_add(1, simt::memory_order_acquire);
-    ticket = cid;
+    ticket = sq->in_ticket.fetch_add(1, simt::memory_order_acquire);
+    //ticket = cid;
     //cid = ticket;
     /* if (lane == leader) { */
     /*     ticket = sq->in_ticket.fetch_add(active_count, simt::memory_order_acquire); */
