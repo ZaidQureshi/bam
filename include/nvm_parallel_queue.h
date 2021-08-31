@@ -225,7 +225,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, uint16_t & cid) {
     while(cont) {
         cont = sq->tail_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
-             bool new_cont = sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED; 
+             bool new_cont = sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
              if(!new_cont) {
                 uint32_t cur_tail = sq->tail.load(simt::memory_order_acquire);
 
@@ -353,7 +353,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 //        if((++j% 1000000) ==0)
 //          printf("j:%llu\n", (unsigned long long)j);
         if (cont) {
-            bool new_cont = cq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
+            bool new_cont = cq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
             if (!new_cont) {
                 uint32_t cur_head = cq->head.load(simt::memory_order_acquire);;
 
