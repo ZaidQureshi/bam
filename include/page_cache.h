@@ -1180,7 +1180,7 @@ inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, cons
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    *sq_pos = sq_enqueue(&qp->sq, &cmd, *cid);
+    *sq_pos = sq_enqueue(&qp->sq, &cmd);
 
 
 
@@ -1208,7 +1208,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd, cid);
+    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq);
@@ -1245,7 +1245,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd, cid);
+    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq);
@@ -1280,7 +1280,7 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd, cid);
+    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq);
