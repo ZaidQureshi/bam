@@ -329,8 +329,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
                  //     printf("NVM Error: %llx\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) search_cid);
                 return loc;
             }
-            //if (phase != search_phase)
-                //break;
+            if (phase != search_phase)
+                break;
             //__nanosleep(1000);
         }
         j++;
