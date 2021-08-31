@@ -25,6 +25,10 @@ int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, bool cq, uint16_
     queue->last = 0;
     queue->phase = 1;
     queue->local = !!local;
+    queue->head_lock = 0;
+    queue->tail_lock = 0;
+    queue->head_copy = 0;
+    queue->tail_copy = 0;
     queue->in_ticket = 0;
     queue->cid_ticket = 0;
 
