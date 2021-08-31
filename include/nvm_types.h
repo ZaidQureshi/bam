@@ -157,7 +157,7 @@ typedef struct
     int8_t                  phase;          // Current phase tag
     int8_t                  local;          // Is the queue allocated in local memory
     uint32_t                last;           // Used internally to check db writes
-    volatile simt::atomic<uint32_t, simt::thread_scope_system>*      db;             // Pointer to doorbell register (NB! write only)
+    volatile uint32_t*      db;             // Pointer to doorbell register (NB! write only)
     volatile void*          vaddr;          // Virtual address to start of queue memory
     uint64_t                ioaddr;         // Physical/IO address to start of queue memory
 } nvm_queue_t;

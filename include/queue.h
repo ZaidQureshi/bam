@@ -186,7 +186,7 @@ struct QueuePair
         {
             throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
         }
-        this->cq.db = (volatile simt::atomic<uint32_t, simt::thread_scope_system>*) devicePtr;
+        this->cq.db = (volatile uint32_t*) devicePtr;
 
         // Create submission queue
         //  nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
@@ -203,7 +203,7 @@ struct QueuePair
         {
             throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
         }
-        this->sq.db = (volatile simt::atomic<uint32_t, simt::thread_scope_system>*) devicePtr;
+        this->sq.db = (volatile uint32_t*) devicePtr;
 //        std::cout << "Finish Making Queue\n";
 
         init_gpu_specific_struct(cudaDevice);
