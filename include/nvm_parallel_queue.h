@@ -38,7 +38,6 @@ uint16_t get_cid(nvm_queue_t* sq) {
     uint16_t id;
     return sq->in_ticket.fetch_add(1, simt::memory_order_acquire);
 
-/*
     unsigned count = 0;
     do {
         id = sq->cid_ticket.fetch_add(1, simt::memory_order_relaxed) & (65535);
@@ -49,7 +48,7 @@ uint16_t get_cid(nvm_queue_t* sq) {
             printf("SQ # %llu\tstill looking for cid, count: %llu\n", (unsigned long long) sq->no, (unsigned long long) count);
     } while (not_found);
 
-*/
+
     return id;
 
 }
