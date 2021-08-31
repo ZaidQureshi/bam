@@ -44,8 +44,8 @@ uint16_t get_cid(nvm_queue_t* sq) {
         //printf("SQ # %llu\tin thread: %p\n", (unsigned long long) sq->no, (void*) ((sq->cid)+id));
         uint64_t old = sq->cid[id].val.exchange(LOCKED, simt::memory_order_acquire);
         not_found = old == LOCKED;
-        if (not_found && (((++count) % (1024*1024)) == 0 ))
-            printf("SQ # %llu\tstill looking for cid, count: %llu\n", (unsigned long long) sq->no, (unsigned long long) count);
+//        if (not_found && (((++count) % (1024*1024)) == 0 ))
+//            printf("SQ # %llu\tstill looking for cid, count: %llu\n", (unsigned long long) sq->no, (unsigned long long) count);
     } while (not_found);
 
 
