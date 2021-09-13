@@ -109,7 +109,7 @@ uint32_t move_head_sq(nvm_queue_t* q, uint32_t cur_head) {
         if (pass) {
             //uint32_t old_cur_head = cur_head;
             //cur_head = q->head.fetch_add(1, simt::memory_order_acq_rel);
-            q->tickets[(old_cur_head) & q->qs_minus_1].val.fetch_add(1, simt::memory_order_release);
+            q->tickets[loc].val.fetch_add(1, simt::memory_order_release);
 
             //cur_head++;
             count++;
@@ -265,7 +265,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 if (head_move_count) {
                     //sq->head.store(cur_head + head_move_count, simt::memory_order_release);
                     //for (uint16_t i = 0; i < head_move_count; i++)
-                     //   sq->tickets[(cur_head+i) & sq->qs_minus_1].val.fetch_add(1, simt::memory_order_release);
+                    //   sq->tickets[(cur_head+i) & sq->qs_minus_1].val.fetch_add(1, simt::memory_order_release);
                     cont = false;
   //              printf("sq cur_head: %llu\thead_move_count: %llu\tnew_head: %llu\n", (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (cur_head+head_move_count));
 
