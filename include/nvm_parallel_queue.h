@@ -65,13 +65,16 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 
     bool pass = true;
     while (pass ) {
-        uint32_t count_copy = count;
-        pass = (((cur_tail+count_copy) & q->qs_minus_1) != (q->head.load(simt::memory_order_acquire) & q->qs_minus_1)) &&
-                ((q->tail_mark[(cur_tail+count_copy)&q->qs_minus_1].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED);
-        count++;
+        //uint32_t count_copy = count;
+        pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_acquire) & q->qs_minus_1));
+        if (pass) {
+            pass = ((q->tail_mark[(cur_tail+count)&q->qs_minus_1].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED);
+            if (pass)
+                count++;
+        }
 
     }
-    return (count-1);
+    return (count);
 }
 
 inline __device__
@@ -217,6 +220,11 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     */
     //sq->tickets[pos].val.store(id + 1, simt::memory_order_release);
     sq->tail_mark[pos].val.store(LOCKED, simt::memory_order_release);
+    /*     while (((pos+1) & sq->qs_minus_1) == (sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1))) { */
+/* #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)) */
+/*         __nanosleep(100); */
+/* #endif */
+/*     } */
     bool cont = true;
     while(cont) {
         cont = sq->tail_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
