@@ -322,7 +322,8 @@ int main(int argc, char *argv[]) {
     std::string filename;
 
     bool changed_h, *changed_d, *label_d;
-    int num_run = 1;
+    int total_run = 1;
+    int num_run = 0;
     impl_type type;
     mem_type mem;
     uint32_t *pad;
@@ -351,11 +352,11 @@ int main(int argc, char *argv[]) {
         filename = std::string(settings.input); 
 
         if(settings.src == 0) {
-                num_run = settings.repeat; 
+                total_run = settings.repeat; 
                 src = 0;
         }
         else {
-                num_run = 1; 
+                total_run = 1; 
                 src = settings.src; 
         }
 
@@ -594,7 +595,7 @@ int main(int argc, char *argv[]) {
 
 
         // Set root
-        for (int i = 0; i < num_run; i++) {
+        for (int i = 0; i < total_run; i++) {
             zero = 0;
             one = 1;
             cuda_err_chk(cudaMemset(costList_d, 0xFF, vertex_count * sizeof(WeightT)));
@@ -657,18 +658,19 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaEventRecord(end, 0));
             cuda_err_chk(cudaEventSynchronize(end));
             cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
+            if(iter > 1){
+                  printf("run %*d: ", 3, i);
+                  printf("src %*u, ", 10, src);
+                  printf("iteration %*u, ", 3, iter);
+                  printf("time %*f ms\n", 12, milliseconds);
+                  fflush(stdout);
 
-            printf("run %*d: ", 3, i);
-            printf("src %*u, ", 10, src);
-            printf("iteration %*u, ", 3, iter);
-            printf("time %*f ms\n", 12, milliseconds);
-            fflush(stdout);
+                  avg_milliseconds += (double)milliseconds;
+                  num_run++; 
+            }
+            src += vertex_count / total_run;
 
-            avg_milliseconds += (double)milliseconds;
-
-            src += vertex_count / num_run;
-
-            /*if (i < num_run - 1) {
+            /*if (i < total_run - 1) {
                 EdgeT *edgeList_temp;
                 WeightT *weightList_temp;
 

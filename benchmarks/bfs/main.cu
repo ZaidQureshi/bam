@@ -535,7 +535,8 @@ int main(int argc, char *argv[]) {
     std::string filename;
 
     uint64_t changed_h, *changed_d;// no_src = false;
-    int num_run = 1;// arg_num = 0;
+    int num_run = 0;// arg_num = 0;
+    int total_run = 1;// arg_num = 0;
     impl_type type;
     mem_type mem;
     uint32_t *pad;
@@ -558,11 +559,11 @@ int main(int argc, char *argv[]) {
          filename = std::string(settings.input); 
 
          if(settings.src == 0) {
-                 num_run = settings.repeat; 
+                 total_run = settings.repeat; 
                  src = 0;
          }
          else {
-                 num_run = 1; 
+                 total_run = 1; 
                  src = settings.src; 
          }
 
@@ -620,6 +621,7 @@ int main(int argc, char *argv[]) {
          edge_size = edge_size + (4096 - (edge_size & 0xFFFULL));
 
          edgeList_h = NULL;
+         edgeList_d = NULL;
 
          // Allocate memory for GPU
          cuda_err_chk(cudaMalloc((void**)&vertexList_d, vertex_size));
@@ -738,6 +740,9 @@ int main(int argc, char *argv[]) {
                  ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
              printf("Controllers Created\n");
          }
+         char gdevst[15];
+         cuda_err_chk(cudaDeviceGetPCIBusId(gdevst, 15, settings.cudaDevice));
+         std::cout << "GPUID: "<< gdevst << std::endl;
 
          printf("Initialization done.\n");
          fflush(stdout);
@@ -765,7 +770,7 @@ int main(int argc, char *argv[]) {
          }
          uint32_t* tmp_front;
          // Set root
-         for (int i = 0; i < num_run; i++) {
+         for (int i = 0; i < total_run; i++) {
              zero = 0;
              cuda_err_chk(cudaMemset(label_d, 0xFF, vertex_count * sizeof(uint32_t)));
              cuda_err_chk(cudaMemcpy(&label_d[src], &zero, sizeof(uint32_t), cudaMemcpyHostToDevice));
@@ -880,25 +885,25 @@ int main(int argc, char *argv[]) {
              cuda_err_chk(cudaEventRecord(end, 0));
              cuda_err_chk(cudaEventSynchronize(end));
              cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
-
-             printf("run %*d: ", 3, i);
-             printf("src %*u, ", 10, src);
-             printf("iteration %*u, ", 3, iter);
-             printf("time %*f ms\n", 12, milliseconds);
-             if(mem == BAFS_DIRECT) {
-                 h_array->print_reset_stats();
-
-             }
-
+             if(iter > 1){
+                 printf("run %*d: ", 3, i);
+                 printf("src %*u, ", 10, src);
+                 printf("iteration %*u, ", 3, iter);
+                 printf("time %*f ms\n", 12, milliseconds);
+                 if(mem == BAFS_DIRECT) {
+                     h_array->print_reset_stats();
+                 }
+                 fflush(stdout);
+                 avg_milliseconds += (double)milliseconds;
+				 num_run++; 
+			 }
+			 else {
+                 avg_milliseconds += 0;
+			 }
             
-
-             fflush(stdout);
-
-             avg_milliseconds += (double)milliseconds;
-
-             src += vertex_count / num_run;
+             src += vertex_count / total_run;
          }
-         printf("\nAverage run time %f ms\n", avg_milliseconds / num_run);
+         printf("\nBFS SSD: %d \t PageSize: %d \t Average run time %f ms\n", settings.n_ctrls, settings.pageSize,avg_milliseconds / num_run);
          
          free(vertexList_h);
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
@@ -916,7 +921,8 @@ int main(int argc, char *argv[]) {
          cuda_err_chk(cudaFree(vertexVisitCount_d));
          vertexVisitCount_h.clear();
 
-         cuda_err_chk(cudaFree(edgeList_d));
+         if (edgeList_d)
+             cuda_err_chk(cudaFree(edgeList_d));
          
          for (size_t i = 0 ; i < settings.n_ctrls; i++)
              delete ctrls[i];
