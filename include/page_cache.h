@@ -568,14 +568,14 @@ template <typename T>
 __forceinline__
 __device__
 uint64_t range_d_t<T>::get_page(const size_t i) const {
-    uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) >> (cache.page_size_log);
+    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) >> (cache.page_size_log);
     return index;
 }
 template <typename T>
 __forceinline__
 __device__
 uint64_t range_d_t<T>::get_subindex(const size_t i) const {
-    uint64_t index = ((index_start + i) * sizeof(T) + page_start_offset) & (cache.page_size_minus_1);
+    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) & (cache.page_size_minus_1);
     return index;
 }
 template <typename T>
