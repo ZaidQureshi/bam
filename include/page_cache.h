@@ -35,9 +35,9 @@
 //   }
 // }
 
-enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31),
-    VALID = 0U, INVALID = (UINT_MAX & 0x7fffffff),
-    BUSY = ((UINT_MAX & 0x7fffffff)-1)};
+// enum page_state {USE = 1U, USE_DIRTY = ((1U << 31) | 1), VALID_DIRTY = (1U << 31),
+//     VALID = 0U, INVALID = (UINT_MAX & 0x7fffffff),
+//     BUSY = ((UINT_MAX & 0x7fffffff)-1)};
 
 enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 
@@ -60,13 +60,12 @@ struct page_cache_d_t;
 template <typename T>
 struct range_t;
 
-struct page_t {
+struct data_page_t {
     simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
-    uint64_t base_addr;
-    int64_t  range;
+
 };
 
-typedef page_t* page_states_t;
+typedef data_page_t* page_states_t;
 
 
 struct page_cache_d_t {
@@ -440,14 +439,14 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     size_t s = pc;//(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
 
     cache = (page_cache_d_t*) c_h->d_pc_ptr;
-    page_states_buff = createBuffer(s * sizeof(page_t), cudaDevice);
+    page_states_buff = createBuffer(s * sizeof(data_page_t), cudaDevice);
     rdt.page_states = (page_states_t) page_states_buff.get();
     //std::vector<padded_struct_pc> ts(s, INVALID);
-    page_t* ts = new page_t[s];
+    data_page_t* ts = new data_page_t[s];
     for (size_t i = 0; i < s; i++)
         ts[i].state = INVALID;
     //printf("S value: %llu\n", (unsigned long long)s);
-    cuda_err_chk(cudaMemcpy(rdt.page_states, ts, s * sizeof(page_t), cudaMemcpyHostToDevice));
+    cuda_err_chk(cudaMemcpy(rdt.page_states, ts, s * sizeof(data_page_t), cudaMemcpyHostToDevice));
     delete ts;
 
     page_addresses_buff = createBuffer(s * sizeof(uint32_t), cudaDevice);
@@ -786,6 +785,38 @@ struct array_d_t {
         }
         base_master = __shfl_sync(eq_mask,  base_master, master);
     }
+
+    // __forceinline__
+//     __device__
+//     page_t* get_page(const size_t i) const {
+//         uint32_t lane = lane_id();
+//         int64_t r = find_range(i);
+
+//         page_t* ret = NULL;
+
+//         if (r != -1) {
+// #ifndef __CUDACC__
+//             uint32_t mask = 1;
+// #else
+//             uint32_t mask = __activemask();
+// #endif
+//             uint32_t eq_mask;
+//             int master;
+//             uint64_t base_master;
+//             uint32_t count;
+//             uint64_t page = d_ranges[r].get_page(i);
+//             uint64_t subindex = d_ranges[r].get_subindex(i);
+//             uint64_t gaddr = d_ranges[r].get_global_address(page);
+
+//             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
+
+
+//             __syncwarp(mask);
+//             ret = d_ranges[r].get_cache_page(base_master);
+
+//         }
+//         return ret;
+//     }
     __forceinline__
     __device__
     T seq_read(const size_t i) const {
