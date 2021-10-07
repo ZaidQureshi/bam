@@ -85,7 +85,7 @@ void flush_kernel(page_cache_d_t* cache) {
             uint32_t previous_global_address = cache->page_translation[page];
             uint32_t previous_range = previous_global_address & cache->n_ranges_mask;
             uint32_t previous_address = previous_global_address >> cache->n_ranges_bits;
-            uint32_t expected_state = cache->ranges[previous_range][previous_address].load(simt::memory_order_acquire);
+            uint32_t expected_state = cache->ranges[previous_range][previous_address].state.load(simt::memory_order_acquire);
             if (expected_state == VALID_DIRTY) {
                 uint64_t ctrl = get_backing_ctrl_(previous_address, cache->n_ctrls, cache->ranges_dists[previous_range]);
                 //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
@@ -111,7 +111,7 @@ void flush_kernel(page_cache_d_t* cache) {
 
                     write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
                 }
-                cache->ranges[previous_range][previous_address].store(VALID, simt::memory_order_release);
+                cache->ranges[previous_range][previous_address].state.store(VALID, simt::memory_order_release);
             }
         }
 
