@@ -70,6 +70,7 @@ typedef data_page_t* page_states_t;
 struct cache_page_t {
     simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock;
     uint32_t  page_translation;
+    uint8_t range_id;
 };
 
 struct page_cache_d_t {
@@ -794,37 +795,7 @@ struct array_d_t {
         base_master = __shfl_sync(eq_mask,  base_master, master);
     }
 
-    // __forceinline__
-//     __device__
-//     page_t* get_page(const size_t i) const {
-//         uint32_t lane = lane_id();
-//         int64_t r = find_range(i);
 
-//         page_t* ret = NULL;
-
-//         if (r != -1) {
-// #ifndef __CUDACC__
-//             uint32_t mask = 1;
-// #else
-//             uint32_t mask = __activemask();
-// #endif
-//             uint32_t eq_mask;
-//             int master;
-//             uint64_t base_master;
-//             uint32_t count;
-//             uint64_t page = d_ranges[r].get_page(i);
-//             uint64_t subindex = d_ranges[r].get_subindex(i);
-//             uint64_t gaddr = d_ranges[r].get_global_address(page);
-
-//             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
-
-
-//             __syncwarp(mask);
-//             ret = d_ranges[r].get_cache_page(base_master);
-
-//         }
-//         return ret;
-//     }
     __forceinline__
     __device__
     T seq_read(const size_t i) const {
@@ -1063,7 +1034,7 @@ __device__
 uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_) {
     bool fail = true;
     uint64_t count = 0;
-    uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
+    //uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
     uint32_t page = 0;
     do {
 
@@ -1085,7 +1056,8 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
         if ( v == FREE ) {
             lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if ( lock ) {
-                this->cache_pages[page].page_translation = global_address;
+                this->cache_pages[page].page_translation = address;
+                this->cache_pages[page].range_id = range_id;
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
                 this->cache_pages[page].page_take_lock.store(UNLOCKED, simt::memory_order_release);
                 fail = false;
@@ -1096,10 +1068,10 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 
             lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (lock) {
-                uint32_t previous_global_address = this->cache_pages[page].page_translation;
+                uint32_t previous_address = this->cache_pages[page].page_translation;
                 //uint32_t previous_global_address = this->page_translation[page].load(simt::memory_order_acquire);
-                uint32_t previous_range = previous_global_address & n_ranges_mask;
-                uint32_t previous_address = previous_global_address >> n_ranges_bits;
+                uint8_t previous_range = this->cache_pages[page].range_id;
+                //uint32_t previous_address = previous_global_address >> n_ranges_bits;
                 uint64_t expected_state = VALID;
                 //uint32_t new_state = BUSY;
                 bool pass = false;
@@ -1177,8 +1149,10 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
                         break;
 
                 }
-                if (!fail)
-                    this->cache_pages[page].page_translation = global_address;
+                if (!fail) {
+                    this->cache_pages[page].page_translation = address;
+                    this->cache_pages[page].range_id = range_id;
+                }
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
                 this->cache_pages[page].page_take_lock.store(UNLOCKED, simt::memory_order_release);
             }
