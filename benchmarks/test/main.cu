@@ -80,9 +80,9 @@ void flush_kernel(page_cache_d_t* cache) {
     //     hexdump(cache->base_addr, 4096);
     // }
     if (page < cache->n_pages) {
-        uint32_t v = cache->page_take_lock[page].load(simt::memory_order_acquire);
+        uint32_t v = cache->cache_pages[page].page_take_lock.load(simt::memory_order_acquire);
         if (v != FREE) {
-            uint32_t previous_global_address = cache->page_translation[page];
+            uint32_t previous_global_address = cache->cache_pages[page].page_translation;
             uint32_t previous_range = previous_global_address & cache->n_ranges_mask;
             uint32_t previous_address = previous_global_address >> cache->n_ranges_bits;
             uint32_t expected_state = cache->ranges[previous_range][previous_address].state.load(simt::memory_order_acquire);

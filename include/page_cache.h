@@ -67,6 +67,10 @@ struct data_page_t {
 
 typedef data_page_t* page_states_t;
 
+struct cache_page_t {
+    simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock;
+    uint32_t  page_translation;
+};
 
 struct page_cache_d_t {
     uint8_t* base_addr;
@@ -75,9 +79,10 @@ struct page_cache_d_t {
     uint64_t page_size_log;
     uint64_t n_pages;
     uint64_t n_pages_minus_1;
-    uint32_t* page_translation;         //len = num of pages in cache
+    cache_page_t* cache_pages;
+    //uint32_t* page_translation;         //len = num of pages in cache
     //padded_struct_pc* page_translation;         //len = num of pages in cache
-    padded_struct_pc* page_take_lock;      //len = num of pages in cache
+    //padded_struct_pc* page_take_lock;      //len = num of pages in cache
     padded_struct_pc* page_ticket;
     uint64_t* prp1;                  //len = num of pages in cache
     uint64_t* prp2;                  //len = num of pages in cache if page_size = ctrl.page_size *2
@@ -127,8 +132,9 @@ struct page_cache_t {
     DmaPtr prp_list_dma;
     BufferPtr prp1_buf;
     BufferPtr prp2_buf;
-    BufferPtr page_translation_buf;
-    BufferPtr page_take_lock_buf;
+    BufferPtr cache_pages_buf;
+    //BufferPtr page_translation_buf;
+    //BufferPtr page_take_lock_buf;
     BufferPtr ranges_buf;
     BufferPtr pc_buff;
     BufferPtr d_ctrls_buff;
@@ -191,14 +197,16 @@ struct page_cache_t {
         h_ranges_page_starts = new uint64_t[max_range];
         std::memset(h_ranges_page_starts, 0, max_range * sizeof(uint64_t));
 
-        page_translation_buf = createBuffer(np * sizeof(uint32_t), cudaDevice);
-        pdt.page_translation = (uint32_t*)page_translation_buf.get();
+        //page_translation_buf = createBuffer(np * sizeof(uint32_t), cudaDevice);
+        //pdt.page_translation = (uint32_t*)page_translation_buf.get();
         //page_translation_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
         //page_translation = (padded_struct_pc*)page_translation_buf.get();
 
-        page_take_lock_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
-        pdt.page_take_lock =  (padded_struct_pc*)page_take_lock_buf.get();
+        //page_take_lock_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
+        //pdt.page_take_lock =  (padded_struct_pc*)page_take_lock_buf.get();
 
+        cache_pages_buf = createBuffer(np * sizeof(cache_page_t), cudaDevice);
+        pdt.cache_pages = (cache_page_t*)cache_pages_buf.get();
 
         ranges_page_starts_buf = createBuffer(max_range * sizeof(uint64_t), cudaDevice);
         pdt.ranges_page_starts = (uint64_t*) ranges_page_starts_buf.get();
@@ -206,10 +214,10 @@ struct page_cache_t {
         page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
         //std::vector<padded_struct_pc> tps(np, FREE);
-        padded_struct_pc* tps = new padded_struct_pc[np];
+        cache_page_t* tps = new cache_page_t[np];
         for (size_t i = 0; i < np; i++)
-            tps[i] = FREE;
-        cuda_err_chk(cudaMemcpy(pdt.page_take_lock, tps, np*sizeof(padded_struct_pc), cudaMemcpyHostToDevice));
+            tps[i].page_take_lock = FREE;
+        cuda_err_chk(cudaMemcpy(pdt.cache_pages, tps, np*sizeof(cache_page_t), cudaMemcpyHostToDevice));
         delete tps;
 
         ranges_dists_buf = createBuffer(max_range * sizeof(data_dist_t), cudaDevice);
@@ -1071,24 +1079,24 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
         //printf("tid: %llu page: %llu\n", tid, page);
 
         bool lock = false;
-        uint32_t v = this->page_take_lock[page].load(simt::memory_order_acquire);
+        uint32_t v = this->cache_pages[page].page_take_lock.load(simt::memory_order_acquire);
         //this->page_take_lock[page].compare_exchange_strong(unlocked, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
         //not assigned to anyone yet
         if ( v == FREE ) {
-            lock = this->page_take_lock[page].compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
+            lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if ( lock ) {
-                this->page_translation[page] = global_address;
+                this->cache_pages[page].page_translation = global_address;
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
-                this->page_take_lock[page].store(UNLOCKED, simt::memory_order_release);
+                this->cache_pages[page].page_take_lock.store(UNLOCKED, simt::memory_order_release);
                 fail = false;
             }
         }
         //assigned to someone and was able to take lock
         else if ( v == UNLOCKED ) {
 
-            lock = this->page_take_lock[page].compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
+            lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (lock) {
-                uint32_t previous_global_address = this->page_translation[page];
+                uint32_t previous_global_address = this->cache_pages[page].page_translation;
                 //uint32_t previous_global_address = this->page_translation[page].load(simt::memory_order_acquire);
                 uint32_t previous_range = previous_global_address & n_ranges_mask;
                 uint32_t previous_address = previous_global_address >> n_ranges_bits;
@@ -1170,9 +1178,9 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 
                 }
                 if (!fail)
-                    this->page_translation[page] = global_address;
+                    this->cache_pages[page].page_translation = global_address;
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
-                this->page_take_lock[page].store(UNLOCKED, simt::memory_order_release);
+                this->cache_pages[page].page_take_lock.store(UNLOCKED, simt::memory_order_release);
             }
 
 
