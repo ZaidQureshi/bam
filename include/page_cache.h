@@ -71,6 +71,7 @@ template<typename T>
 struct returned_cache_page_t {
     T* addr;
     uint32_t size;
+    uint32_t offset;
 
     T operator[](size_t i) const {
         if (i < size)
@@ -880,6 +881,7 @@ struct array_d_t {
 
             ret.addr = (T*) base_master;
             ret.size = d_ranges[r].get_sector_size()/sizeof(T);
+            ret.offset = subindex/sizeof(T);
             //ret.page = page;
             __syncwarp(mask);
 
