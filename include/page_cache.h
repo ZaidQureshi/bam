@@ -743,13 +743,46 @@ struct array_d_t {
     }
     __forceinline__
     __device__
+    void coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const uint64_t gaddr, const bool write,
+                       uint32_t& eq_mask, int& master, uint32_t& count, uint64_t& base_master) const {
+        uint32_t ctrl;
+        uint32_t queue;
+        uint32_t leader = __ffs(mask) - 1;
+        if (lane == leader) {
+            page_cache_d_t* pc = &(d_ranges[r].cache);
+            ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+            queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+        }
+
+        ctrl = __shfl_sync(mask, ctrl, leader);
+        queue = __shfl_sync(mask, queue, leader);
+
+
+        uint32_t active_cnt = __popc(mask);
+        eq_mask = __match_any_sync(mask, gaddr);
+        eq_mask &= __match_any_sync(mask, (uint64_t)this);
+        master = __ffs(eq_mask) - 1;
+
+        uint32_t dirty = __any_sync(eq_mask, write);
+
+        uint64_t base;
+        //bool memcpyflag_master;
+        //bool memcpyflag;
+        count = __popc(eq_mask);
+        if (master == lane) {
+            //std::pair<uint64_t, bool> base_memcpyflag;
+            base = d_ranges[r].acquire_page(page, count, dirty, ctrl, queue);
+            base_master = base;
+//                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+        }
+        base_master = __shfl_sync(eq_mask,  base_master, master);
+    }
+    __forceinline__
+    __device__
     T seq_read(const size_t i) const {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
         T ret;
-
-        uint32_t ctrl;
-        uint32_t queue;
 
         if (r != -1) {
 #ifndef __CUDACC__
@@ -757,36 +790,15 @@ struct array_d_t {
 #else
             uint32_t mask = __activemask();
 #endif
-            uint32_t leader = __ffs(mask) - 1;
-            if (lane == leader) {
-                page_cache_d_t* pc = &(d_ranges[r].cache);
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-            }
-            ctrl = __shfl_sync(mask, ctrl, leader);
-            queue = __shfl_sync(mask, queue, leader);
-
+            uint32_t eq_mask;
+            int master;
+            uint64_t base_master;
+            uint32_t count;
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
-            //uint64_t p_s = d_ranges[r].page_size;
 
-            uint32_t active_cnt = __popc(mask);
-            uint32_t eq_mask = __match_any_sync(mask, gaddr);
-            eq_mask &= __match_any_sync(mask, (uint64_t)this);
-            int master = __ffs(eq_mask) - 1;
-            uint64_t base_master;
-            uint64_t base;
-            //bool memcpyflag_master;
-            //bool memcpyflag;
-            uint32_t count = __popc(eq_mask);
-            if (master == lane) {
-                //std::pair<uint64_t, bool> base_memcpyflag;
-                base = d_ranges[r].acquire_page(page, count, false, ctrl, queue);
-                base_master = base;
-//                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
-            }
-            base_master = __shfl_sync(eq_mask,  base_master, master);
+            coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
@@ -806,8 +818,6 @@ struct array_d_t {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
 
-        uint32_t ctrl;
-        uint32_t queue;
 
         if (r != -1) {
 #ifndef __CUDACC__
@@ -815,35 +825,15 @@ struct array_d_t {
 #else
             uint32_t mask = __activemask();
 #endif
-            uint32_t leader = __ffs(mask) - 1;
-            if (lane == leader) {
-                page_cache_d_t* pc = &(d_ranges[r].cache);
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-            }
-            ctrl = __shfl_sync(mask, ctrl, leader);
-            queue = __shfl_sync(mask, queue, leader);
-
+            uint32_t eq_mask;
+            int master;
+            uint64_t base_master;
+            uint32_t count;
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
-            //uint64_t p_s = d_ranges[r].page_size;
 
-            uint32_t active_cnt = __popc(mask);
-            uint32_t eq_mask = __match_any_sync(mask, gaddr);
-            eq_mask &= __match_any_sync(mask, (uint64_t)this);
-            int master = __ffs(eq_mask) - 1;
-            uint64_t base_master;
-            uint64_t base;
-            //bool memcpyflag_master;
-            //bool memcpyflag;
-            uint32_t count = __popc(eq_mask);
-            if (master == lane) {
-                base = d_ranges[r].acquire_page(page, count, true, ctrl, queue);
-                base_master = base;
-//                printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
-            }
-            base_master = __shfl_sync(eq_mask,  base_master, master);
+            coalesce_page(lane, mask, r, page, gaddr, true, eq_mask, master, count, base_master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
@@ -853,6 +843,7 @@ struct array_d_t {
             if (master == lane)
                 d_ranges[r].release_page(page, count);
             __syncwarp(mask);
+
         }
     }
     __forceinline__
