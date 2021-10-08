@@ -1357,8 +1357,9 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    sq_dequeue(&qp->sq, sq_pos);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq);
+    sq_dequeue(&qp->sq, sq_pos);
+
 
 
 
@@ -1394,8 +1395,9 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    sq_dequeue(&qp->sq, sq_pos);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq);
+    sq_dequeue(&qp->sq, sq_pos);
+
 
 
 
@@ -1429,8 +1431,9 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    sq_dequeue(&qp->sq, sq_pos);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq);
+    sq_dequeue(&qp->sq, sq_pos);
+
 
 
 

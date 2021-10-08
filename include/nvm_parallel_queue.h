@@ -263,7 +263,9 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                     //sq->head.store(cur_head + head_move_count, simt::memory_order_release);
                     //for (uint16_t i = 0; i < head_move_count; i++)
                      //   sq->tickets[(cur_head+i) & sq->qs_minus_1].val.fetch_add(1, simt::memory_order_release);
-                    //cont = false;
+
+                    // cont = false;
+
   //              printf("sq cur_head: %llu\thead_move_count: %llu\tnew_head: %llu\n", (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (cur_head+head_move_count));
 
                 }
