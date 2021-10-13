@@ -743,10 +743,50 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case UVM_DIRECT:
+                {/*
+                high_resolution_clock::time_point ft1 = high_resolution_clock::now();
                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
                 file.read((char*)edgeList_d, edge_size);
                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
                 break;
+                */
+                file.close();
+                for (uint64_t i = 0; i < vertex_count + 1; i++) {
+                    vertexList_h[i] += 2;
+                }   
+                int fd = open(edge_file.c_str(), O_RDONLY | O_DIRECT);
+                FILE *file_temp = fdopen(fd, "rb");
+                if ((file_temp == NULL) || (fd == -1)) {
+                    printf("edge file fd open failed\n");
+                    exit(1);
+                }   
+                uint64_t edge_count_4k_aligned = ((edge_count + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
+                uint64_t edge_size_4k_aligned = edge_count_4k_aligned * sizeof(uint64_t);
+                cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size_4k_aligned));
+                cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size_4k_aligned, cudaMemAdviseSetAccessedBy,settings.cudaDevice));
+                high_resolution_clock::time_point ft1 = high_resolution_clock::now();
+                      
+                if (fread(edgeList_d, sizeof(uint64_t), edge_count_4k_aligned, file_temp) != edge_count + 2) {
+                    printf("edge file fread failed\n");
+                    exit(1);
+                }   
+                fclose(file_temp);                                                                                                              
+                close(fd);
+                high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
+                      
+                file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
+                if (!file.is_open()) {
+                    printf("edge file open failed\n");
+                    exit(1);
+                }   
+                break;
+                }
+
             case BAFS_DIRECT: 
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 if (totalbyte < 16*1024*1024*1024ULL)
@@ -914,7 +954,7 @@ int main(int argc, char *argv[]) {
 
             if(mem == BAFS_DIRECT) {
                      h_array->print_reset_stats();
-		     std::cout<< "itr time: "<< elapsed.count() <<std::endl; 
+		     printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
             }
           //  break; 
         } while(changed_h);
@@ -932,9 +972,10 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf("total iterations: %u\n", iter);
+        printf("total cc iterations: %u\n", iter);
         printf("total components: %u\n", comp_total);
         printf("total time: %f ms\n", milliseconds);
+        printf("\nCC Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t TotalTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, milliseconds); 
         fflush(stdout);
 
         free(vertexList_h);

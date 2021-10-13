@@ -663,7 +663,7 @@ int main(int argc, char *argv[]) {
                  break;
              case UVM_DIRECT:
              {
-                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
+             /*    cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
                  // printf("Address is %p   %p\n", edgeList_d, &edgeList_d[0]); 
                  high_resolution_clock::time_point ft1 = high_resolution_clock::now();
                  file.read((char*)edgeList_d, edge_size);
@@ -672,6 +672,40 @@ int main(int argc, char *argv[]) {
                  duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
                  std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
                  cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                 break;
+             */
+
+                 file.close();
+                 for (uint64_t i = 0; i < vertex_count + 1; i++) {
+                     vertexList_h[i] += 2;
+                 }   
+                 int fd = open(edge_file.c_str(), O_RDONLY | O_DIRECT);
+                 FILE *file_temp = fdopen(fd, "rb");
+                 if ((file_temp == NULL) || (fd == -1)) {
+                     printf("edge file fd open failed\n");
+                     exit(1);
+                 }   
+                 uint64_t edge_count_4k_aligned = ((edge_count + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
+                 uint64_t edge_size_4k_aligned = edge_count_4k_aligned * sizeof(uint64_t);
+                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size_4k_aligned));
+                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                 high_resolution_clock::time_point ft1 = high_resolution_clock::now();
+                       
+                 if (fread(edgeList_d, sizeof(uint64_t), edge_count_4k_aligned, file_temp) != edge_count + 2) {
+                     printf("edge file fread failed\n");
+                     exit(1);
+                 }   
+                 fclose(file_temp);                                                                                                              
+                 close(fd);
+                 high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                 duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                 std::cout<< "Edge file read time: "<< time_span.count() <<std::endl;
+                       
+                 file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
+                 if (!file.is_open()) {
+                     printf("edge file open failed\n");
+                     exit(1);
+                 }   
                  break;
              }
              case BAFS_DIRECT: 
@@ -903,7 +937,7 @@ int main(int argc, char *argv[]) {
             
              src += vertex_count / total_run;
          }
-         printf("\nBFS SSD: %d \t PageSize: %d \t Average run time %f ms\n", settings.n_ctrls, settings.pageSize,avg_milliseconds / num_run);
+         printf("\nBFS Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
          
          free(vertexList_h);
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
