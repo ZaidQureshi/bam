@@ -981,11 +981,14 @@ struct array_t {
         cuda_err_chk(cudaMemcpy(rdt.data(), adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
         for (size_t i = 0; i < adt.n_ranges; i++) {
 
+            std::cout << std::dec << "#READ IOs: "   << rdt[i].read_io_cnt  
+                                  << "\t#Accesses: " << rdt[i].access_cnt  
+                                  << "\t#Misses: "   << rdt[i].miss_cnt 
+                                  << "\t#MissRate: " << ((float)rdt[i].miss_cnt/rdt[i].access_cnt)  
+                                  << "\t#Hits: "     << rdt[i].hit_cnt 
+                                  << "\t#HitRate: "  << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) 
+                                  << std::endl;
             std::cout << "*********************************" << std::endl;
-            std::cout << std::dec << "# READ IOs:\t" << rdt[i].read_io_cnt << std::endl;
-            std::cout << std::dec << "# Accesses:\t" << rdt[i].access_cnt << std::endl;
-            std::cout << std::dec << "# Misses:\t" << rdt[i].miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt) << std::endl;
-            std::cout << std::dec << "# Hits:\t" << rdt[i].hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) << std::endl;
             rdt[i].read_io_cnt = 0;
             rdt[i].access_cnt = 0;
             rdt[i].miss_cnt = 0;
