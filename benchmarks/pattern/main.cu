@@ -36,7 +36,7 @@ using error = std::runtime_error;
 using std::string;
 
 
-#define ARRAYTYPE uint32_t
+#define ARRAYTYPE uint64_t
 
 #define Align(size,alignment) (size+alignment-1) & ~(alignment-1)
 
