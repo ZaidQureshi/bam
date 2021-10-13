@@ -72,8 +72,25 @@ typedef enum {
 
 
 
+//Honestly this is grid streaming and can be removed entirely
+__global__
+void sequential_access_kernel(ARRAYTYPE* dr, uint64_t num_elems, unsigned long long* output) {
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
+        output[0] += dr[i];
+        __syncthreads(); 
+    }
+}
 
 
+__global__
+void random_access_kernel(ARRAYTYPE* dr, uint64_t num_elems, unsigned long long* output, uint64_t* assignment) {
+    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
+        output[0] += dr[assignment[i]];
+    }
+}
 
 //Intial access pattern extracted from https://github.com/NVIDIA-developer-blog/code-samples/blob/master/posts/unified-memory-oversubscription/uvm_oversubs.cu
 
@@ -264,18 +281,6 @@ __global__ void read_cta_random_warp_streaming_pc(array_d_t<uint64_t> *ptr, size
 
 
 
-//Honestly this is grid streaming and can be removed entirely
-__global__
-void sequential_access_kernel(ARRAYTYPE* dr, uint64_t num_elems, unsigned long long* output) {
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
-        output[0] += dr[i];
-        __syncthreads(); 
-    }
-}
-
-
 __global__
 void sequential_access_kernel_pc(array_d_t<uint64_t>* dr, uint64_t num_elems, unsigned long long* output) {    
     // uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -290,13 +295,6 @@ void sequential_access_kernel_pc(array_d_t<uint64_t>* dr, uint64_t num_elems, un
     }
 }
 
-__global__
-void random_access_kernel(ARRAYTYPE* dr, uint64_t num_elems, unsigned long long* output, uint64_t* assignment) {
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
-        output[0] += dr[assignment[i]];
-    }
-}
 
 
 __global__
