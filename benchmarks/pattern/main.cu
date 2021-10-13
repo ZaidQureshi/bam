@@ -63,8 +63,8 @@ typedef enum {
     GPUMEM = 0,
     UVM_READONLY = 1,
     UVM_DIRECT = 2,
-    UVM_READONLY_NVLINK = 3,
-    UVM_DIRECT_NVLINK = 4,
+    // UVM_READONLY_NVLINK = 3,
+    // UVM_DIRECT_NVLINK = 4,
     DRAGON_MAP = 5,
     BAFS_DIRECT = 6,
 } mem_type;
@@ -294,7 +294,7 @@ __global__
 void random_access_kernel(ARRAYTYPE* dr, uint64_t num_elems, unsigned long long* output, uint64_t* assignment) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
-            output[0] += dr[assignment[i]];
+        output[0] += dr[assignment[i]];
     }
 }
 
@@ -337,38 +337,38 @@ int main(int argc, char** argv) {
         char st[15];
         cuda_err_chk(cudaDeviceGetPCIBusId(st, 15, settings.cudaDevice));
         std::cout << "GPUID: " << st << std::endl;
-       
+        
+        type = (impl_type) settings.type; 
+        mem  = (mem_type) settings.memalloc; 
 
         cudaDeviceProp prop; 
         cuda_err_chk(cudaGetDeviceProperties(&prop, settings.cudaDevice)); 
 
         std::vector<Controller*> ctrls(settings.n_ctrls);
-        for (size_t i = 0 ; i < settings.n_ctrls; i++)
-            ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+        if(mem==BAFS_DIRECT){
+            for (size_t i = 0 ; i < settings.n_ctrls; i++)
+                ctrls[i] = new Controller(ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+        }
 
-        type = (impl_type) settings.type; 
-        mem  = (mem_type) settings.memalloc; 
-        
         ARRAYTYPE *d_array_ptr; //*h_array_ptr
         size_t array_size; 
-        size_t sizeoftensor; 
-        if((type!=WARP_RANDOM) || (type!=WARP_RANDOM_PC)){
-            sizeoftensor = 1;
+        size_t tensor_size; 
+        if((type==WARP_RANDOM) || (type==WARP_RANDOM_PC) ){
+            tensor_size = settings.tensor_size;
         }else {
-            sizeoftensor = settings.sizeoftensor;
+            tensor_size =1;
         }
         
         uint64_t n_elems = settings.numElems;
-        array_size = n_elems*sizeoftensor*sizeof(ARRAYTYPE);
+        array_size = n_elems*tensor_size*sizeof(ARRAYTYPE);
+        std::cout << "Tensorsize: " << tensor_size << std::endl; 
         array_size = Align(array_size, settings.pageSize);
         std::cout << "Arraysize: " << array_size/(1024ULL * 1024ULL * 1024ULL) << " GBytes" << std::endl; 
         uint64_t b_size = settings.blkSize;//64;
         uint64_t g_size = prop.multiProcessorCount * prop.maxThreadsPerMultiProcessor /b_size;
         uint64_t n_threads = b_size * g_size;
 
-        uint64_t page_size = settings.pageSize;
-        uint64_t n_pages = settings.numPages;
-        uint64_t total_cache_size = (page_size * n_pages);
+     
         //uint64_t n_pages = total_cache_size/page_size;
         //if (n_pages < n_threads) {
         //    std::cerr << "Please provide enough pages. Number of pages must be greater than or equal to the number of threads!\n";
@@ -378,15 +378,29 @@ int main(int argc, char** argv) {
 
         uint64_t* h_rand_assignment;
         uint64_t* d_rand_assignment;
-        if ((type==RANDOM) || (type==RANDOM_PC) || (type==WARP_RANDOM) || (type==WARP_RANDOM_PC)) {
-            h_rand_assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
-            for (size_t i = 0; i< n_threads; i++)
+        if ((type==RANDOM) || (type==RANDOM_PC)) {
+            h_rand_assignment = (uint64_t*) malloc(n_elems*sizeof(uint64_t));
+            for (size_t i = 0; i< n_elems; i++)
                 h_rand_assignment[i] = rand() % (n_elems);
             
-            cuda_err_chk(cudaMalloc(&d_rand_assignment, n_threads*sizeof(uint64_t)));
-            cuda_err_chk(cudaMemcpy(d_rand_assignment, h_rand_assignment,  n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMalloc(&d_rand_assignment, n_elems*sizeof(uint64_t)));
+            cuda_err_chk(cudaMemcpy(d_rand_assignment, h_rand_assignment,  n_elems*sizeof(uint64_t), cudaMemcpyHostToDevice));
+            std::cout << "Random assignment complete"<< std::endl; 
         }
-       
+        if ((type==WARP_RANDOM) || (type==WARP_RANDOM_PC)) {
+            uint64_t n_keys = ceil((float)n_elems/tensor_size);
+            h_rand_assignment = (uint64_t*) malloc(n_keys*sizeof(uint64_t));
+            for (size_t i = 0; i< n_keys; i++)
+                h_rand_assignment[i] = rand() % (n_keys);
+            
+            cuda_err_chk(cudaMalloc(&d_rand_assignment, n_keys*sizeof(uint64_t)));
+            cuda_err_chk(cudaMemcpy(d_rand_assignment, h_rand_assignment,  n_keys*sizeof(uint64_t), cudaMemcpyHostToDevice));
+            std::cout << "Random key assignment complete"<< std::endl; 
+        }
+        
+
+        
+
         void* map_in; 
         int fd_in; 
         struct stat sb_in; 
@@ -438,8 +452,8 @@ int main(int argc, char** argv) {
                          }
             case UVM_DIRECT: {
                          cuda_err_chk(cudaMallocManaged((void**)&d_array_ptr, array_size));
-                         //cuda_err_chk(cudaMemcpy(d_array_ptr, map_in, array_size, cudaMemcpyHostToDevice)); //this is optional. done for correctness check across all combinations. 
                          cuda_err_chk(cudaMemAdvise(d_array_ptr, array_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                        //  cuda_err_chk(cudaMemcpy(d_array_ptr, map_in, array_size, cudaMemcpyHostToDevice)); //this is optional. done for correctness check across all combinations. 
                          break;
                          }
             case BAFS_DIRECT: {
@@ -461,20 +475,35 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaMalloc((void**)&d_output, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_output, 0, sizeof(unsigned long long)));
         
-        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
-        page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
-        std::cout << "finished creating cache\n";
+        page_cache_t* h_pc; 
+        range_t<uint64_t>* h_range; 
+        std::vector<range_t<uint64_t>*> vec_range(1);
+        array_t<uint64_t>* h_array; 
+        uint64_t pc_page_size = settings.pageSize;
+        uint64_t file_n_pages = ceil(((float)array_size)/pc_page_size);
+        uint64_t pc_pages = ceil((float)settings.maxPageCacheSize/pc_page_size);
+        uint64_t total_cache_size = (pc_page_size * pc_pages); 
 
-        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(array_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
-        range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
-        std::vector<range_t<uint64_t>*> vr(1);
-        vr[0] = &h_range;
+
+        if(mem==BAFS_DIRECT){
+                h_pc = new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+                h_range = new range_t<uint64_t>((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)file_n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice);
+                vec_range[0] = h_range; 
+                h_array = new array_t<uint64_t>(n_elems, 0, vec_range, settings.cudaDevice);
+                std::cout << "finished creating cache of size: "<< total_cache_size/(1024ULL * 1024ULL * 1024ULL) << " GB"<<std::endl;
+        }
+        // page_cache_t* d_pc = (page_cache_t*) (h_pc.d_pc_ptr);
+        // range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
+        fflush(stdout);
+
+
+        
         //(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, Settings& settings)
-        array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
-        std::cout << "finished creating range and array\n"; 
         
 
         printf("Launching kernels: %d blocks and %d threads\n", g_size, b_size); 
+        fflush(stdout);
+        
         Event before;
         
         switch(type){
@@ -495,7 +524,7 @@ int main(int argc, char** argv) {
                         break;
                         }
             case WARP_RANDOM:{
-                        read_cta_random_warp_streaming<ARRAYTYPE><<<g_size, b_size>>>(d_array_ptr, settings.sizeoftensor, array_size, n_pages, page_size, d_rand_assignment, d_output);
+                        read_cta_random_warp_streaming<ARRAYTYPE><<<g_size, b_size>>>(d_array_ptr, settings.tensor_size, array_size, file_n_pages, pc_page_size, d_rand_assignment, d_output);
                         break;
                         }
             case BLOCK_RANDOM:{
@@ -504,23 +533,23 @@ int main(int argc, char** argv) {
                         break;
                         }
             case SEQUENTIAL_PC: { 
-                        sequential_access_kernel_pc<<<g_size, b_size>>>(a.d_array_ptr, n_elems, d_output);
+                        sequential_access_kernel_pc<<<g_size, b_size>>>(h_array->d_array_ptr, n_elems, d_output);
                         break;
                         }
             case RANDOM_PC:{
-                        random_access_kernel_pc<<<g_size, b_size>>>(a.d_array_ptr, n_elems, d_output, d_rand_assignment);
+                        random_access_kernel_pc<<<g_size, b_size>>>(h_array->d_array_ptr, n_elems, d_output, d_rand_assignment);
                         break;
                         }
             case GRID_STREAMING_PC:{
-                        read_grid_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(a.d_array_ptr, array_size, d_output);
+                        read_grid_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(h_array->d_array_ptr, array_size, d_output);
                         break;
                         }
             case BLOCK_STREAMING_PC:{
-                        read_block_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(a.d_array_ptr, array_size, d_output);
+                        read_block_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(h_array->d_array_ptr, array_size, d_output);
                         break;
                         }
             case WARP_RANDOM_PC:{
-                        read_cta_random_warp_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(a.d_array_ptr, settings.sizeoftensor, array_size, n_pages, page_size, d_rand_assignment, d_output);
+                        read_cta_random_warp_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(h_array->d_array_ptr, settings.tensor_size, array_size, file_n_pages, pc_page_size, d_rand_assignment, d_output);
                         break;
                         }
             case BLOCK_RANDOM_PC:{
@@ -539,12 +568,20 @@ int main(int argc, char** argv) {
         std::cout << "Kernel execution complete\n" ; 
 
         double elapsed = after - before;
-        uint64_t ios = array_size/sizeof(ARRAYTYPE);
+
+        uint64_t ios = n_elems; 
         uint64_t data = array_size;
+        
+        if(tensor_size>1){
+            ios =  ceil((float)n_elems/tensor_size);
+            data = ios*tensor_size;
+        }
+            
+
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
         if(type==BAFS_DIRECT)
-            a.print_reset_stats();
+            h_array->print_reset_stats();
         std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
         std::cout << std::dec << "Read Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
 
@@ -553,14 +590,16 @@ int main(int argc, char** argv) {
         //std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
         //ofile.write((char*)ret_array, data);
         //ofile.close();
+        if(mem==BAFS_DIRECT){
+            for (size_t i = 0 ; i < settings.n_ctrls; i++)
+                delete ctrls[i];
+        }        //hexdump(ret_array, n_pages*page_size);
 
-        for (size_t i = 0 ; i < settings.n_ctrls; i++)
-            delete ctrls[i];
-        //hexdump(ret_array, n_pages*page_size);
-
-        
-        cuda_err_chk(cudaFree(d_array_ptr)); 
-
+        if(mem!=BAFS_DIRECT){
+            cuda_err_chk(cudaFree(d_array_ptr)); 
+        }
+        if((mem==RANDOM) || (mem==RANDOM_PC) || (mem==WARP_RANDOM) || (mem==WARP_RANDOM_PC))
+            cuda_err_chk(cudaFree(d_rand_assignment));
         //std::cout << "END\n";
 
         //std::cout << RAND_MAX << std::endl;

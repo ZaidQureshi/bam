@@ -40,7 +40,7 @@ struct Settings
     const char*     output;
     size_t          type; 
     size_t          memalloc; 
-    size_t          sizeoftensor;
+    size_t          tensor_size;
     size_t          numThreads;
     uint32_t        domain;
     uint32_t        bus;
@@ -51,6 +51,8 @@ struct Settings
     size_t numQueues;
     size_t pageSize;
     uint64_t numElems;
+    uint64_t maxPageCacheSize;
+
     bool random;
     Settings();
     void parseArguments(int argc, char** argv);
@@ -374,7 +376,8 @@ void Settings::parseArguments(int argc, char** argv)
         {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
         {'v', OptionPtr(new Range(type, 0, 10, "impl_type", "SEQUENTIAL= 0, RANDOM=1, GRID_STREAMING=2, BLOCK_STREAMING=3, WARP_RANDOM=4, BLOCK_RANDOM = 5", "1"))},
         {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
-        {'s', OptionPtr(new Range(sizeoftensor, 1, 65536, "sizeoftensor", "sizeof tensor in terms of number of element and not in bytes. numElems becomes keys", "1"))},
+        {'s', OptionPtr(new Range(tensor_size, 1, 65536, "tensor_size", "Tensor size in terms of number of element and not in bytes. numElems becomes keys", "1"))},
+        {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
         //{'r', OptionPtr(new Option<bool>(random, "bool", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "true"))},
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
@@ -464,7 +467,7 @@ Settings::Settings()
     output = nullptr;
     type = 1;
     memalloc = 2; 
-    sizeoftensor = 1; 
+    tensor_size = 1; 
     numThreads = 64;
     blkSize = 64;
     domain = 0;
@@ -476,6 +479,8 @@ Settings::Settings()
     pageSize = 4096;
     numElems = 2147483648;
     random = true;
+    maxPageCacheSize = 8589934592;
+
 }
 
 
