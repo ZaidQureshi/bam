@@ -56,6 +56,7 @@ struct Settings
     size_t pageSize;
     uint64_t numElems;
     bool random;
+    bool trueRandom;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -387,6 +388,7 @@ void Settings::parseArguments(int argc, char** argv)
 
         {'G', OptionPtr(new Option<uint32_t>(gran, "choice", "gran", "specify granularity: 0->WARP; 1->BLK", "0"))},
         {'T', OptionPtr(new Option<uint32_t>(type, "choice", "type", "specify type: 0->ORIG; 1->COAL", "0"))},
+        {'R', OptionPtr(new Option<bool>(trueRandom, "bool", "true random", "if true the random assignment is per elem", "false"))},
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
@@ -485,6 +487,7 @@ Settings::Settings()
     random = true;
     gran = WARP;
     type = ORIG;
+    trueRandom = false;
 }
 
 

@@ -271,13 +271,19 @@ int main(int argc, char** argv) {
         uint64_t* d_assignment;
         if (settings.random) {
             assignment = (uint64_t*) malloc(n_reqs*sizeof(uint64_t));
-            for (size_t i = 0; i < n_reqs_pages; i++) {
-                uint64_t page = rand() % (n_data_pages);
-                uint64_t page_starting_idx = page*n_elems_per_page;
-                for(size_t j = 0; j < n_elems_per_page; j++)
-                    assignment[i*n_reqs_pages + j] = page_starting_idx + j;
+            if (settings.trueRandom) {
+                for (size_t i = 0; i< n_threads; i++)
+                    assignment[i] = rand() % (n_elems);
             }
+            else {
+                for (size_t i = 0; i < n_reqs_pages; i++) {
+                    uint64_t page = rand() % (n_data_pages);
+                    uint64_t page_starting_idx = page*n_elems_per_page;
+                    for(size_t j = 0; j < n_elems_per_page; j++)
+                        assignment[i*n_reqs_pages + j] = page_starting_idx + j;
+                }
 
+            }
 
             cuda_err_chk(cudaMalloc(&d_assignment, n_reqs*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_reqs*sizeof(uint64_t), cudaMemcpyHostToDevice));
