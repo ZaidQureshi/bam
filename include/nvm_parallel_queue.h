@@ -56,7 +56,7 @@ uint16_t get_cid(nvm_queue_t* sq) {
 
 inline __device__
 void put_cid(nvm_queue_t* sq, uint16_t id) {
-    sq->cid[id].val.store(UNLOCKED, simt::memory_order_release);
+//    sq->cid[id].val.store(UNLOCKED, simt::memory_order_release);
 }
 
 /* inline __device__ */
@@ -165,17 +165,23 @@ typedef ulonglong4 copy_type;
 inline __device__
 uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 
-    bool got_lock = false;
+   bool got_lock;
 retry:
+    got_lock = false;
+
     while (!got_lock) {
+//__threadfence();
 #if (FENCE == 1)
         got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_relaxed);
 
 #elif (FENCE == 0)
         got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel);
 #endif
-        if (!got_lock)
+        if (!got_lock) {
             __nanosleep(100);
+
+//	printf("stuck here\n");
+	}
     }
 
 #if (FENCE == 1)
@@ -183,12 +189,16 @@ retry:
 #endif
 
     if (sq->head == ((sq->tail + 1) & sq->qs_minus_1) )  {
+  //      __threadfence();
+
 #if (FENCE == 1)
         __threadfence();
         sq->tail_lock.store(UNLOCKED, simt::memory_order_relaxed);
 #elif (FENCE == 0)
+//        __threadfence();
         sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
 #endif
+            __nanosleep(100);
         goto retry;
     }
 
@@ -287,7 +297,7 @@ retry:
 #if (FENCE == 1)
     __threadfence();
 #elif (FENCE == 0)
-    sq->head_lock.store(UNLOCKED, simt::memory_order_release);
+    sq->head_copy.store(UNLOCKED, simt::memory_order_release);
 #endif
 
     uint32_t new_tail = pos + 1;
@@ -295,7 +305,7 @@ retry:
 
     sq->tail = new_db;
     *(sq->db) = new_db;
-
+//printf("sq_db: %u\n", (unsigned) new_db);
 #if (FENCE == 1)
     __threadfence_system();
     sq->tail_lock.store(UNLOCKED, simt::memory_order_relaxed);
@@ -319,7 +329,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 #endif
     bool cont = true;
     while (cont) {
-
+//printf("stuck here sq_dequeu\n");
 #if (FENCE == 1)
         cont = sq->head_mark[pos].val.load(simt::memory_order_relaxed) == LOCKED;
 #elif (FENCE == 0)
@@ -329,10 +339,10 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 
             bool got_lock = false;
 #if (FENCE == 1)
-            got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_relaxed);
+            got_lock = UNLOCKED == sq->head_lock.exchange(LOCKED, simt::memory_order_relaxed);
 
 #elif (FENCE == 0)
-            got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel);
+            got_lock = UNLOCKED == sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel);
 #endif
 #if (FENCE == 1)
             __threadfence();
@@ -355,9 +365,9 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 }
 #if (FENCE == 1)
                 __threadfence();
-                sq->tail_lock.store(UNLOCKED, simt::memory_order_relaxed);
+                sq->head_lock.store(UNLOCKED, simt::memory_order_relaxed);
 #elif (FENCE == 0)
-                sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
+                sq->head_lock.store(UNLOCKED, simt::memory_order_release);
 #endif
 
                 /* if (head_move_count) { */
@@ -369,6 +379,8 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
  //           }
             }
         }
+        if (cont)
+	 __nanosleep(100);
     }
 
 
@@ -393,6 +405,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
 #endif
             if (!got_lock)
                 __nanosleep(100);
+//	    printf("stuck here\n");
         }
 #if (FENCE == 1)
         __threadfence();
@@ -407,21 +420,21 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
 
 
 
-        for (size_t i = 0; i < cq->qs_minus_1; i++) {
+        for (size_t i = 0; i <= cq->qs_minus_1; i++) {
             uint32_t cur_head = head + i;
             bool search_phase = ((~(head >> cq->qs_log2)) & 0x01);
             uint32_t loc = cur_head & (cq->qs_minus_1);
             uint32_t cpl_entry = ((nvm_cpl_t*)cq->vaddr)[loc].dword[3];
             uint32_t cid = (cpl_entry & 0x0000ffff);
             bool phase = (cpl_entry & 0x00010000) >> 16;
-//             if (j % 10000000 == 0)
 
-/*                 printf("qs_log2: %llu\thead: %llu\tcur_head: %llu\tsearch_cid: %llu\tsearch_phase: %llu\tcq->loc: %p\tcq->qs: %llu\ti: %llu\tj: %llu\tcid: %llu\tphase:%llu\tmark: %llu\n",
-                        (unsigned long long) cq->qs_log2,
-                        (unsigned long long)head, (unsigned long long) cur_head, (unsigned long long) search_cid, (unsigned long long) search_phase, ((volatile nvm_cpl_t*)cq->vaddr)+loc,
-                        (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase,
-                        (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire));
-*/
+
+//                 printf("qs_log2: %llu\thead: %llu\tcur_head: %llu\tsearch_cid: %llu\tsearch_phase: %llu\tcq->loc: %p\tcq->qs: %llu\ti: %llu\tj: %llu\tcid: %llu\tphase:%llu\tmark: %llu\n",
+//                        (unsigned long long) cq->qs_log2,
+//                        (unsigned long long)head, (unsigned long long) cur_head, (unsigned long long) search_cid, (unsigned long long) search_phase, ((volatile nvm_cpl_t*)cq->vaddr)+loc,
+//                        (unsigned long long) cq->qs, (unsigned long long) i, (unsigned long long) j, (unsigned long long) cid, (unsigned long long) phase,
+//                        (unsigned long long) cq->head_mark[loc].val.load(simt::memory_order_acquire));
+
 //            if ((cid == search_cid) && (phase == search_phase) && (cq->head_mark[loc].load(simt::memory_order_acquire) == UNLOCKED)){
             if ((cid == search_cid) && (phase == search_phase)){
                  //if ((cpl_entry >> 17) != 0)
@@ -479,6 +492,8 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
                     cq->head = (cur_head + head_move_count);
                     uint32_t new_db = cq->head & cq->qs_minus_1;
                     *(cq->db) = new_db;
+//printf("cq_db: %u\n", (unsigned) new_db);
+    //            printf("cq cur_head: %llu\thead_move_count: %llu\tnew_head: %llu\n", (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (cur_head+head_move_count));
 
 #if (FENCE == 1)
                     __threadfence_system();
@@ -490,7 +505,6 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 
                     //   cq->tickets[(cur_head+i) & cq->qs_minus_1].val.fetch_add(1, simt::memory_order_release);
                     //cont = false;
-  //              printf("cq cur_head: %llu\thead_move_count: %llu\tnew_head: %llu\n", (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (cur_head+head_move_count));
 
                 }
 #if (FENCE == 1)
@@ -509,6 +523,9 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
  //           }
             }
         }
+        if (cont)
+         __nanosleep(100);
+
     }
 
 
