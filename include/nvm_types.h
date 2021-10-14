@@ -126,9 +126,11 @@ typedef struct
     uint8_t pad0[124];
     simt::atomic<uint32_t, simt::thread_scope_device> tail_lock;
     uint8_t pad1[124];
-    simt::atomic<uint32_t, simt::thread_scope_device> head;
+    uint32_t head;
+    uint32_t tail;
+    //simt::atomic<uint32_t, simt::thread_scope_device> head;
     uint8_t pad2[124];
-    simt::atomic<uint32_t, simt::thread_scope_device> tail;
+    //simt::atomic<uint32_t, simt::thread_scope_device> tail;
     uint8_t pad3[124];
     simt::atomic<uint32_t, simt::thread_scope_system> tail_copy;
     uint8_t pad4[124];
