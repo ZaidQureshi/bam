@@ -93,8 +93,9 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
 
         uint64_t loc = (cur_head + count)&q->qs_minus_1;
 #if (FENCE == 1)
-        __threadfence();
+
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED;
+        __threadfence();
         //__threadfence();
 #elif (FENCE == 0)
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_acq_rel)) == LOCKED;
@@ -173,13 +174,15 @@ retry:
 #elif (FENCE == 0)
         got_lock = UNLOCKED == sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acquire);
 #endif
+        if (!got_lock)
+            __nanosleep(100);
     }
 
 #if (FENCE == 1)
     __threadfence();
 #endif
 
-    if (sq->head == (sq->tail + 1)) {
+    if (sq->head == ((sq->tail + 1) & sq->qs_minus_1) )  {
 #if (FENCE == 1)
         __threadfence();
         sq->tail_lock.store(UNLOCKED, simt::memory_order_relaxed);
@@ -388,6 +391,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             got_lock = UNLOCKED == cq->tail_lock.fetch_or(LOCKED, simt::memory_order_acquire);
 
 #endif
+            if (!got_lock)
+                __nanosleep(100);
         }
 #if (FENCE == 1)
         __threadfence();
