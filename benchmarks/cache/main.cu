@@ -57,6 +57,8 @@ void sequential_access_warp(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned l
     uint64_t start_req = warp_id * reqs_per_warp + lane;
     uint64_t end_req = (warp_id + 1) * reqs_per_warp;
 
+
+
     uint64_t acc = 0;
     if (type == ORIG) {
         for (; (start_req < n_reqs) && (start_req < end_req); start_req += 32)
@@ -122,7 +124,9 @@ void random_access_warp(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned long 
 
     uint64_t start_req = warp_id * reqs_per_warp + lane;
     uint64_t end_req = (warp_id + 1) * reqs_per_warp;
-
+    if (lane == 0) {
+        printf("n_reqs: %llu\treqs_per_warp: %llu\tstart_req: %llu\")
+    }
     uint64_t acc = 0;
     if (type == ORIG) {
         for (; (start_req < n_reqs) && (start_req < end_req); start_req += 32)
@@ -259,7 +263,9 @@ int main(int argc, char** argv) {
         uint64_t n_elems_per_page = page_size / sizeof(uint64_t);
 
         uint64_t n_reqs_pages = (n_reqs * sizeof(uint64_t)) / page_size;
-
+        std::cout << "n_reqs: " << n_reqs << std::endl;
+        std::cout << "n_reqs_pages: " << n_reqs_pages << std::endl;
+        std::cout << "n_elems_per_page: " << n_elems_per_page << std::endl;
         unsigned long long* d_req_count;
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
@@ -272,7 +278,7 @@ int main(int argc, char** argv) {
         if (settings.random) {
             assignment = (uint64_t*) malloc(n_reqs*sizeof(uint64_t));
             if (settings.trueRandom) {
-                for (size_t i = 0; i< n_threads; i++)
+                for (size_t i = 0; i< n_reqs; i++)
                     assignment[i] = rand() % (n_elems);
             }
             else {
@@ -280,7 +286,7 @@ int main(int argc, char** argv) {
                     uint64_t page = rand() % (n_data_pages);
                     uint64_t page_starting_idx = page*n_elems_per_page;
                     for(size_t j = 0; j < n_elems_per_page; j++)
-                        assignment[i*n_reqs_pages + j] = page_starting_idx + j;
+                        assignment[i*n_elems_per_page + j] = page_starting_idx + j;
                 }
 
             }
