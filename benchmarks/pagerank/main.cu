@@ -373,7 +373,7 @@ __global__ void kernel_coalesce_chunk(bool* label, ValueT *delta, ValueT *residu
 }
 
 __global__ //__launch_bounds__(1024,2)
-void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, int sm_count) {
+void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -729,22 +729,22 @@ int main(int argc, char *argv[]) {
                     kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
                     break;
                 case BASELINE_HASH:
-                    kernel_baseline_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
+                    kernel_baseline_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, properties.multiProcessorCount);
                     break;
                 case COALESCE_HASH:
-                    kernel_coalesce_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
+                    kernel_coalesce_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, properties.multiProcessorCount);
                     break;
                 // case COALESCE_HASH_CHUNK:
-                //     kernel_coalesce_hash_chunk<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
+                //     kernel_coalesce_hash_chunk<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, properties.multiProcessorCount);
                 //     break;
                 case BASELINE_HASH_PC:
-                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);                    
+                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, properties.multiProcessorCount);                    
                     break;
                 case COALESCE_HASH_PC:
-                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
+                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, properties.multiProcessorCount);
                     break;
                 // case COALESCE_CHUNK_HASH_PC:
-                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
+                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, properties.multiProcessorCount);
                 //     break;
                 default:
                     fprintf(stderr, "Invalid type\n");
