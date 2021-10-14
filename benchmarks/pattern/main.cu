@@ -72,15 +72,17 @@ typedef enum {
 
 
 
-//Honestly this is grid streaming and can be removed entirely
 __global__
 void sequential_access_kernel(ARRAYTYPE* dr, uint64_t num_elems, unsigned long long* output) {
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
+    uint64_t acc_num =0; 
     for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
-        output[0] += dr[i];
+        acc_num += dr[i];
         __syncthreads(); 
     }
+    if(threadIdx.x == 0)
+        output[0] = acc_num;
 }
 
 
@@ -150,7 +152,10 @@ __global__ void read_cta_random_warp_streaming(data_type *ptr, size_t feat_size,
                                                unsigned long long* output)
 {
   size_t n = size / feat_size; //num features
-  int loop_count = n / (blockDim.x * gridDim.x); // loop across entire dataset. 
+
+  //TODO: 
+  int loop_count = n / (blockDim.x * gridDim.x); // loop across entire assignment array 
+
 
   size_t dtype_per_page = feat_size/sizeof(data_type); //num element in feature
 //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
@@ -164,7 +169,8 @@ __global__ void read_cta_random_warp_streaming(data_type *ptr, size_t feat_size,
 
   for (int i = 0; i < loop_count; i++) {
 //    nRandom = assignment[idx];
-    uint64_t pageframe_number = assignment[idx]; // each warp handles a feature // nRandom % num_pages;
+//TODO: fix this. 
+      uint64_t pageframe_number = assignment[idx]; // each warp handles a feature // nRandom % num_pages;
 
     // warp lane 0 broadcast page number to all other warp lanes
     pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
@@ -289,10 +295,14 @@ void sequential_access_kernel_pc(array_d_t<uint64_t>* dr, uint64_t num_elems, un
     //         output += (*dr)[(tid)];
     // }
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    uint64_t accu_num =0; 
 
     for(uint64_t i=tid; i < num_elems; i+=blockDim.x*gridDim.x){
-            output[0] += dr->seq_read(tid);
+            accu_num += dr->seq_read(tid);
+      __syncthreads();
     }
+    if(threadIdx.x==0)
+        output[0] = accu_num; 
 }
 
 
@@ -358,8 +368,8 @@ int main(int argc, char** argv) {
         }
         
         uint64_t n_elems = settings.numElems;
-        array_size = n_elems*tensor_size*sizeof(ARRAYTYPE);
         std::cout << "Tensorsize: " << tensor_size << std::endl; 
+        array_size = n_elems*tensor_size*sizeof(ARRAYTYPE);
         array_size = Align(array_size, settings.pageSize);
         std::cout << "Arraysize: " << array_size/(1024ULL * 1024ULL * 1024ULL) << " GBytes" << std::endl; 
         uint64_t b_size = settings.blkSize;//64;
@@ -386,14 +396,14 @@ int main(int argc, char** argv) {
             std::cout << "Random assignment complete"<< std::endl; 
         }
         if ((type==WARP_RANDOM) || (type==WARP_RANDOM_PC)) {
-            uint64_t n_keys = ceil((float)n_elems/tensor_size);
+            uint64_t n_keys = ceil((float)array_size/tensor_size);
             h_rand_assignment = (uint64_t*) malloc(n_keys*sizeof(uint64_t));
             for (size_t i = 0; i< n_keys; i++)
                 h_rand_assignment[i] = rand() % (n_keys);
             
             cuda_err_chk(cudaMalloc(&d_rand_assignment, n_keys*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_rand_assignment, h_rand_assignment,  n_keys*sizeof(uint64_t), cudaMemcpyHostToDevice));
-            std::cout << "Random key assignment complete"<< std::endl; 
+            std::cout << "Random key assignment complete: "<< n_keys<< std::endl; 
         }
         
 
@@ -578,7 +588,7 @@ int main(int argc, char** argv) {
 
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
-        if(type==BAFS_DIRECT)
+        if(mem==BAFS_DIRECT)
             h_array->print_reset_stats();
         std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Read Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
         std::cout << std::dec << "Read Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
