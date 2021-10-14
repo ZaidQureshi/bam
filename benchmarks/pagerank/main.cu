@@ -56,9 +56,10 @@
 
 using error = std::runtime_error;
 using std::string;
+//const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro1", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-//const char* const ctrls_paths[] = {"/dev/libnvm0"};
+//const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
+//const char* const ctrls_paths[] = {"/dev/libnvmpro0"};
 
 
 #define MYINFINITY 0xFFFFFFFF
@@ -71,7 +72,7 @@ const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2
 
 #define BLOCK_SIZE 1024ULL
 
-#define STRIDE (80*64)
+#define MAXWARP 64
 
 typedef uint64_t EdgeT;
 
@@ -158,10 +159,11 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, Val
 
 
 
-__global__ void kernel_baseline_hash(bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+__global__ void kernel_baseline_hash(bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, int sm_count) {
     const uint64_t oldtid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     // const uint64_t warpIdx = tid >> WARP_SHIFT;
     // const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = sm_count * MAXWARP; 
 
     if(oldtid < vertex_count){ 
         uint64_t tid; 
@@ -191,10 +193,11 @@ __global__ void kernel_baseline_hash(bool* label, ValueT *delta, ValueT *residua
 }
 
 __global__ //__launch_bounds__(1024,2)
-void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, int sm_count) {
      const uint64_t oldtid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     // const uint64_t warpIdx = tid >> WARP_SHIFT;
     // const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = sm_count * MAXWARP; 
 
     if(oldtid < vertex_count){ 
         uint64_t tid; 
@@ -270,10 +273,11 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, Val
 }
 
 
-__global__ void kernel_coalesce_hash(bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+__global__ void kernel_coalesce_hash(bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = sm_count * MAXWARP; 
 
     if(oldwarpIdx < vertex_count){
         uint64_t warpIdx; 
@@ -302,10 +306,11 @@ __global__ void kernel_coalesce_hash(bool* label, ValueT *delta, ValueT *residua
 }
 
 __global__ //__launch_bounds__(128,16)
-void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = sm_count * MAXWARP; 
 
     if(oldwarpIdx < vertex_count){
         uint64_t warpIdx; 
@@ -368,7 +373,7 @@ __global__ void kernel_coalesce_chunk(bool* label, ValueT *delta, ValueT *residu
 }
 
 __global__ //__launch_bounds__(1024,2)
-void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList) {
+void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool* label, ValueT *delta, ValueT *residual, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_SIZE * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -724,22 +729,22 @@ int main(int argc, char *argv[]) {
                     kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
                     break;
                 case BASELINE_HASH:
-                    kernel_baseline_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                    kernel_baseline_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
                     break;
                 case COALESCE_HASH:
-                    kernel_coalesce_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                    kernel_coalesce_hash<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
                     break;
                 // case COALESCE_HASH_CHUNK:
-                //     kernel_coalesce_hash_chunk<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                //     kernel_coalesce_hash_chunk<<<blockDim, numthreads>>>(label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
                 //     break;
                 case BASELINE_HASH_PC:
-                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);                    
+                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);                    
                     break;
                 case COALESCE_HASH_PC:
-                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
                     break;
                 // case COALESCE_CHUNK_HASH_PC:
-                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d);
+                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, delta_d, residual_d, vertex_count, vertexList_d, edgeList_d, prop.multiProcessorCount);
                 //     break;
                 default:
                     fprintf(stderr, "Invalid type\n");
