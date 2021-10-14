@@ -996,18 +996,36 @@ struct array_d_t {
     __forceinline__
     __device__
     T operator[](size_t i) const {
-        return seq_read(i);
-        // size_t k = 0;
-        // bool found = false;
-        // for (; k < n_ranges; k++) {
-        //     if ((d_ranges[k].index_start <= i) && (d_ranges[k].index_end > i)) {
-        //         found = true;
-        //         break;
-        //     }
+        //return seq_read(i);
+         size_t k = 0;
+         bool found = false;
+         T ret;
 
-        // }
-        // if (found)
-        //     return (((d_ranges[k]))[i-d_ranges[k].index_start]);
+         int64_t r = find_range(i);
+
+         uint32_t mask = __activemask();
+
+         if (found) {
+             page_cache_d_t* pc = &(d_ranges[r].cache);
+             uint32_t ctrl;
+             uint32_t queue;
+             ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+             queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+
+             uint64_t page = d_ranges[r].get_page(i);
+             uint64_t subindex = d_ranges[r].get_subindex(i);
+             uint64_t gaddr = d_ranges[r].get_global_address(page);
+
+             uint64_t base_master = d_ranges[r].acquire_page(page, 1, false, ctrl, queue);
+
+             ret = ((T*)(base_master+subindex))[0];
+
+             d_ranges[r].release_page(page, 1);
+         }
+         __syncwarp(mask);
+
+         return ret;
+
     }
     __forceinline__
     __device__
