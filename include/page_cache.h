@@ -1005,7 +1005,7 @@ struct array_d_t {
 
          uint32_t mask = __activemask();
 
-         if (found) {
+         if (r != -1) {
              page_cache_d_t* pc = &(d_ranges[r].cache);
              uint32_t ctrl;
              uint32_t queue;
