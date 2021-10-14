@@ -124,9 +124,7 @@ void random_access_warp(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned long 
 
     uint64_t start_req = warp_id * reqs_per_warp + lane;
     uint64_t end_req = (warp_id + 1) * reqs_per_warp;
-    if (lane == 0) {
-        printf("n_reqs: %llu\treqs_per_warp: %llu\tstart_req: %llu\")
-    }
+
     uint64_t acc = 0;
     if (type == ORIG) {
         for (; (start_req < n_reqs) && (start_req < end_req); start_req += 32)
