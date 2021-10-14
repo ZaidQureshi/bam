@@ -169,10 +169,10 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
 retry:
     while (!got_lock) {
 #if (FENCE == 1)
-        got_lock = UNLOCKED == sq->tail_lock.fetch_or(LOCKED, simt::memory_order_relaxed);
+        got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_relaxed);
 
 #elif (FENCE == 0)
-        got_lock = UNLOCKED == sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acquire);
+        got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel);
 #endif
         if (!got_lock)
             __nanosleep(100);
@@ -329,10 +329,10 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 
             bool got_lock = false;
 #if (FENCE == 1)
-            got_lock = UNLOCKED == sq->tail_lock.fetch_or(LOCKED, simt::memory_order_relaxed);
+            got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_relaxed);
 
 #elif (FENCE == 0)
-            got_lock = UNLOCKED == sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acquire);
+            got_lock = UNLOCKED == sq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel);
 #endif
 #if (FENCE == 1)
             __threadfence();
@@ -385,10 +385,10 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
         bool got_lock = false;
         while (!got_lock) {
 #if (FENCE == 1)
-            got_lock = UNLOCKED == cq->tail_lock.fetch_or(LOCKED, simt::memory_order_relaxed);
+            got_lock = UNLOCKED == cq->tail_lock.exchange(LOCKED, simt::memory_order_relaxed);
 
 #elif (FENCE == 0)
-            got_lock = UNLOCKED == cq->tail_lock.fetch_or(LOCKED, simt::memory_order_acquire);
+            got_lock = UNLOCKED == cq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel);
 
 #endif
             if (!got_lock)
@@ -459,10 +459,11 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 
             bool got_lock = false;
 #if (FENCE == 1)
-            got_lock = UNLOCKED == cq->tail_lock.fetch_or(LOCKED, simt::memory_order_relaxed);
+            __threadfence();
+            got_lock = UNLOCKED == cq->tail_lock.exchange(LOCKED, simt::memory_order_relaxed);
 
 #elif (FENCE == 0)
-            got_lock = UNLOCKED == cq->tail_lock.fetch_or(LOCKED, simt::memory_order_acquire);
+            got_lock = UNLOCKED == cq->tail_lock.exchange(LOCKED, simt::memory_order_acq_rel);
 #endif
 #if (FENCE == 1)
             __threadfence();
