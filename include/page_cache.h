@@ -74,14 +74,14 @@ struct returned_cache_page_t {
     uint32_t offset;
 
     T operator[](size_t i) const {
-        if (i < size)
+        if ((i+offset) < size)
             return addr[i];
         else
             return 0;
     }
 
     T& operator[](size_t i) {
-        if (i < size)
+        if ((i+offset) < size)
             return addr[i];
         else
             return addr[0];
