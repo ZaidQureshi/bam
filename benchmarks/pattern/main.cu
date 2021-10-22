@@ -65,7 +65,7 @@ typedef enum {
     UVM_DIRECT = 2,
     // UVM_READONLY_NVLINK = 3,
     // UVM_DIRECT_NVLINK = 4,
-    DRAGON_MAP = 5,
+//    DRAGON_MAP = 5,
     BAFS_DIRECT = 6,
 } mem_type;
 
@@ -171,7 +171,8 @@ __global__ void read_cta_random_warp_streaming(data_type *ptr, size_t feat_size,
   
   if(num_elems_feat>warpSize)
      loop_per_feat =  num_elems_feat/(warpSize); //asumes that the feat_size is multiple of warpsize. 
-  
+  //if(idx==0)
+  //        printf("loopcount: %llu\n", num_features/total_active_warps);
   data_type accum = 0;
 
   for( uint64_t start = warpIdx; start < num_features; start = start + total_active_warps ){
@@ -182,7 +183,7 @@ __global__ void read_cta_random_warp_streaming(data_type *ptr, size_t feat_size,
      
      for(int j = 0; j< num_elems_feat; j+=warpSize){
         accum += ptr[pageframe_number * num_elems_feat + j +lane_id];
-        atomicAdd(&output[0], 1); 
+        //atomicAdd(&output[0], 1); 
      }
    } 
 
@@ -418,7 +419,8 @@ int main(int argc, char** argv) {
         void* map_in; 
         int fd_in; 
         struct stat sb_in; 
-        
+        ARRAYTYPE* mem_host; 
+
         if(mem!=BAFS_DIRECT){
             //TODO: Generate array data for representation per se. We can load a binary file so that it is consistent with all others. 
             // we need sort of oversubscription ratio to cache size ratio variation to show the effect of perf on bandwidth with different access pattern. 
@@ -448,6 +450,10 @@ int main(int argc, char** argv) {
                     fprintf(stderr,"Input file map failed %d\n",map_in);
                     return 1;
             }
+            
+            mem_host = (ARRAYTYPE*) malloc(array_size);
+            memcpy(mem_host, map_in, array_size);
+            printf("Host Memory allocated and random file content copied to host memory\n"); 
         }
 
 
@@ -465,8 +471,11 @@ int main(int argc, char** argv) {
                          break;
                          }
             case UVM_DIRECT: {
-                         cuda_err_chk(cudaMallocManaged((void**)&d_array_ptr, array_size));
-                         cuda_err_chk(cudaMemAdvise(d_array_ptr, array_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                         //cuda_err_chk(cudaMallocManaged((void**)&d_array_ptr, array_size));
+                         
+                         cuda_err_chk(cudaHostRegister(mem_host, array_size, cudaHostRegisterDefault));
+                         cuda_err_chk(cudaHostGetDevicePointer((void**)&d_array_ptr, (void*)mem_host, 0)); 
+                         //cuda_err_chk(cudaMemAdvise(d_array_ptr, array_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
                         //  cuda_err_chk(cudaMemcpy(d_array_ptr, map_in, array_size, cudaMemcpyHostToDevice)); //this is optional. done for correctness check across all combinations. 
                          break;
                          }
@@ -615,8 +624,15 @@ int main(int argc, char** argv) {
                 delete ctrls[i];
         }        //hexdump(ret_array, n_pages*page_size);
 
-        if(mem!=BAFS_DIRECT){
+        if(mem==GPUMEM || mem==UVM_READONLY){
             cuda_err_chk(cudaFree(d_array_ptr)); 
+        }
+        if(mem==UVM_DIRECT){
+            cuda_err_chk(cudaHostUnregister(mem_host)); 
+        }
+        if(mem!=BAFS_DIRECT){
+            free(mem_host); 
+            mem_host = NULL; 
         }
         if((type==RANDOM) || (type==RANDOM_PC) || (type==WARP_RANDOM) || (type==WARP_RANDOM_PC))
             cuda_err_chk(cudaFree(d_rand_assignment));
