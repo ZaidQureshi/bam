@@ -149,45 +149,45 @@ template<typename data_type>
 __global__ void read_cta_random_warp_streaming(data_type *ptr, size_t feat_size, 
                                                const size_t num_features, size_t num_pages,
                                                size_t page_size, uint64_t* assignment, 
-                                               unsigned long long* output)
+                                               unsigned long long* output, unsigned long long* dummy)
 {
   //Design: a warp is mapped to a feature. All threads in the warp compute on a feature vector loaded by it in multiple iteration. The design assumes that the feat size is aligned with the warpSize. 
 
   // loop count loops for total amount of work. Work assignment is basically fixed. Max threads executable in GPU = maxSM*maxThreadsPerSM.
   // since each warp works on a feature vector, we take total feature vector and divide by the number of active warps.
+  uint64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int lane_id = threadIdx.x & 31;
+  uint64_t warpIdx = idx >> 5; //warpSize assumed to be 32. 
+  if(warpIdx > num_features) return; 
 
   uint64_t total_active_warps = blockDim.x * gridDim.x / warpSize; 
-  uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
-
+//  uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
 
   uint64_t array_size = num_features * feat_size; //feat_size is in bytes. 
   size_t num_elems_feat = feat_size/sizeof(data_type); 
   size_t size_of_load_per_thread = sizeof(data_type); 
   //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
-  int loop_per_feat = (num_elems_feat+(size_of_load_per_thread * warpSize))/(size_of_load_per_thread * warpSize); //asumes that the feat_size is multiple of warpsize. The operation is doing ceiling
+  int loop_per_feat = 1; 
   
-  int lane_id = threadIdx.x & 31;
-  uint64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  uint64_t warpIdx = idx >> 5; //warpSize assumed to be 32. 
-
+  if(num_elems_feat>warpSize)
+     loop_per_feat =  num_elems_feat/(warpSize); //asumes that the feat_size is multiple of warpsize. 
+  
   data_type accum = 0;
 
   for( uint64_t start = warpIdx; start < num_features; start = start + total_active_warps ){
      uint64_t pageframe_number = assignment[start]; // each warp handles a feature
      
-    //if(pageframe_number > num_features)
-    //    printf("Should not happen: %llu\n", (unsigned long long int) pageframe_number); 
-
      // warp lane 0 broadcast page number to all other warp lanes
      pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
      
-     for(int j = 0; j< loop_per_feat; j++){
-        accum += ptr[pageframe_number * feat_size + (loop_per_feat*j) +lane_id];
+     for(int j = 0; j< num_elems_feat; j+=warpSize){
+        accum += ptr[pageframe_number * num_elems_feat + j +lane_id];
+        atomicAdd(&output[0], 1); 
      }
    } 
 
   if (threadIdx.x == 0)
-    output[0] = accum;
+    dummy[0] = accum;
 }
 
 
@@ -255,12 +255,10 @@ __global__ void read_cta_random_warp_streaming_pc(array_d_t<uint64_t> *ptr, size
   uint64_t total_active_warps = blockDim.x * gridDim.x / warpSize; 
   uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
 
-
-  uint64_t array_size = num_features * feat_size; //feat_size is in bytes. 
   size_t num_elems_feat = feat_size/sizeof(data_type); 
   size_t size_of_load_per_thread = sizeof(data_type); 
-  //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
   int loop_per_feat = (num_elems_feat+(size_of_load_per_thread * warpSize))/(size_of_load_per_thread * warpSize); //asumes that the feat_size is multiple of warpsize. The operation is doing ceiling
+  //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
   
 
   int lane_id = threadIdx.x & 31;
@@ -379,8 +377,11 @@ int main(int argc, char** argv) {
         std::cout << "Arraysize: " << array_size / (1024ULL*1024ULL*1024ULL) << " GBytes" << std::endl; 
         uint64_t b_size = settings.blkSize;//64;
         uint64_t g_size = prop.multiProcessorCount * prop.maxThreadsPerMultiProcessor /b_size;
+        if(type==WARP_RANDOM || type==WARP_RANDOM_PC)
+                g_size = 32*g_size; 
+        
         uint64_t n_threads = b_size * g_size;
-
+        
      
         //uint64_t n_pages = total_cache_size/page_size;
         //if (n_pages < n_threads) {
@@ -487,6 +488,9 @@ int main(int argc, char** argv) {
         unsigned long long* d_output;
         cuda_err_chk(cudaMalloc((void**)&d_output, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_output, 0, sizeof(unsigned long long)));
+        unsigned long long* d_dummy;
+        cuda_err_chk(cudaMalloc((void**)&d_dummy, sizeof(unsigned long long)));
+        cuda_err_chk(cudaMemset(d_dummy, 0, sizeof(unsigned long long)));
         
         page_cache_t* h_pc; 
         range_t<uint64_t>* h_range; 
@@ -537,7 +541,7 @@ int main(int argc, char** argv) {
                         break;
                         }
             case WARP_RANDOM:{
-                        read_cta_random_warp_streaming<ARRAYTYPE><<<g_size, b_size>>>(d_array_ptr, settings.tensor_size, n_elems, file_n_pages, pc_page_size, d_rand_assignment, d_output);
+                        read_cta_random_warp_streaming<ARRAYTYPE><<<g_size, b_size>>>(d_array_ptr, settings.tensor_size, n_elems, file_n_pages, pc_page_size, d_rand_assignment, d_output, d_dummy);
                         break;
                         }
             case BLOCK_RANDOM:{
@@ -590,6 +594,9 @@ int main(int argc, char** argv) {
             data = ios*sizeof(ARRAYTYPE);
         }
 
+        unsigned long long *h_output;
+        cuda_err_chk(cudaMemcpy(&h_output, d_output, sizeof(unsigned long long), cudaMemcpyDeviceToHost)); 
+        printf("val: %llu\n", h_output);
 
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
