@@ -147,45 +147,44 @@ __global__ void read_block_streaming(data_type *ptr, const size_t size, unsigned
 // each thread reads 4B streaming making a warp copy 128B of data. Each warp picks a random input. 
 template<typename data_type>
 __global__ void read_cta_random_warp_streaming(data_type *ptr, size_t feat_size, 
-                                               const size_t size, size_t num_pages,
+                                               const size_t num_features, size_t num_pages,
                                                size_t page_size, uint64_t* assignment, 
                                                unsigned long long* output)
 {
-  size_t n = size / feat_size; //num features
+  //Design: a warp is mapped to a feature. All threads in the warp compute on a feature vector loaded by it in multiple iteration. The design assumes that the feat size is aligned with the warpSize. 
 
-  //TODO: 
-  int loop_count = n / (blockDim.x * gridDim.x); // loop across entire assignment array 
+  // loop count loops for total amount of work. Work assignment is basically fixed. Max threads executable in GPU = maxSM*maxThreadsPerSM.
+  // since each warp works on a feature vector, we take total feature vector and divide by the number of active warps.
+
+  uint64_t total_active_warps = blockDim.x * gridDim.x / warpSize; 
+  uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
 
 
-  size_t dtype_per_page = feat_size/sizeof(data_type); //num element in feature
-//size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
-
+  uint64_t array_size = num_features * feat_size; //feat_size is in bytes. 
+  size_t num_elems_feat = feat_size/sizeof(data_type); 
+  size_t size_of_load_per_thread = sizeof(data_type); 
+  //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
+  int loop_per_feat = (num_elems_feat+(size_of_load_per_thread * warpSize))/(size_of_load_per_thread * warpSize); //asumes that the feat_size is multiple of warpsize. The operation is doing ceiling
+  
   int lane_id = threadIdx.x & 31;
   uint64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  uint64_t warpIdx = idx >> 5; //warpSize assumed to be 32. 
+
   data_type accum = 0;
 
-  //uint64_t nRandom = 0; 
-  int cpyitr = feat_size/(warpSize*sizeof(data_type)); //asumes that the feat_size is multiple of warpsize 
+  for( uint64_t start = warpIdx; start < num_features; start = start + total_active_warps ){
+     uint64_t pageframe_number = assignment[start]; // each warp handles a feature
+     
+    //if(pageframe_number > num_features)
+    //    printf("Should not happen: %llu\n", (unsigned long long int) pageframe_number); 
 
-  for (int i = 0; i < loop_count; i++) {
-//    nRandom = assignment[idx];
-//TODO: fix this. 
-      uint64_t pageframe_number = assignment[idx]; // each warp handles a feature // nRandom % num_pages;
-
-    // warp lane 0 broadcast page number to all other warp lanes
-    pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
-
-    // coalesced 128 byte access within page - not aligned
-    // maybe access two cache lines instead of one
-    //uint64_t page_idx = nRandom % lane0_idx_mod;
-    //page_idx = __shfl_sync(0xffffffff, page_idx, 0);
-    //page_idx += lane_id;
-    //uint64_t page_idx = lane_id;
-    for(int j = 0; j< cpyitr; j++){
-         accum += ptr[pageframe_number * dtype_per_page + (cpyitr*j) +lane_id];
-    }
-    idx += blockDim.x * gridDim.x;
-  }
+     // warp lane 0 broadcast page number to all other warp lanes
+     pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
+     
+     for(int j = 0; j< loop_per_feat; j++){
+        accum += ptr[pageframe_number * feat_size + (loop_per_feat*j) +lane_id];
+     }
+   } 
 
   if (threadIdx.x == 0)
     output[0] = accum;
@@ -240,50 +239,56 @@ __global__ void read_block_streaming_pc(array_d_t<uint64_t> *ptr, size_t size, u
   if (threadIdx.x == 0)
     output[0] = accum;
 }
+
 // each thread reads 4B streaming making a warp copy 128B of data. Each warp picks a random input. 
 template<typename data_type>
 __global__ void read_cta_random_warp_streaming_pc(array_d_t<uint64_t> *ptr, size_t feat_size, 
-                                                  size_t size, size_t num_pages,
-                                                  size_t page_size, uint64_t* assignment, 
-                                                  unsigned long long* output)
+                                               const size_t num_features, size_t num_pages,
+                                               size_t page_size, uint64_t* assignment, 
+                                               unsigned long long* output)
 {
-  size_t n = size / feat_size; //num features
-  int loop_count = n / (blockDim.x * gridDim.x); // loop across entire dataset. 
+  //Design: a warp is mapped to a feature. All threads in the warp compute on a feature vector loaded by it in multiple iteration. The design assumes that the feat size is aligned with the warpSize. 
 
-  size_t dtype_per_page = feat_size/sizeof(data_type); //num element in feature
-//size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
+  // loop count loops for total amount of work. Work assignment is basically fixed. Max threads executable in GPU = maxSM*maxThreadsPerSM.
+  // since each warp works on a feature vector, we take total feature vector and divide by the number of active warps.
+
+  uint64_t total_active_warps = blockDim.x * gridDim.x / warpSize; 
+  uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
+
+
+  uint64_t array_size = num_features * feat_size; //feat_size is in bytes. 
+  size_t num_elems_feat = feat_size/sizeof(data_type); 
+  size_t size_of_load_per_thread = sizeof(data_type); 
+  //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
+  int loop_per_feat = (num_elems_feat+(size_of_load_per_thread * warpSize))/(size_of_load_per_thread * warpSize); //asumes that the feat_size is multiple of warpsize. The operation is doing ceiling
+  
 
   int lane_id = threadIdx.x & 31;
   uint64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  uint64_t warpIdx = idx >> 5; //warpSize assumed to be 32. 
+
+  //if(idx==0) 
+  //    printf("loop count: %llu\n", (unsigned long long int)loop_per_feat);
   data_type accum = 0;
 
-  //uint64_t nRandom = 0; 
-  int cpyitr = feat_size/(warpSize*sizeof(data_type)); //asumes that the feat_size is multiple of warpsize 
+  for( uint64_t start = warpIdx; start < num_features; start = start + total_active_warps ){
+     uint64_t pageframe_number = assignment[start]; // each warp handles a feature
+     
+    //if(pageframe_number > num_features)
+    //    printf("Should not happen: %llu\n", (unsigned long long int) pageframe_number); 
 
-  for (int i = 0; i < loop_count; i++) {
-//    nRandom = assignment[idx];
-    uint64_t pageframe_number = assignment[idx]; // each warp handles a feature // nRandom % num_pages;
-
-    // warp lane 0 broadcast page number to all other warp lanes
-    pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
-
-    // coalesced 128 byte access within page - not aligned
-    // maybe access two cache lines instead of one
-    //uint64_t page_idx = nRandom % lane0_idx_mod;
-    //page_idx = __shfl_sync(0xffffffff, page_idx, 0);
-    //page_idx += lane_id;
-    //uint64_t page_idx = lane_id;
-    for(int j = 0; j< cpyitr; j++){
-         uint64_t idxtmp = pageframe_number * dtype_per_page + (cpyitr*j) +lane_id;
-         accum += ptr->seq_read(idxtmp);
-    }
-    idx += blockDim.x * gridDim.x;
-  }
+     // warp lane 0 broadcast page number to all other warp lanes
+     pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
+     
+     for(int j = 0; j< loop_per_feat; j++){
+         uint64_t idxtmp = pageframe_number * feat_size + (loop_per_feat*j) +lane_id;
+         accum += ptr-> seq_read(idxtmp);
+     }
+   } 
 
   if (threadIdx.x == 0)
     output[0] = accum;
 }
-
 
 
 
@@ -361,7 +366,7 @@ int main(int argc, char** argv) {
         ARRAYTYPE *d_array_ptr; //*h_array_ptr
         size_t array_size; 
         size_t tensor_size; 
-        if((type==WARP_RANDOM) || (type==WARP_RANDOM_PC) ){
+        if((type==WARP_RANDOM) || (type==WARP_RANDOM_PC || (type==RANDOM)) ){
             tensor_size = settings.tensor_size;
         }else {
             tensor_size =1;
@@ -371,7 +376,7 @@ int main(int argc, char** argv) {
         std::cout << "Tensorsize: " << tensor_size << std::endl; 
         array_size = n_elems*tensor_size*sizeof(ARRAYTYPE);
         array_size = Align(array_size, settings.pageSize);
-        std::cout << "Arraysize: " << array_size/(1024ULL * 1024ULL * 1024ULL) << " GBytes" << std::endl; 
+        std::cout << "Arraysize: " << array_size / (1024ULL*1024ULL*1024ULL) << " GBytes" << std::endl; 
         uint64_t b_size = settings.blkSize;//64;
         uint64_t g_size = prop.multiProcessorCount * prop.maxThreadsPerMultiProcessor /b_size;
         uint64_t n_threads = b_size * g_size;
@@ -389,14 +394,14 @@ int main(int argc, char** argv) {
         if ((type==RANDOM) || (type==RANDOM_PC)) {
             h_rand_assignment = (uint64_t*) malloc(n_elems*sizeof(uint64_t));
             for (size_t i = 0; i< n_elems; i++)
-                h_rand_assignment[i] = rand() % (n_elems);
+                h_rand_assignment[i] = rand() % (n_elems*tensor_size);
             
             cuda_err_chk(cudaMalloc(&d_rand_assignment, n_elems*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_rand_assignment, h_rand_assignment,  n_elems*sizeof(uint64_t), cudaMemcpyHostToDevice));
             std::cout << "Random assignment complete"<< std::endl; 
         }
         if ((type==WARP_RANDOM) || (type==WARP_RANDOM_PC)) {
-            uint64_t n_keys = ceil((float)array_size/tensor_size);
+            uint64_t n_keys = n_elems; //ceil((float)array_size/tensor_size);
             h_rand_assignment = (uint64_t*) malloc(n_keys*sizeof(uint64_t));
             for (size_t i = 0; i< n_keys; i++)
                 h_rand_assignment[i] = rand() % (n_keys);
@@ -455,7 +460,7 @@ int main(int argc, char** argv) {
             case UVM_READONLY: {
                          cuda_err_chk(cudaMallocManaged((void**)&d_array_ptr, array_size));
                          cuda_err_chk(cudaMemcpy(d_array_ptr, map_in, array_size, cudaMemcpyHostToDevice)); //this is optional. done for correctness check across all combinations. 
-                         cuda_err_chk(cudaMemAdvise(d_array_ptr, array_size, cudaMemAdviseSetReadMostly, settings.cudaDevice));
+                         //cuda_err_chk(cudaMemAdvise(d_array_ptr, array_size, cudaMemAdviseSetReadMostly, settings.cudaDevice));
                          break;
                          }
             case UVM_DIRECT: {
@@ -532,7 +537,7 @@ int main(int argc, char** argv) {
                         break;
                         }
             case WARP_RANDOM:{
-                        read_cta_random_warp_streaming<ARRAYTYPE><<<g_size, b_size>>>(d_array_ptr, settings.tensor_size, array_size, file_n_pages, pc_page_size, d_rand_assignment, d_output);
+                        read_cta_random_warp_streaming<ARRAYTYPE><<<g_size, b_size>>>(d_array_ptr, settings.tensor_size, n_elems, file_n_pages, pc_page_size, d_rand_assignment, d_output);
                         break;
                         }
             case BLOCK_RANDOM:{
@@ -580,11 +585,11 @@ int main(int argc, char** argv) {
         uint64_t ios = n_elems; 
         uint64_t data = array_size;
         
-        if(tensor_size>1){
-            ios =  ceil((float)n_elems/tensor_size);
-            data = ios*tensor_size;
+        if(type==RANDOM){
+            ios = n_elems;
+            data = ios*sizeof(ARRAYTYPE);
         }
-            
+
 
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
@@ -606,7 +611,7 @@ int main(int argc, char** argv) {
         if(mem!=BAFS_DIRECT){
             cuda_err_chk(cudaFree(d_array_ptr)); 
         }
-        if((mem==RANDOM) || (mem==RANDOM_PC) || (mem==WARP_RANDOM) || (mem==WARP_RANDOM_PC))
+        if((type==RANDOM) || (type==RANDOM_PC) || (type==WARP_RANDOM) || (type==WARP_RANDOM_PC))
             cuda_err_chk(cudaFree(d_rand_assignment));
         //std::cout << "END\n";
 
