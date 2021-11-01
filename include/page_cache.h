@@ -203,7 +203,7 @@ struct page_cache_t
         cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
     }
 
-    page_cache_t(const uint64_t ps, const uint64_t np, const uint64_t ns_per_page, const uint32_t cudaDevice, const Controller &ctrl, const uint64_t max_range, const std::vector<Controller *> &ctrls)
+    page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller &ctrl, const uint64_t max_range, const std::vector<Controller *> &ctrls)
     {
 
         ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
@@ -217,9 +217,9 @@ struct page_cache_t
         d_ctrls_buff = createBuffer(pdt.n_ctrls * sizeof(Controller *), cudaDevice);
         pdt.d_ctrls = (Controller **)d_ctrls_buff.get();
         pdt.n_blocks_per_page = (ps / ctrl.blk_size);
-        pdt.n_sectors_per_page = ns_per_page;
-        pdt.n_sectors_per_page_minus_1 = ns_per_page - 1;
-        pdt.n_sectors_per_page_log = std::log2(ns_per_page);
+        pdt.n_sectors_per_page = N_SECTORS_PER_PAGE;
+        pdt.n_sectors_per_page_minus_1 = N_SECTORS_PER_PAGE - 1;
+        pdt.n_sectors_per_page_log = std::log2(N_SECTORS_PER_PAGE);
         for (size_t k = 0; k < pdt.n_ctrls; k++)
             cuda_err_chk(cudaMemcpy(pdt.d_ctrls + k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller *), cudaMemcpyHostToDevice));
 
@@ -234,8 +234,8 @@ struct page_cache_t
         ranges_buf = createBuffer(max_range * sizeof(page_states_t), cudaDevice);
         pdt.ranges = (page_states_t *)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
-        pdt.sector_size = pdt.ranges->get_sector_size();
-        pdt.sector_size_log = std::log2(sector_size);
+        pdt.sector_size = ceil(ps/N_SECTORS_PER_PAGE);
+        pdt.sector_size_log = std::log2(pdt.sector_size);
         //pdt.sector_size_minus_1 = pdt.sector_size -1;
         pdt.n_blocks_per_sector = pdt.sector_size / ctrl.blk_size;
 
@@ -276,7 +276,7 @@ struct page_cache_t
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
 
-            std::cout << np << "  " << ns_per_page << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma.get()->n_ioaddrs << std::endl;
+            std::cout << np << "  " << N_SECTORS_PER_PAGE << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma.get()->n_ioaddrs << std::endl;
             uint64_t *temp = new uint64_t[how_many_in_one * this->pages_dma.get()->n_ioaddrs];
             std::memset(temp, 0, how_many_in_one * this->pages_dma.get()->n_ioaddrs);
             if (temp == NULL)
@@ -290,7 +290,7 @@ struct page_cache_t
                     //std::cout << std::dec << "\ti: " << i << "\tj: " << j << "\tindex: "<< (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps) << std::dec << std::endl;
                 }
             }
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np, sizeof(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np*sizeof(uint64_t), cudaMemcpyHostToDevice));
             delete temp;
             //std::cout << "HERE1\n";
             //std::cout << "HERE2\n";
@@ -403,10 +403,10 @@ struct range_d_t
         __device__
             uint64_t
             get_backing_ctrl(const size_t i) const;
-    __forceinline__
+    /*__forceinline__
         __device__
             uint64_t
-            get_sector_size() const;
+            get_sector_size() const;*/
     __forceinline__
         __device__
             uint64_t
@@ -432,7 +432,11 @@ struct range_d_t
     __forceinline__
         __device__
             uint64_t
-            acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl, const uint32_t queue);
+            acquire_page(const size_t pg, const uint32_t count, const bool write);
+    __forceinline__
+        __device__
+            bool
+            acquire_sector(const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue);
     __forceinline__
         __device__ void
         write_done(const size_t pg, const uint32_t count) const;
@@ -454,11 +458,15 @@ struct range_d_t
     __forceinline__
         __device__
             uint64_t
-            range_d_t<T>::get_cache_sector_size() const;
+            get_cache_sector_size() const;
     __forceinline__
         __device__
             uint64_t
-            range_d_t<T>::get_cache_sector_size_log() const;
+            get_cache_sector_size_log() const;
+    __forceinline__
+        __device__
+            uint64_t
+            get_sectorsubindex(const size_t i) const;
 };
 
 __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
