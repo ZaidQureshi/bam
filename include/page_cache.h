@@ -1185,7 +1185,7 @@ struct array_d_t
             uint32_t eq_mask;
             int master;
             uint64_t base_master;
-            uint64_t sector_acquired_master;
+            bool sector_acquired_master;
             uint32_t count;
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
