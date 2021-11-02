@@ -53,7 +53,7 @@ enum data_dist_t
 
 #define SECTOR0_VALID 1
 #define SECTOR0_INVALID 0
-#define SECTOR0 BUSY 2
+#define SECTOR0_BUSY 2
 #define SECTOR0_DIRTY 4
 #define SECTOR0_COALESCE 8
 #define SECTOR1_VALID 1 << 4
@@ -432,11 +432,11 @@ struct range_d_t
     __forceinline__
         __device__
             uint64_t
-            acquire_page(const size_t pg, const uint32_t count, const bool write);
+            acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t queue);
     __forceinline__
         __device__
             bool
-            acquire_sector(const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue);
+            acquire_sector(const uint64_t page_index, const size_t sector_index, const uint64_t page_trans, const bool write, const uint32_t ctrl_, const uint32_t queue);
     __forceinline__
         __device__ void
         write_done(const size_t pg, const uint32_t count) const;
@@ -511,8 +511,8 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     data_page_t *ts = new data_page_t[s];
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
-        for (size_t j=0; j<cache->n_sectors_per_page/2; j++) {
-            ts[i].sector_states = SECTOR0_INVALID;
+        for (size_t j=0; j<cache->(n_sectors_per_page+1)/2; j++) {
+            ts[i].sector_states[j] = SECTOR0_INVALID;
         }  
     }
     //printf("S value: %llu\n", (unsigned long long)s);
@@ -705,12 +705,14 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, const uint64_t page_trans, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
     bool fail = true;
     bool odd_sector = sector_index & (1UL);
     uint8_t expected_state;
     uint8_t new_state;
+    uint32_t page_trans = (page_addresses[page_index]<< cache.n_sectors_per_page_log) | sector_index;
+
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
     //expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
     //if (odd_sector) {
@@ -745,7 +747,7 @@ __forceinline__
                 break;
                 case SECTOR1_INVALID:
                     new_state = (expected_state & 0x0F) | SECTOR1_BUSY;
-                    pass = page_states[index].sector_states[sector_index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t ctrl = get_backing_ctrl(page_index);
                         if (ctrl == ALL_CTRLS)
@@ -853,7 +855,7 @@ template <typename T>
 __forceinline__
     __device__
         uint64_t
-        range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write)
+        range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t queue)
 {
     uint64_t index = pg;
     //size_t sector_index = sector;
@@ -874,14 +876,13 @@ __forceinline__
             pass = page_states[index].state.compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (pass)
             {
-                uint64_t page_index = index >> ps_log2;
                 //acquire_sector(index, sector_index, count, write);
 
-                uint32_t page_trans = page_addresses[page_index];
+                uint32_t page_trans = page_addresses[index];
 
                 //hit_cnt.fetch_add(count, simt::memory_order_relaxed);
 
-                return get_cache_page_addr(page_index);
+                return get_cache_page_addr(page_trans);
                 fail = false;
             }
             break;
@@ -1028,7 +1029,7 @@ struct array_d_t
         coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const uint64_t gaddr, const bool write,
                       uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master) const
     {
-        /*uint32_t ctrl;
+        uint32_t ctrl;
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;
         if (lane == leader)
@@ -1039,7 +1040,7 @@ struct array_d_t
         }
 
         ctrl = __shfl_sync(mask, ctrl, leader);
-        queue = __shfl_sync(mask, queue, leader);*/
+        queue = __shfl_sync(mask, queue, leader);
 
         uint32_t active_cnt = __popc(mask);
         eq_mask = __match_any_sync(mask, gaddr);
@@ -1053,7 +1054,7 @@ struct array_d_t
         count = __popc(eq_mask);
         if (master == lane)
         {
-            base = d_ranges[r].acquire_page(page, count, dirty);
+            base = d_ranges[r].acquire_page(page, count, dirty, queue);
             base_master = base;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
@@ -1062,8 +1063,8 @@ struct array_d_t
 
     __forceinline__
         __device__ void
-        coalesce_sector(const uint32_t lane, const uint32_t mask, const int64_t r, const size_t sector, const bool write,
-                      uint32_t &eq_mask, int &master, uint64_t &sector_acquired_master) const
+        coalesce_sector(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const bool write,
+                      uint32_t &eq_mask, int &master, bool &sector_acquired_master) const
     {
         uint32_t ctrl;
         uint32_t queue;
@@ -1081,20 +1082,20 @@ struct array_d_t
         //uint32_t active_cnt = __popc(mask);
         //eq_mask = __match_any_sync(mask, gaddr);
         //eq_mask &= __match_any_sync(mask, (uint64_t)this);
-        eq_mask &= __match_any_sync(mask, sector_index);
+        eq_mask &= __match_any_sync(mask, sector);
         master = __ffs(eq_mask) - 1;
 
         uint32_t dirty = __any_sync(eq_mask, write);
 
-        uint64_t base;
+        bool sector_acquired;
         //count = __popc(eq_mask);
         if (master == lane)
         {
-            sector_acquired = d_ranges[r].acquire_sector(sector, dirty, ctrl, queue);
+            sector_acquired = d_ranges[r].acquire_sector(page, sector, dirty, ctrl, queue);
             sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
-        base_master = __shfl_sync(eq_mask, sector_acquired_master, master);
+        sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
     }
 
 
@@ -1193,8 +1194,8 @@ struct array_d_t
 
             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
             __syncwarp(eq_mask);
-            uint32_t temp_eq_mask;
-            coalesce_sector(lane, temp_eq_mask, r, sector_index, false, eq_mask, master, sector_acquired_master)
+            uint32_t temp_eq_mask = eq_mask;
+            coalesce_sector(lane, temp_eq_mask, r, page, sector_index, false, eq_mask, master, sector_acquired_master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
