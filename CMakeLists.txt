@@ -6,7 +6,7 @@ set (CMAKE_CXX_STANDARD 11)
 
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
-find_package (CUDA 10.2)
+find_package (CUDA 8.0)
 
 
 
