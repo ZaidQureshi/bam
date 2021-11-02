@@ -436,7 +436,7 @@ struct range_d_t
     __forceinline__
         __device__
             bool
-            acquire_sector(const uint64_t page_index, const size_t sector_index, const uint64_t page_trans, const bool write, const uint32_t ctrl_, const uint32_t queue);
+            acquire_sector(const uint64_t page_index, const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue);
     __forceinline__
         __device__ void
         write_done(const size_t pg, const uint32_t count) const;
@@ -511,7 +511,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     data_page_t *ts = new data_page_t[s];
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
-        for (size_t j=0; j<cache->(n_sectors_per_page+1)/2; j++) {
+        for (size_t j=0; j<(cache->n_sectors_per_page)+1/2; j++) {
             ts[i].sector_states[j] = SECTOR0_INVALID;
         }  
     }
@@ -705,13 +705,13 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, const uint64_t page_trans, const bool write, const uint32_t ctrl_, const uint32_t queue)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
     bool fail = true;
     bool odd_sector = sector_index & (1UL);
     uint8_t expected_state;
     uint8_t new_state;
-    uint32_t page_trans = (page_addresses[page_index]<< cache.n_sectors_per_page_log) | sector_index;
+    uint64_t page_trans = (page_addresses[page_index]<< cache.n_sectors_per_page_log) | sector_index;
 
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
     //expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
@@ -808,7 +808,7 @@ __forceinline__
                 break;
                 case SECTOR0_INVALID:
                     new_state = (expected_state & 0xF0) | SECTOR0_BUSY;
-                    pass = page_states[index].sector_states[sector_index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass) {
                         uint64_t ctrl = get_backing_ctrl(page_index);
                         if (ctrl == ALL_CTRLS)
