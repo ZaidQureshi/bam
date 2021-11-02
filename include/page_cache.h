@@ -1286,6 +1286,7 @@ struct array_d_t
 
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
+            size_t sector_index = d_ranges[r].get_sectorindex(i);
 
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             //uint64_t p_s = d_ranges[r].page_size;
@@ -1312,10 +1313,11 @@ struct array_d_t
             master = __ffs(eq_mask) - 1;
 
             bool sector_acquired;
+            bool sector_acquired_master;
             //count = __popc(eq_mask);
             if (master == lane)
             {
-                sector_acquired = d_ranges[r].acquire_sector(page, sector, dirty, ctrl, queue);
+                sector_acquired = d_ranges[r].acquire_sector(page, sector, true, ctrl, queue);
                 sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
             }
