@@ -1286,7 +1286,7 @@ struct array_d_t
 
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
-            size_t sector_index = d_ranges[r].get_sectorindex(i);
+            size_t sector = d_ranges[r].get_sectorindex(i);
 
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             //uint64_t p_s = d_ranges[r].page_size;
