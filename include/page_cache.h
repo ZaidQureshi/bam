@@ -1301,11 +1301,25 @@ struct array_d_t
             uint32_t count = __popc(eq_mask);
             if (master == lane)
             {
-                base = d_ranges[r].acquire_page(page, count, true, ctrl, queue);
+                base = d_ranges[r].acquire_page(page, count, true, queue);
                 base_master = base;
                 //    printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
             }
             base_master = __shfl_sync(eq_mask, base_master, master);
+            __syncwarp(eq_mask);
+
+            eq_mask &= __match_any_sync(mask, sector);
+            master = __ffs(eq_mask) - 1;
+
+            bool sector_acquired;
+            //count = __popc(eq_mask);
+            if (master == lane)
+            {
+                sector_acquired = d_ranges[r].acquire_sector(page, sector, dirty, ctrl, queue);
+                sector_acquired_master = sector_acquired;
+            //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+            }
+            sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
