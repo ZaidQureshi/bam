@@ -334,8 +334,8 @@ struct page_cache_t
             uint64_t *temp1 = new uint64_t[np * sizeof(uint64_t)];
             uint64_t *temp2 = new uint64_t[np * sizeof(uint64_t)];
             uint64_t *temp3 = new uint64_t[prp_list_size];
-            std::memset(temp1, 0, np * ns_per_page * sizeof(uint64_t));
-            std::memset(temp2, 0, np * ns_per_page * sizeof(uint64_t));
+            std::memset(temp1, 0, np * sizeof(uint64_t));
+            std::memset(temp2, 0, np * sizeof(uint64_t));
             std::memset(temp3, 0, prp_list_size);
             uint32_t how_many_in_one = pdt.page_size / ctrl.ctrl->page_size;
             for (size_t i = 0; i < np; i++)
@@ -840,7 +840,8 @@ __forceinline__
                         fail = false;
                         hit_cnt.fetch_add(count, simt::memory_order_relaxed);
                     }
-                break;  
+                break; 
+            } 
 
         }
 
