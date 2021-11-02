@@ -1369,7 +1369,7 @@ struct array_d_t
             //count = __popc(eq_mask);
             if (master == lane)
             {
-                sector_acquired = d_ranges[r].acquire_sector(page, sector, true, ctrl, queue);
+                sector_acquired = d_ranges[r].acquire_sector(page, sector, __popc(eq_mask), true, ctrl, queue);
                 sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
             }
