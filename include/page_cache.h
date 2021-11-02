@@ -728,8 +728,8 @@ __forceinline__
         bool pass = false;
         if (odd_sector) {
             expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
-            /*switch (expected_state & 0xF0) {
-                case SECTOR1_BUSY:
+            switch (expected_state & 0xF0) {
+                /*case SECTOR1_BUSY:
                    //do nothing
                 break;
                 case SECTOR1_INVALID:
@@ -755,7 +755,7 @@ __forceinline__
                         fail = false;
                     }
                     
-                break; 
+                break; */
                 default:
                     new_state = expected_state;
                     if (write && !(new_state & SECTOR1_DIRTY)) {
@@ -771,7 +771,7 @@ __forceinline__
                     }
                 
                 break;   
-            }*/
+            }
 
         }
         /*else {
