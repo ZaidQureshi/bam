@@ -51,16 +51,11 @@ enum data_dist_t
 #define INVALID (0xffffffffULL)
 #define BUSY ((0xffffffffULL) - 1)
 
-#define SECTOR0_VALID 1
-#define SECTOR0_INVALID 0
-#define SECTOR0_BUSY 2
-#define SECTOR0_DIRTY 4
-#define SECTOR0_COALESCE 8
-#define SECTOR1_VALID 1 << 4
-#define SECTOR1_INVALID 0
-#define SECTOR1_BUSY 2 << 4
-#define SECTOR1_DIRTY 4 << 4
-#define SECTOR1_COALESCE 8 << 4
+#define SECTOR_VALID 1
+#define SECTOR_INVALID 0
+#define SECTOR_BUSY 2
+#define SECTOR_DIRTY 4
+#define SECTOR_COALESCE 8
 
 #define ALL_CTRLS 0xffffffffffffffff
 
@@ -77,7 +72,8 @@ struct range_t;
 struct data_page_t
 {
     simt::atomic<uint64_t, simt::thread_scope_device> state; //state
-    simt::atomic<uint8_t, simt::thread_scope_device> sector_states[(N_SECTORS_PER_PAGE+2-1) / 2];
+    //simt::atomic<uint8_t, simt::thread_scope_device> sector_states[(N_SECTORS_PER_PAGE+2-1) / 2];
+    simt::atomic<uint32_t, simt::thread_scope_device> sector_states[(N_SECTORS_PER_PAGE+8-1) / 8];
 
     //constexpr size_t get_sector_size() const { return page_size / n_sectors_per_page; }
 };
@@ -436,7 +432,7 @@ struct range_d_t
     __forceinline__
         __device__
             bool
-            acquire_sector(const uint64_t page_index, const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue);
+            acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue);
     __forceinline__
         __device__ void
         write_done(const size_t pg, const uint32_t count) const;
@@ -511,8 +507,8 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     data_page_t *ts = new data_page_t[s];
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
-        for (size_t j=0; j<(cache->n_sectors_per_page)+1/2; j++) {
-            ts[i].sector_states[j] = SECTOR0_INVALID;
+        for (size_t j=0; j<(cache->n_sectors_per_page+7)/8; j++) {
+            ts[i].sector_states[j] = SECTOR_INVALID;
         }  
     }
     //printf("S value: %llu\n", (unsigned long long)s);
@@ -705,7 +701,63 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, const bool write, const uint32_t ctrl_, const uint32_t queue)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
+{
+    bool fail = true;
+    uint8_t sector_number = sector_index & (7UL);
+    uint32_t original_state;
+    uint32_t expected_state = SECTOR_VALID;
+    uint32_t new_state = SECTOR_VALID;
+    uint64_t page_trans = (page_addresses[page_index]<< cache.n_sectors_per_page_log) | sector_index;
+    uint64_t temp_mask = 0xFFFFFFF0FFFFFFFF << 4*sector_number;
+    uint32_t mask = ((uint32_t*)&temp_mask)[1];
+    access_cnt.fetch_add(count, simt::memory_order_relaxed);
+
+    do {
+        bool pass = false;
+        original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
+        expected_state = (original_state & (0x0000000F << 4*sector_number)) >> 4*sector_number;
+        switch(expected_state){
+            case SECTOR_BUSY:
+               //do nothing
+            break;
+            case SECTOR_INVALID:
+               new_state = (original_state & mask) | (SECTOR_BUSY << 4*sector_number);
+               pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+               if (pass) {
+                    uint64_t ctrl = get_backing_ctrl(page_index);
+                    if (ctrl == ALL_CTRLS)
+                        ctrl = ctrl_;
+                    uint64_t b_page = get_backing_page(page_index);
+                    Controller *c = cache.d_ctrls[ctrl];
+                    c->access_counter.fetch_add(1, simt::memory_order_relaxed);
+                    read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
+                    read_data(&cache, (c->d_qps) + queue, ((b_page)*cache.n_blocks_per_page) + (sector_index*cache.n_blocks_per_sector), cache.n_blocks_per_sector, page_trans);
+                    bool caspass = false;
+                    while (!caspass) {
+                        original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
+                        new_state = (original_state & mask) | (SECTOR_VALID << 4*sector_number);
+                        caspass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
+                    }
+                    fail = false;
+               }
+            break;
+            default:
+                fail = false;
+                hit_cnt.fetch_add(count, simt::memory_order_relaxed);
+            break;
+        }
+
+    }while (fail);
+    return !fail;
+    
+}
+
+/*template <typename T>
+__forceinline__
+    __device__
+        bool
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
     bool fail = true;
     bool odd_sector = sector_index & (1UL);
@@ -729,7 +781,7 @@ __forceinline__
         if (odd_sector) {
             expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
             switch (expected_state & 0xF0) {
-                /*case SECTOR1_BUSY:
+                case SECTOR1_BUSY:
                    //do nothing
                 break;
                 case SECTOR1_INVALID:
@@ -755,7 +807,7 @@ __forceinline__
                         fail = false;
                     }
                     
-                break; */
+                break;
                 default:
                     new_state = expected_state;
                     if (write && !(new_state & SECTOR1_DIRTY)) {
@@ -774,7 +826,7 @@ __forceinline__
             }
 
         }
-        /*else {
+        else {
             expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
             switch (expected_state & 0x0F) {
                 case SECTOR0_BUSY:
@@ -819,11 +871,11 @@ __forceinline__
                 break; 
             }
 
-        }*/
+        }
 
     } while (fail);
     return !fail;
-}
+}*/
 
 template <typename T>
 __forceinline__
@@ -1065,7 +1117,7 @@ struct array_d_t
         //count = __popc(eq_mask);
         if (master == lane)
         {
-            sector_acquired = d_ranges[r].acquire_sector(page, sector, dirty, ctrl, queue);
+            sector_acquired = d_ranges[r].acquire_sector(page, sector, __popc(eq_mask), dirty, ctrl, queue);
             sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
@@ -1453,8 +1505,8 @@ __forceinline__
                     pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
-                        for (int i = 0; i< this->n_sectors_per_page/2; i++) {
-                            this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR0_INVALID, simt::memory_order_release);
+                        for (int i = 0; i< (this->n_sectors_per_page+7)/8; i++) {
+                            this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR_INVALID, simt::memory_order_release);
                         }
                         this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         fail = false;
@@ -1464,8 +1516,8 @@ __forceinline__
                     pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
-                        for (int i = 0; i < this->n_sectors_per_page/2; i++) {
-                            this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR0_INVALID, simt::memory_order_release);
+                        for (int i = 0; i < (this->n_sectors_per_page+7)/8; i++) {
+                            this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR_INVALID, simt::memory_order_release);
                         }
                         this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         fail = false;
@@ -1499,8 +1551,8 @@ __forceinline__
 
                             write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page);
                         }
-                        for (int i = 0; i< this->n_sectors_per_page/2; i++) {
-                            this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR0_INVALID, simt::memory_order_release);
+                        for (int i = 0; i< (this->n_sectors_per_page+7)/8; i++) {
+                            this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR_INVALID, simt::memory_order_release);
                         }
                         this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
 
