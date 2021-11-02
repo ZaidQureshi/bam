@@ -728,20 +728,7 @@ __forceinline__
         bool pass = false;
         if (odd_sector) {
             expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
-            switch (expected_state & 0xF0) {
-                /*case SECTOR1_VALID:
-                    new_state = expected_state;
-                    if (write && !(new_state & SECTOR1_DIRTY)) {
-                        new_state |= SECTOR1_DIRTY;
-                        pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
-                    }
-                    else {
-                        pass = true;
-                    }                        
-                    if (pass) {
-                        fail = false;
-                    }
-                break;*/
+            /*switch (expected_state & 0xF0) {
                 case SECTOR1_BUSY:
                    //do nothing
                 break;
@@ -784,25 +771,12 @@ __forceinline__
                     }
                 
                 break;   
-            }
+            }*/
 
         }
-        else {
+        /*else {
             expected_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
             switch (expected_state & 0x0F) {
-                /*case SECTOR0_VALID:
-                    new_state = expected_state;
-                    if (write && !(new_state & SECTOR0_DIRTY)) {
-                        new_state |= SECTOR0_DIRTY;
-                        pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
-                    }
-                    else {
-                        pass = true;
-                    }                        
-                    if (pass) {
-                        fail = false;
-                    }
-                break;*/
                 case SECTOR0_BUSY:
                    //do nothing
                 break;
@@ -843,9 +817,9 @@ __forceinline__
                         hit_cnt.fetch_add(count, simt::memory_order_relaxed);
                     }
                 break; 
-            } 
+            }
 
-        }
+        }*/
 
     } while (fail);
     return !fail;
