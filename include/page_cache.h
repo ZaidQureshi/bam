@@ -67,7 +67,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 256
+#define N_SECTORS_PER_PAGE 8
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
 struct data_page_t
 {
@@ -208,11 +208,15 @@ struct page_cache_t
         pdt.page_size_minus_1 = ps - 1;
         pdt.n_pages = np;
         pdt.ctrl_page_size = ctrl.ctrl->page_size;
+        std::cout << "pdt.ctrl_page_size = " << pdt.ctrl_page_size <<"\n";
         pdt.n_pages_minus_1 = np - 1;
         pdt.n_ctrls = ctrls.size();
+        std::cout << "pdt.n_ctrls = "<< pdt.n_ctrls << "\n";
         d_ctrls_buff = createBuffer(pdt.n_ctrls * sizeof(Controller *), cudaDevice);
         pdt.d_ctrls = (Controller **)d_ctrls_buff.get();
         pdt.n_blocks_per_page = (ps / ctrl.blk_size);
+        std::cout << "ctrl.blk_size = " << ctrl.blk_size << "\n";
+        std::cout << "pdt.n_blocks_per_page = " << pdt.n_blocks_per_page << "\n";
         pdt.n_sectors_per_page = N_SECTORS_PER_PAGE;
         pdt.n_sectors_per_page_minus_1 = N_SECTORS_PER_PAGE - 1;
         pdt.n_sectors_per_page_log = std::log2(N_SECTORS_PER_PAGE);
@@ -231,9 +235,11 @@ struct page_cache_t
         pdt.ranges = (page_states_t *)ranges_buf.get();
         h_ranges = new page_states_t[max_range];
         pdt.sector_size = ceil(ps/N_SECTORS_PER_PAGE);
+        std::cout << "pdt.sector_size = " << pdt.sector_size << "\n";
         pdt.sector_size_log = std::log2(pdt.sector_size);
-        //pdt.sector_size_minus_1 = pdt.sector_size -1;
+        pdt.sector_size_minus_1 = pdt.sector_size -1;
         pdt.n_blocks_per_sector = pdt.sector_size / ctrl.blk_size;
+        std::cout << "pdt.n_blocks_per_sector = " << pdt.n_blocks_per_sector << "\n";
 
         h_ranges_page_starts = new uint64_t[max_range];
         std::memset(h_ranges_page_starts, 0, max_range * sizeof(uint64_t));
@@ -258,6 +264,8 @@ struct page_cache_t
         h_ranges_dists = new data_dist_t[max_range];
 
         uint64_t cache_size = ps * np;
+        std::cout << "cache_size = " << cache_size << "\n";
+
         this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
         pdt.base_addr = (uint8_t *)this->pages_dma.get()->vaddr;
         std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
@@ -265,10 +273,13 @@ struct page_cache_t
         const uint32_t uints_per_page = ctrl.ctrl->page_size / sizeof(uint64_t);
         if ((pdt.page_size > (ctrl.ns.lba_data_size * uints_per_page)) || (np == 0) || (pdt.sector_size < ctrl.ns.lba_data_size))
             throw error(string("page_cache_t: Can't have such page size or number of pages"));
+        std::cout<<"pages_dma.page_size = " << this->pages_dma.get()->page_size << "\n";
         if (pdt.page_size <= this->pages_dma.get()->page_size)
         {
             std::cout << "Cond1\n";
             uint64_t how_many_in_one = ctrl.ctrl->page_size / pdt.page_size;
+            std::cout << "ctrl.page_size = " << ctrl.ctrl->page_size << "\n";
+            std::cout << "how_many_in_one = " << how_many_in_one << "\n";
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
 
@@ -280,6 +291,7 @@ struct page_cache_t
 
             for (size_t i = 0; (i < this->pages_dma.get()->n_ioaddrs); i++)
             {
+                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 for (size_t j = 0; (j < how_many_in_one); j++)
                 {
                     temp[i * how_many_in_one + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j * pdt.page_size;
@@ -307,6 +319,7 @@ struct page_cache_t
             std::memset(temp2, 0, np * sizeof(uint64_t));
             for (size_t i = 0; i < np; i++)
             {
+                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i * 2]);
                 temp2[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i * 2 + 1]);
             }
@@ -323,6 +336,9 @@ struct page_cache_t
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
             uint32_t prp_list_size = ctrl.ctrl->page_size * np; //not sure if this is right
+            std::cout << "ctrl.page_size = "<< ctrl.ctrl->page_size << "\n";
+            std::cout << "np = " << np << "\n";
+            std::cout << "prp_list_size = " << prp_list_size << "\n";
             this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cudaDevice);
             //pdt.prplist = (uint64_t *)this->prp_list_dma.get();
             this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
@@ -334,8 +350,11 @@ struct page_cache_t
             std::memset(temp2, 0, np * sizeof(uint64_t));
             std::memset(temp3, 0, prp_list_size);
             uint32_t how_many_in_one = pdt.page_size / ctrl.ctrl->page_size;
+            std::cout << "pdt.page_size = " << pdt.page_size << "\n";
+            std::cout << "how_many_in_one = " << how_many_in_one << "\n";
             for (size_t i = 0; i < np; i++)
             {
+                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i*how_many_in_one]) << std::dec << std::endl;
                 temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i * how_many_in_one]);
                 temp2[i] = ((uint64_t)this->prp_list_dma.get()->ioaddrs[i]);
                 for (size_t j = 0; j < (how_many_in_one - 1); j++)
@@ -1617,7 +1636,7 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
+    printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
