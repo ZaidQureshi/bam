@@ -279,8 +279,8 @@ struct page_cache_t
             std::cout << "Cond1\n";
             uint64_t how_many_in_one = ctrl.ctrl->page_size / pdt.page_size;
             std::cout << "ctrl.page_size = " << ctrl.ctrl->page_size << "\n";
-            std::cout << "how_many_in_one = " << how_many_in_one << "\n";
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            std::cout << "how_many_in_one = " < how_many_in_one << "\n";
+            this->prp1_buf = createBuffer(np*(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
 
             std::cout << np << "  " << N_SECTORS_PER_PAGE << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma.get()->n_ioaddrs << std::endl;
@@ -295,10 +295,10 @@ struct page_cache_t
                 for (size_t j = 0; (j < how_many_in_one); j++)
                 {
                     temp[i * how_many_in_one + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j * pdt.page_size;
-                    //std::cout << std::dec << "\ti: " << i << "\tj: " << j << "\tindex: "<< (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps) << std::dec << std::endl;
+                    std::cout << std::dec << "\ti: " << i << "\tj: " << j << "\tindex: "<< (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*pdt.page_size) << std::dec << std::endl;
                 }
             }
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np*sizeof(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np*(uint64_t), cudaMemcpyHostToDevice));
             delete temp;
             //std::cout << "HERE1\n";
             //std::cout << "HERE2\n";
@@ -308,11 +308,11 @@ struct page_cache_t
         else if ((pdt.page_size > this->pages_dma.get()->page_size) && (pdt.page_size <= (this->pages_dma.get()->page_size * 2)))
         {
             std::cout << "Cond2\n";
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp1_buf = createBuffer(np*sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
-            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp2_buf = createBuffer(np* sizeof(uint64_t), cudaDevice);
             pdt.prp2 = (uint64_t *)this->prp2_buf.get();
-            uint64_t *temp1 = new uint64_t[np * sizeof(uint64_t)];
+            uint64_t *temp1 = new uint64_t[np* sizeof(uint64_t)];
             std::memset(temp1, 0, np * sizeof(uint64_t));
             //uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
             uint64_t *temp2 = new uint64_t[np * sizeof(uint64_t)];
@@ -335,7 +335,7 @@ struct page_cache_t
             std::cout << "Cond3\n";
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
-            uint32_t prp_list_size = ctrl.ctrl->page_size * np; //not sure if this is right
+            uint32_t prp_list_size = ctrl.ctrl->page_size * np;
             std::cout << "ctrl.page_size = "<< ctrl.ctrl->page_size << "\n";
             std::cout << "np = " << np << "\n";
             std::cout << "prp_list_size = " << prp_list_size << "\n";
@@ -364,8 +364,8 @@ struct page_cache_t
             }
 
             std::cout << "Done creating PRP\n";
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np  * sizeof(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np  * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(this->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
 
             delete temp1;
@@ -1071,8 +1071,8 @@ struct array_d_t
 
     __forceinline__
         __device__ void
-        coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const uint64_t gaddr, const bool write,
-                      uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master) const
+        coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const uint64_t gaddr, const bool write,
+                      uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master, bool &sector_acquired_master) const
     {
         uint32_t ctrl;
         uint32_t queue;
@@ -1104,9 +1104,24 @@ struct array_d_t
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask, base_master, master);
+
+        eq_mask &= __match_any_sync(mask, sector);
+        master = __ffs(eq_mask) - 1;
+
+        uint32_t dirty = __any_sync(eq_mask, write);
+
+        bool sector_acquired;
+        //count = __popc(eq_mask);
+        if (master == lane)
+        {
+            sector_acquired = d_ranges[r].acquire_sector(page, sector, __popc(eq_mask), dirty, ctrl, queue);
+            sector_acquired_master = sector_acquired;
+            //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+        }
+        sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
     }
 
-    __forceinline__
+    /*__forceinline__
         __device__ void
         coalesce_sector(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const bool write,
                       uint32_t &eq_mask, int &master, bool &sector_acquired_master) const
@@ -1141,7 +1156,7 @@ struct array_d_t
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
         sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
-    }
+    }*/
 
 
     __forceinline__
@@ -1237,16 +1252,16 @@ struct array_d_t
             size_t sector_index = d_ranges[r].get_sectorindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
 
-            coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
+            coalesce_page(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
             __syncwarp(eq_mask);
-            uint32_t temp_eq_mask = eq_mask;
-            coalesce_sector(lane, temp_eq_mask, r, page, sector_index, false, eq_mask, master, sector_acquired_master);
+            /*uint32_t temp_eq_mask = eq_mask;
+            coalesce_sector(lane, temp_eq_mask, r, page, sector_index, false, eq_mask, master, sector_acquired_master);*/
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T *)(base_master + subindex))[0];
-            __syncwarp(eq_mask);
+            
             if (master == lane)
                 d_ranges[r].release_page(page, count);
             __syncwarp(mask);
@@ -1270,12 +1285,14 @@ struct array_d_t
             uint32_t eq_mask;
             int master;
             uint64_t base_master;
+            bool sector_acquired_master;
             uint32_t count;
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
+            size_t sector_index = d_ranges[r].get_sectorindex(i);
 
-            coalesce_page(lane, mask, r, page, gaddr, true, eq_mask, master, count, base_master);
+            coalesce_page(lane, mask, r, page, sector_index, gaddr, true, eq_mask, master, count, base_master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
@@ -1524,10 +1541,10 @@ __forceinline__
                     pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
+                        this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         for (int i = 0; i< (this->n_sectors_per_page+7)/8; i++) {
                             this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR_INVALID, simt::memory_order_release);
                         }
-                        this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         fail = false;
                     }
                     break;
@@ -1535,10 +1552,10 @@ __forceinline__
                     pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
-                        for (int i = 0; i < (this->n_sectors_per_page+7)/8; i++) {
+                        this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
+                        for (int i = 0; i< (this->n_sectors_per_page+7)/8; i++) {
                             this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR_INVALID, simt::memory_order_release);
                         }
-                        this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         fail = false;
                     }
                     break;
@@ -1557,7 +1574,7 @@ __forceinline__
                             {
                                 Controller *c = this->d_ctrls[ctrl];
                                 uint32_t queue = queue_ % (c->n_qps);
-                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page);
+                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page<<(this->n_sectors_per_page_log));
                             }
                         }
                         else
@@ -1568,13 +1585,12 @@ __forceinline__
 
                             //index = ranges_page_starts[previous_range] + previous_address;
 
-                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page);
+                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page<<(this->n_sectors_per_page_log));
                         }
+                        this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         for (int i = 0; i< (this->n_sectors_per_page+7)/8; i++) {
                             this->ranges[previous_range][previous_address].sector_states[i].store(SECTOR_INVALID, simt::memory_order_release);
                         }
-                        this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
-
                         fail = false;
                     }
                     break;
@@ -1615,10 +1631,14 @@ inline __device__ void access_data_async(page_cache_d_t *pc, QueuePair *qp, cons
     //printf("cid: %u\n", (unsigned int) cid);
 
     nvm_cmd_header(&cmd, *cid, opcode, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
+    /*uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
+        prp2 = pc->prp2[pc_entry];*/
+    uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
+    uint64_t prp1 = pc->prp1[prp_entry];
+    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
@@ -1632,10 +1652,14 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint16_t cid = get_cid(&(qp->sq));
 
     nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
+    /*uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
+        prp2 = pc->prp2[pc_entry];*/
+    uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
+    uint64_t prp1 = pc->prp1[prp_entry];
+    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    uint64_t prp2 = 0; //TODO: multiple prp1 lists
     printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
@@ -1663,10 +1687,14 @@ inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint6
     //        (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
+    /*uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
+        prp2 = pc->prp2[pc_entry];*/
+    uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
+    uint64_t prp1 = pc->prp1[prp_entry];
+    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
@@ -1692,10 +1720,14 @@ inline __device__ void access_data(page_cache_d_t *pc, QueuePair *qp, const uint
     //printf("cid: %u\n", (unsigned int) cid);
 
     nvm_cmd_header(&cmd, cid, opcode, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
+    /*uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
+        prp2 = pc->prp2[pc_entry];*/
+    uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
+    uint64_t prp1 = pc->prp1[prp_entry];
+    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
