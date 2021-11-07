@@ -276,6 +276,7 @@ int main(int argc, char** argv) {
 
 
         uint64_t page_size = settings.pageSize;
+        uint64_t sector_size = page_size/8;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
         //uint64_t n_pages = total_cache_size/page_size;
@@ -341,9 +342,9 @@ int main(int argc, char** argv) {
         }
         std::cout << "atlaunch kernel\n";
         if (settings.random)
-            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
+            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, sector_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
         else
-            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
+            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, sector_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
         Event after;
 
         //print_cache_kernel<<<1,1>>>(d_pc);
