@@ -1107,8 +1107,7 @@ struct array_d_t
 
         eq_mask &= __match_any_sync(mask, sector);
         master = __ffs(eq_mask) - 1;
-
-        uint32_t dirty = __any_sync(eq_mask, write);
+        dirty = __any_sync(eq_mask, write);
 
         bool sector_acquired;
         //count = __popc(eq_mask);
