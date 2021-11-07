@@ -1658,7 +1658,7 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
     uint64_t prp1 = pc->prp1[prp_entry];
     printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
-    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    prp1 = (prp1) | (pc_entry & (pc->n_sectors_per_page_minus_1));
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
@@ -1693,7 +1693,7 @@ inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint6
         prp2 = pc->prp2[pc_entry];*/
     uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
     uint64_t prp1 = pc->prp1[prp_entry];
-    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    prp1 = (prp1) | (pc_entry & (pc->n_sectors_per_page_minus_1));
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
@@ -1726,7 +1726,7 @@ inline __device__ void access_data(page_cache_d_t *pc, QueuePair *qp, const uint
         prp2 = pc->prp2[pc_entry];*/
     uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
     uint64_t prp1 = pc->prp1[prp_entry];
-    prp1 = (prp1 << (pc->n_sectors_per_page_log)) | (pc_entry & (pc->n_sectors_per_page_minus_1));
+    prp1 = (prp1) | (pc_entry & (pc->n_sectors_per_page_minus_1));
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
