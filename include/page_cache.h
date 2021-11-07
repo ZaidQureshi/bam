@@ -279,8 +279,8 @@ struct page_cache_t
             std::cout << "Cond1\n";
             uint64_t how_many_in_one = ctrl.ctrl->page_size / pdt.page_size;
             std::cout << "ctrl.page_size = " << ctrl.ctrl->page_size << "\n";
-            std::cout << "how_many_in_one = " < how_many_in_one << "\n";
-            this->prp1_buf = createBuffer(np*(uint64_t), cudaDevice);
+            std::cout << "how_many_in_one = " << how_many_in_one << "\n";
+            this->prp1_buf = createBuffer(np*sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
 
             std::cout << np << "  " << N_SECTORS_PER_PAGE << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma.get()->n_ioaddrs << std::endl;
@@ -298,7 +298,7 @@ struct page_cache_t
                     std::cout << std::dec << "\ti: " << i << "\tj: " << j << "\tindex: "<< (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*pdt.page_size) << std::dec << std::endl;
                 }
             }
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np*(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np*sizeof(uint64_t), cudaMemcpyHostToDevice));
             delete temp;
             //std::cout << "HERE1\n";
             //std::cout << "HERE2\n";

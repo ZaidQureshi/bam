@@ -125,14 +125,14 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
         for (size_t i = 0; i < reqs_per_thread; i++) {
             if (access_type == MIXED) {
                 opcode = access_type_assignment[tid];
-                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
+                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid<<3, opcode);
             }
             else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid<<3);
 
             }
             else {
-                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid<<3);
             }
         }
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -177,14 +177,14 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
         for (size_t i = 0; i < reqs_per_thread; i++) {
             if (access_type == MIXED) {
                 opcode = access_type_assignment[tid];
-                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
+                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid<<3, opcode);
             }
             else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid<<3);
 
             }
             else {
-                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid<<3);
             }
         }
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
