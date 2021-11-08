@@ -725,7 +725,8 @@ __forceinline__
 {
     printf("tid %d\t count %d\tpage_index %llu\tsector_index%d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector_index);
     bool fail = true;
-    uint8_t sector_number = sector_index & cache.n_sectors_per_page_minus_1;
+    uint8_t sector_number = (sector_index) && (cache.n_sectors_per_page_minus_1);
+    sector_index = (sector_index) >> (cache.n_sectors_per_page_log);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
@@ -740,7 +741,7 @@ __forceinline__
         bool pass = false;
         original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
         expected_state = (original_state & (0x0000000F << 4*sector_number)) >> 4*sector_number;
-        printf("tid %d\toriginal state %d\tsector_number %d\texpected_state %d\n", (blockIdx.x*blockDim.x+threadIdx.x), original_state, sector_number, expected_state);
+        printf("tid %d\toriginal state %08x\tpage_index %llu\tsector_index %d\tsector_number %d\texpected_state %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), original_state,(unsigned long long)page_index, sector_index, sector_number, expected_state);
         switch(expected_state){
             case SECTOR_BUSY:
                //do nothing
@@ -748,7 +749,7 @@ __forceinline__
             case SECTOR_INVALID:
                new_state = (original_state & mask) | (SECTOR_BUSY << 4*sector_number);
                pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
-               printf("tid %d\t original_state %d\t new_state %d\t in SECTOR_INVALID passed %d\n",(blockIdx.x*blockDim.x+threadIdx.x), original_state, new_state, pass);
+               printf("tid %d\t original_state %08x\t new_state %08x\t in SECTOR_INVALID passed %d\n",(blockIdx.x*blockDim.x+threadIdx.x), original_state, new_state, pass);
                if (pass) {
                     uint64_t ctrl = get_backing_ctrl(page_index);
                     if (ctrl == ALL_CTRLS)
@@ -769,6 +770,7 @@ __forceinline__
                }
             break;
             default:
+                printf("tid %d\toriginal_state %08x\texpected_state %08x\tpage_index %llu\tsector_index %d\thit\n", (blockIdx.x*blockDim.x+threadIdx.x),original_state, expected_state,page_index,sector_index);
                 fail = false;
                 hit_cnt.fetch_add(count, simt::memory_order_relaxed);
             break;
