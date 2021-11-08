@@ -1384,7 +1384,7 @@ struct array_d_t
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader)
             {
-                page_cache_d_t *pc = &(d_ranges[r].cache);
+                page_cache_d_t *pc = d_ranges[r].cache;
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
                 queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
