@@ -721,12 +721,12 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
     printf("tid %d\t count %d\tpage_index %llu\tsector_index%d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector_index);
     bool fail = true;
-    uint8_t sector_number = (sector_index) && (cache.n_sectors_per_page_minus_1);
-    sector_index = (sector_index) >> (cache.n_sectors_per_page_log);
+    uint8_t sector_number = (sector) && (cache.n_sectors_per_page_minus_1);
+    size_t sector_index = (sector) >> (cache.n_sectors_per_page_log);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
