@@ -724,27 +724,28 @@ __forceinline__
         bool
         range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
-    printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
+    printf("n_sectors_per_page: %llu\n", (unsigned long long)N_SECTORS_PER_PAGE);
+    //printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
     bool fail = true;
     uint8_t sector_number = (sector) & (N_SECTORS_PER_PAGE-1);//(cache->n_sectors_per_page_minus_1);
     size_t sector_index = (sector) >> (3);//(cache->n_sectors_per_page_log);
-    printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\tn_sector_per_page %d\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache->n_sectors_per_page, cache->n_sectors_per_page_minus_1, cache->n_sectors_per_page_log);
+    //printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\tn_sector_per_page %d\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache->n_sectors_per_page, cache->n_sectors_per_page_minus_1, cache->n_sectors_per_page_log);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
     uint64_t page_trans = (page_addresses[page_index]<< 3) + sector;//cache->n_sectors_per_page_log) + sector;
-    printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
+    //printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
 
     uint64_t temp_mask = 0xFFFFFFF0FFFFFFFF << (4*sector_number);
     uint32_t mask = ((uint32_t*)&temp_mask)[1];
-    printf("tid %d\tsector_number %d\tmask %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), sector_number, mask);
+    //printf("tid %d\tsector_number %d\tmask %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), sector_number, mask);
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
 
     do {
         bool pass = false;
         original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
         expected_state = (original_state & (0x0000000F << 4*sector_number)) >> 4*sector_number;
-        printf("tid %d\toriginal state %08x\tpage_index %llu\tsector_index %d\tsector_number %d\texpected_state %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), original_state,(unsigned long long)page_index, sector_index, sector_number, expected_state);
+        //printf("tid %d\toriginal state %08x\tpage_index %llu\tsector_index %d\tsector_number %d\texpected_state %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), original_state,(unsigned long long)page_index, sector_index, sector_number, expected_state);
         switch(expected_state){
             case SECTOR_BUSY:
                //do nothing
@@ -752,7 +753,7 @@ __forceinline__
             case SECTOR_INVALID:
                new_state = (original_state & mask) | (SECTOR_BUSY << 4*sector_number);
                pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
-               printf("tid %d\t original_state %08x\t new_state %08x\t in SECTOR_INVALID passed %d\n",(blockIdx.x*blockDim.x+threadIdx.x), original_state, new_state, pass);
+               //printf("tid %d\t original_state %08x\t new_state %08x\t in SECTOR_INVALID passed %d\n",(blockIdx.x*blockDim.x+threadIdx.x), original_state, new_state, pass);
                if (pass) {
                     uint64_t ctrl = get_backing_ctrl(page_index);
                     if (ctrl == ALL_CTRLS)
@@ -761,7 +762,7 @@ __forceinline__
                     Controller *c = cache->d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
-                    printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
+                    //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
                     read_data(cache, (c->d_qps) + queue, ((b_page)*cache->n_blocks_per_page) + (sector_index*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans);
                     bool caspass = false;
                     while (!caspass) {
@@ -773,7 +774,7 @@ __forceinline__
                }
             break;
             default:
-                printf("tid %d\toriginal_state %08x\texpected_state %08x\tpage_index %llu\tsector_index %d\thit\n", (blockIdx.x*blockDim.x+threadIdx.x),original_state, expected_state,page_index,sector_index);
+                //printf("tid %d\toriginal_state %08x\texpected_state %08x\tpage_index %llu\tsector_index %d\thit\n", (blockIdx.x*blockDim.x+threadIdx.x),original_state, expected_state,page_index,sector_index);
                 fail = false;
                 hit_cnt.fetch_add(count, simt::memory_order_relaxed);
             break;
