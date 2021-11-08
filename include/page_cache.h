@@ -1249,6 +1249,7 @@ struct array_d_t
         printf("tid %d\ti %d\t in seq read\n", (blockDim.x*blockIdx.x+threadIdx.x),i);
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
+        printf("tid %d\t r %llu\n", (blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)r);
         T ret;
 
         if (r != -1)
