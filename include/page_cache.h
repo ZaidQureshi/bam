@@ -721,12 +721,13 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
     printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
     bool fail = true;
     uint8_t sector_number = (sector) && (cache.n_sectors_per_page_minus_1);
     size_t sector_index = (sector) >> (cache.n_sectors_per_page_log);
+    printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache.n_sectors_per_page_minus_1, cache.n_sectors_per_page_log);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
@@ -1268,7 +1269,7 @@ struct array_d_t
             printf("tid %d\tpage %llu\tsubindex %llu\tsector_index %d\tgaddr %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)page, (unsigned long long)subindex, sector_index, (unsigned long long)gaddr);
 
             coalesce_page(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
-            __syncwarp(eq_mask);
+            
             /*uint32_t temp_eq_mask = eq_mask;
             coalesce_sector(lane, temp_eq_mask, r, page, sector_index, false, eq_mask, master, sector_acquired_master);*/
 
@@ -1276,6 +1277,7 @@ struct array_d_t
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T *)(base_master + subindex))[0];
+            __syncwarp(eq_mask);
             
             if (master == lane)
                 d_ranges[r].release_page(page, count);
