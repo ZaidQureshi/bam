@@ -220,6 +220,7 @@ struct page_cache_t
         pdt.n_sectors_per_page = N_SECTORS_PER_PAGE;
         pdt.n_sectors_per_page_minus_1 = N_SECTORS_PER_PAGE - 1;
         pdt.n_sectors_per_page_log = std::log2(N_SECTORS_PER_PAGE);
+        std::cout << "pdt.n_sectors_per_page "<<pdt.n_sectors_per_page <<"\tpdt.n_sectors_per_page_minus_1 "<<pdt.n_sectors_per_page_minus_1<<"\tpdt.n_sectors_per_page_log "<<pdt.n_sectors_per_page_log << "\n";
         for (size_t k = 0; k < pdt.n_ctrls; k++)
             cuda_err_chk(cudaMemcpy(pdt.d_ctrls + k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller *), cudaMemcpyHostToDevice));
 
@@ -408,7 +409,7 @@ struct range_d_t
 
     page_states_t page_states;
     uint32_t *page_addresses;
-    page_cache_d_t cache;
+    page_cache_d_t *cache;
 
     __forceinline__
         __device__
@@ -519,7 +520,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     rdt.dist = dist;
     size_t s = pc; //(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
     std::cout << "creating range\n";
-    cache = (page_cache_d_t *)c_h->d_pc_ptr; //why d_pc_ptr, why not pdt
+    cache = (page_cache_d_t *)(c_h->d_pc_ptr);
     std::cout << "n_sectors_per_page = " << c_h->pdt.n_sectors_per_page << "\n";
     page_states_buff = createBuffer(s * sizeof(data_page_t), cudaDevice);
     rdt.page_states = (page_states_t)page_states_buff.get();
@@ -540,11 +541,11 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     range_buff = createBuffer(sizeof(range_d_t<T>), cudaDevice);
     d_range_ptr = (range_d_t<T> *)range_buff.get();
 
-    cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+    //cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
 
     c_h->add_range(this);
 
-    rdt.cache = c_h->pdt;
+    rdt.cache = c_h->d_pc_ptr;
     cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice)); //why double copy
 }
 
@@ -599,7 +600,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_backing_ctrl(const size_t page_offset) const
 {
-    return get_backing_ctrl_(page_offset, cache.n_ctrls, dist);
+    return get_backing_ctrl_(page_offset, cache->n_ctrls, dist);
 }
 
 /*template <typename T>
@@ -617,7 +618,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_page(const size_t i) const
 {
-    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) >> (cache.page_size_log);
+    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) >> (cache->page_size_log);
     return index;
 }
 
@@ -627,7 +628,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_subindex(const size_t i) const
 {
-    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) & (cache.page_size_minus_1);
+    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) & (cache->page_size_minus_1);
     return index;
 }
 
@@ -638,7 +639,7 @@ __forceinline__
         range_d_t<T>::get_sectorindex(const size_t i) const
 {
     printf("tid %d\tindex_calc %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)((i - index_start) * sizeof(T) + page_start_offset));
-    uint64_t index = (((i - index_start) * sizeof(T) + page_start_offset) >> (cache.sector_size_log)) & (cache.n_sectors_per_page_minus_1);
+    uint64_t index = (((i - index_start) * sizeof(T) + page_start_offset) >> (cache->sector_size_log)) & (cache->n_sectors_per_page_minus_1);
     return index;
 }
 
@@ -648,7 +649,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_sectorsubindex(const size_t i) const
 {
-    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) & (cache.sector_size_minus_1);
+    uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) & (cache->sector_size_minus_1);
     return index;
 }
 
@@ -659,7 +660,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_global_address(const size_t page) const
 {
-    return ((page << cache.n_ranges_bits) | range_id);
+    return ((page << cache->n_ranges_bits) | range_id);
 }
 
 template <typename T>
@@ -687,7 +688,7 @@ __forceinline__
         range_d_t<T>::get_cache_page(const size_t pg) const
 {
     uint32_t page_trans = page_addresses[pg];
-    return cache.get_cache_page(page_trans);
+    return cache->get_cache_page(page_trans);
 }
 
 template <typename T>
@@ -696,7 +697,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_cache_page_addr(const uint32_t page_trans) const
 {
-    return ((uint64_t)((cache.base_addr + (page_trans * cache.page_size))));
+    return ((uint64_t)((cache->base_addr + (page_trans * cache->page_size))));
 }
 
 template <typename T>
@@ -705,7 +706,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_cache_sector_size() const
 {
-    return cache.sector_size;
+    return cache->sector_size;
 }
 
 template <typename T>
@@ -714,7 +715,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_cache_sector_size_log() const
 {
-    return cache.sector_size_log;
+    return cache->sector_size_log;
 }
 
 template <typename T>
@@ -725,13 +726,13 @@ __forceinline__
 {
     printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
     bool fail = true;
-    uint8_t sector_number = (sector) && (cache.n_sectors_per_page_minus_1);
-    size_t sector_index = (sector) >> (cache.n_sectors_per_page_log);
-    printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache.n_sectors_per_page_minus_1, cache.n_sectors_per_page_log);
+    uint8_t sector_number = (sector) && (cache->n_sectors_per_page_minus_1);
+    size_t sector_index = (sector) >> (cache->n_sectors_per_page_log);
+    printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\tn_sector_per_page %d\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache->n_sectors_per_page, cache->n_sectors_per_page_minus_1, cache->n_sectors_per_page_log);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
-    uint64_t page_trans = (page_addresses[page_index]<< cache.n_sectors_per_page_log) | sector_index;
+    uint64_t page_trans = (page_addresses[page_index]<< cache->n_sectors_per_page_log) | sector_index;
     printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
 
     uint64_t temp_mask = 0xFFFFFFF0FFFFFFFF << (4*sector_number);
@@ -756,11 +757,11 @@ __forceinline__
                     if (ctrl == ALL_CTRLS)
                         ctrl = ctrl_;
                     uint64_t b_page = get_backing_page(page_index);
-                    Controller *c = cache.d_ctrls[ctrl];
+                    Controller *c = cache->d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    read_data(&cache, (c->d_qps) + queue, ((b_page)*cache.n_blocks_per_page) + (sector_index*cache.n_blocks_per_sector), cache.n_blocks_per_sector, page_trans);
+                    read_data(cache, (c->d_qps) + queue, ((b_page)*cache->n_blocks_per_page) + (sector_index*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans);
                     bool caspass = false;
                     while (!caspass) {
                         original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
@@ -950,7 +951,7 @@ __forceinline__
             pass = page_states[index].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (pass)
             {
-                uint32_t page_trans = cache.find_slot(index, range_id, queue);
+                uint32_t page_trans = cache->find_slot(index, range_id, queue);
                 //uint64_t ctrl = get_backing_ctrl(index);
                 //if (ctrl == ALL_CTRLS)
                 //    ctrl = ctrl_;
@@ -1023,7 +1024,7 @@ struct array_d_t
             uint32_t leader = 0;
             if (lane == leader)
             {
-                page_cache_d_t *pc = &(d_ranges[r].cache);
+                page_cache_d_t *pc = d_ranges[r].cache;
                 ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
                 queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
@@ -1092,7 +1093,7 @@ struct array_d_t
         uint32_t leader = __ffs(mask) - 1;
         if (lane == leader)
         {
-            page_cache_d_t *pc = &(d_ranges[r].cache);
+            page_cache_d_t *pc = d_ranges[r].cache;
             ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
             queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
         }
