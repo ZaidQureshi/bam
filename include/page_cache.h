@@ -722,12 +722,15 @@ __forceinline__
         bool
         range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
+    printf("tid %d\t count %d\tpage_index %llu\tsector_index%d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector_index);
     bool fail = true;
     uint8_t sector_number = sector_index & (7UL);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
     uint64_t page_trans = (page_addresses[page_index]<< cache.n_sectors_per_page_log) | sector_index;
+    printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
+
     uint64_t temp_mask = 0xFFFFFFF0FFFFFFFF << 4*sector_number;
     uint32_t mask = ((uint32_t*)&temp_mask)[1];
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
@@ -751,6 +754,8 @@ __forceinline__
                     Controller *c = cache.d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
+                    printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
+
                     read_data(&cache, (c->d_qps) + queue, ((b_page)*cache.n_blocks_per_page) + (sector_index*cache.n_blocks_per_sector), cache.n_blocks_per_sector, page_trans);
                     bool caspass = false;
                     while (!caspass) {
@@ -902,6 +907,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t queue)
 {
+    printf("tid %d\t count %d\tin acquire_page\n", (blockIdx.x*blockDim.x+threadIdx.x), count);
     uint64_t index = pg;
     //size_t sector_index = sector;
     uint64_t expected_state = VALID;
@@ -949,6 +955,7 @@ __forceinline__
                 //read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                 //read_data(&cache, (c->d_qps) + queue, ((b_page)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                 page_addresses[index] = page_trans;
+                printf("tid %d\t index %llu\tfound slot page_trans %d\n",(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)index, page_trans );
                 //miss_cnt.fetch_add(count, simt::memory_order_relaxed);
                 new_state = count;
                 if (write)
@@ -1074,6 +1081,7 @@ struct array_d_t
         coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const uint64_t gaddr, const bool write,
                       uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master, bool &sector_acquired_master) const
     {
+        printf("tid %d\t in coalesce_page\n", (blockDim.x*blockIdx.x+threadIdx.x));
         uint32_t ctrl;
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;
@@ -1092,6 +1100,7 @@ struct array_d_t
         eq_mask &= __match_any_sync(mask, (uint64_t)this);
         //eq_mask &= __match_any_sync(mask, sector_index); // not sure if correct
         master = __ffs(eq_mask) - 1;
+        printf("tid %d\teq_mask for page %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
 
         uint32_t dirty = __any_sync(eq_mask, write);
 
@@ -1101,11 +1110,12 @@ struct array_d_t
         {
             base = d_ranges[r].acquire_page(page, count, dirty, queue);
             base_master = base;
-            //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+            printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask, base_master, master);
 
         eq_mask &= __match_any_sync(mask, sector);
+        printf("tid %d\teq_mask for sector %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
         master = __ffs(eq_mask) - 1;
         dirty = __any_sync(eq_mask, write);
 
@@ -1230,6 +1240,7 @@ struct array_d_t
             T
             seq_read(const size_t i) const
     {
+        printf("tid %d\ti %d\t in seq read\n", (blockDim.x*blockIdx.x+threadIdx.x),i);
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
         T ret;
@@ -1250,6 +1261,7 @@ struct array_d_t
             uint64_t subindex = d_ranges[r].get_subindex(i);
             size_t sector_index = d_ranges[r].get_sectorindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
+            printf("tid %d\tpage %llu\tsubindex %llu\tsector_index %d\tgaddr %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)page, (unsigned long long)subindex, sector_index, (unsigned long long)gaddr);
 
             coalesce_page(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
             __syncwarp(eq_mask);
