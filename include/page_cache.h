@@ -520,13 +520,13 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     size_t s = pc; //(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
     std::cout << "creating range\n";
     cache = (page_cache_d_t *)c_h->d_pc_ptr; //why d_pc_ptr, why not pdt
-    std::cout << "n_sectors_per_page = " << c_h->n_sectors_per_page << "\n";
+    std::cout << "n_sectors_per_page = " << c_h->pdt.n_sectors_per_page << "\n";
     page_states_buff = createBuffer(s * sizeof(data_page_t), cudaDevice);
     rdt.page_states = (page_states_t)page_states_buff.get();
     data_page_t *ts = new data_page_t[s];
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
-        for (size_t j=0; j<(c_h->n_sectors_per_page+7)/8; j++) {
+        for (size_t j=0; j<(c_h->pdt.n_sectors_per_page+7)/8; j++) {
             ts[i].sector_states[j] = SECTOR_INVALID;
         }  
     }
