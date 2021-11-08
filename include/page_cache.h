@@ -638,7 +638,7 @@ __forceinline__
         range_d_t<T>::get_sectorindex(const size_t i) const
 {
     printf("tid %d\tindex_calc %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)((i - index_start) * sizeof(T) + page_start_offset));
-    uint64_t index = (((i - index_start) * sizeof(T) + page_start_offset) >> (cache.sector_size_log));// & (cache.n_sectors_per_page_minus_1);
+    uint64_t index = (((i - index_start) * sizeof(T) + page_start_offset) >> (cache.sector_size_log)) & (cache.n_sectors_per_page_minus_1);
     return index;
 }
 
