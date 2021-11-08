@@ -42,7 +42,7 @@ const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2
 __global__
 void sequential_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t reqs_per_thread) {
 
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         for (size_t i = 0; i < reqs_per_thread; i++)
             req_count += (*dr)[(tid)];
@@ -54,7 +54,7 @@ void sequential_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned
 __global__
 void random_access_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t* assignment, uint64_t reqs_per_thread) {
 
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         for (size_t i = 0; i < reqs_per_thread; i++)
             req_count += (*dr)[(assignment[tid])];

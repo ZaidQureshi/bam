@@ -1321,6 +1321,7 @@ struct array_d_t
             T
             operator[](size_t i) const
     {
+        printf("tid: %d\ti %d\t in operator[]\n", (blockIdx.x*blockDim.x+threadIdx.x),i);
         return seq_read(i);
         // size_t k = 0;
         // bool found = false;
