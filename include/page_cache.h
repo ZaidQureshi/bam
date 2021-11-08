@@ -573,7 +573,7 @@ __forceinline__
         uint64_t
         range_d_t<T>::get_backing_page(const size_t page_offset) const
 {
-    return get_backing_page_(page_start, page_offset, cache.n_ctrls, dist);
+    return get_backing_page_(page_start, page_offset, cache->n_ctrls, dist);
 }
 
 __forceinline__
