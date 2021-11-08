@@ -726,17 +726,18 @@ __forceinline__
 {
     printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
     bool fail = true;
-    uint8_t sector_number = (sector) && (cache->n_sectors_per_page_minus_1);
-    size_t sector_index = (sector) >> (cache->n_sectors_per_page_log);
+    uint8_t sector_number = (sector) && (N_SECTORS_PER_PAGE-1);//(cache->n_sectors_per_page_minus_1);
+    size_t sector_index = (sector) >> (3);//(cache->n_sectors_per_page_log);
     printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\tn_sector_per_page %d\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache->n_sectors_per_page, cache->n_sectors_per_page_minus_1, cache->n_sectors_per_page_log);
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
-    uint64_t page_trans = (page_addresses[page_index]<< cache->n_sectors_per_page_log) | sector_index;
+    uint64_t page_trans = (page_addresses[page_index]<< 3) + sector;//cache->n_sectors_per_page_log) + sector;
     printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
 
     uint64_t temp_mask = 0xFFFFFFF0FFFFFFFF << (4*sector_number);
     uint32_t mask = ((uint32_t*)&temp_mask)[1];
+    printf("tid %d\tsector_number %d\tmask %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), sector_number, mask);
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
 
     do {
@@ -1679,7 +1680,7 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
     uint64_t prp1 = pc->prp1[prp_entry];
     printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
-    prp1 = (prp1) | ((pc_entry & (pc->n_sectors_per_page_minus_1))<<pc->sector_size_log);
+    prp1 = (prp1) + ((pc_entry & (pc->n_sectors_per_page_minus_1))<<pc->sector_size_log);
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
@@ -1714,7 +1715,7 @@ inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint6
         prp2 = pc->prp2[pc_entry];*/
     uint64_t prp_entry = pc_entry >> (pc->n_sectors_per_page_log);
     uint64_t prp1 = pc->prp1[prp_entry];
-    prp1 = (prp1) | ((pc_entry & (pc->n_sectors_per_page_minus_1))<<pc->sector_size_log);
+    prp1 = (prp1) + ((pc_entry & (pc->n_sectors_per_page_minus_1))<<(pc->sector_size_log));
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
