@@ -726,7 +726,7 @@ __forceinline__
 {
     printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
     bool fail = true;
-    uint8_t sector_number = (sector) && (N_SECTORS_PER_PAGE-1);//(cache->n_sectors_per_page_minus_1);
+    uint8_t sector_number = (sector) & (N_SECTORS_PER_PAGE-1);//(cache->n_sectors_per_page_minus_1);
     size_t sector_index = (sector) >> (3);//(cache->n_sectors_per_page_log);
     printf("tid %d\t sector %08x\t sector_number %02x\tsector_index %08x\tn_sector_per_page %d\t n_sectors_per_page_minus_1 %d\tn_sectors_per_page_log %d\n", (blockIdx.x*blockDim.x+threadIdx.x), sector, sector_number, sector_index, cache->n_sectors_per_page, cache->n_sectors_per_page_minus_1, cache->n_sectors_per_page_log);
     uint32_t original_state;
