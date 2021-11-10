@@ -724,7 +724,7 @@ __forceinline__
         bool
         range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
 {
-    printf("n_sectors_per_page: %llu\n", (unsigned long long)N_SECTORS_PER_PAGE);
+    printf("n_sectors_per_page: %llu\n", (unsigned long long)cache->n_sectors_per_page);
     //printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
     bool fail = true;
     uint8_t sector_number = (sector) & (N_SECTORS_PER_PAGE-1);//(cache->n_sectors_per_page_minus_1);
