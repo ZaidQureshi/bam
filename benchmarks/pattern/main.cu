@@ -252,43 +252,42 @@ __global__ void read_cta_random_warp_streaming_pc(array_d_t<uint64_t> *ptr, size
 
   // loop count loops for total amount of work. Work assignment is basically fixed. Max threads executable in GPU = maxSM*maxThreadsPerSM.
   // since each warp works on a feature vector, we take total feature vector and divide by the number of active warps.
+  uint64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int lane_id = threadIdx.x & 31;
+  uint64_t warpIdx = idx >> 5; //warpSize assumed to be 32. 
+  if(warpIdx > num_features) return; 
 
   uint64_t total_active_warps = blockDim.x * gridDim.x / warpSize; 
-  uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
+//  uint64_t total_loop_count = num_features/ total_active_warps; // loop over assignment array? 
 
+  uint64_t array_size = num_features * feat_size; //feat_size is in bytes. 
   size_t num_elems_feat = feat_size/sizeof(data_type); 
   size_t size_of_load_per_thread = sizeof(data_type); 
-  int loop_per_feat = (num_elems_feat+(size_of_load_per_thread * warpSize))/(size_of_load_per_thread * warpSize); //asumes that the feat_size is multiple of warpsize. The operation is doing ceiling
   //size_t lane0_idx_mod = dtype_per_page - warpSize;   // so that warp doesnt overshoot page boundary
+  int loop_per_feat = 1; 
   
-
-  int lane_id = threadIdx.x & 31;
-  uint64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  uint64_t warpIdx = idx >> 5; //warpSize assumed to be 32. 
-
-  //if(idx==0) 
-  //    printf("loop count: %llu\n", (unsigned long long int)loop_per_feat);
+  if(num_elems_feat>warpSize)
+     loop_per_feat =  num_elems_feat/(warpSize); //asumes that the feat_size is multiple of warpsize. 
+  //if(idx==0)
+  //        printf("loopcount: %llu\n", num_features/total_active_warps);
   data_type accum = 0;
 
   for( uint64_t start = warpIdx; start < num_features; start = start + total_active_warps ){
      uint64_t pageframe_number = assignment[start]; // each warp handles a feature
      
-    //if(pageframe_number > num_features)
-    //    printf("Should not happen: %llu\n", (unsigned long long int) pageframe_number); 
-
      // warp lane 0 broadcast page number to all other warp lanes
      pageframe_number = __shfl_sync(0xffffffff, pageframe_number, 0);
      
-     for(int j = 0; j< loop_per_feat; j++){
-         uint64_t idxtmp = pageframe_number * feat_size + (loop_per_feat*j) +lane_id;
-         accum += ptr-> seq_read(idxtmp);
+     for(int j = 0; j< num_elems_feat; j+=warpSize){
+        auto offset = pageframe_number * num_elems_feat + j + lane_id; 
+        accum += ptr->seq_read(offset);
+        //atomicAdd(&output[0], 1); 
      }
    } 
 
   if (threadIdx.x == 0)
-    output[0] = accum;
+    dummy[0] = accum;
 }
-
 
 
 __global__
