@@ -246,7 +246,7 @@ template<typename data_type>
 __global__ void read_cta_random_warp_streaming_pc(array_d_t<uint64_t> *ptr, size_t feat_size, 
                                                const size_t num_features, size_t num_pages,
                                                size_t page_size, uint64_t* assignment, 
-                                               unsigned long long* output)
+                                               unsigned long long* output, unsigned long long* dummy)
 {
   //Design: a warp is mapped to a feature. All threads in the warp compute on a feature vector loaded by it in multiple iteration. The design assumes that the feat size is aligned with the warpSize. 
 
@@ -574,7 +574,7 @@ int main(int argc, char** argv) {
                         break;
                         }
             case WARP_RANDOM_PC:{
-                        read_cta_random_warp_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(h_array->d_array_ptr, settings.tensor_size, array_size, file_n_pages, pc_page_size, d_rand_assignment, d_output);
+                        read_cta_random_warp_streaming_pc<ARRAYTYPE><<<g_size, b_size>>>(h_array->d_array_ptr, settings.tensor_size, array_size, file_n_pages, pc_page_size, d_rand_assignment, d_output, d_dummy);
                         break;
                         }
             case BLOCK_RANDOM_PC:{
