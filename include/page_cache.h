@@ -1135,7 +1135,7 @@ struct array_d_t
         {
             base = d_ranges[r].acquire_page(page, count, dirty, queue);
             base_master = base;
-            printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) (blockIdx.x*blockDim.x+ threadIdx.x), base_master, (unsigned long long) page);
+            printf("++tid: %llu\tbase: %llu\tpage:%llu\n", (unsigned long long) (blockIdx.x*blockDim.x+ threadIdx.x), (unsigned long long)base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask, base_master, master);
         printf("tid: %llu\tafter base master\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
@@ -1330,7 +1330,7 @@ struct array_d_t
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             size_t sector_index = d_ranges[r].get_sectorindex(i);
 
-            coalesce_page(lane, mask, r, page, sector_index, gaddr, true, eq_mask, master, count, base_master);
+            coalesce_page(lane, mask, r, page, sector_index, gaddr, true, eq_mask, master, count, base_master, sector_acquired_master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
@@ -1347,7 +1347,7 @@ struct array_d_t
             T
             operator[](size_t i) const
     {
-        printf("tid: %d\ti %d\t in operator[]\n", (blockIdx.x*blockDim.x+threadIdx.x),i);
+        printf("tid: %llu\ti %llu\t in operator[]\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
         return seq_read(i);
         // size_t k = 0;
         // bool found = false;
@@ -1365,6 +1365,7 @@ struct array_d_t
         __device__ void
         operator()(size_t i, T val) const
     {
+        printf("tid: %llu\ti %llu\t in operator() with val %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i, (unsigned long long)val);
         seq_write(i, val);
         // size_t k = 0;
         // bool found = false;
