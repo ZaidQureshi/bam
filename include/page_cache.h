@@ -1250,9 +1250,9 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq);
+    uint32_t head;
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     sq_dequeue(&qp->sq, sq_pos);
 
 
