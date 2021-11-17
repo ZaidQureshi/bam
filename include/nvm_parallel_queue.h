@@ -338,7 +338,7 @@ inline __device__
 void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 
     //uint32_t pos = cq_poll(cq, cid);
-
+    uint32_t cur_head = cq->head.load(simt::memory_order_acquire);
     cq->head_mark[pos].val.store(LOCKED, simt::memory_order_release);
     bool cont = true;
     while (cont) {
@@ -346,7 +346,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
         if (cont) {
 //            bool new_cont = cq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
 //            if (!new_cont) {
-                uint32_t cur_head = cq->head.load(simt::memory_order_acquire);;
+                cur_head = cq->head.load(simt::memory_order_acquire);;
 
                 uint32_t head_move_count = move_head_cq(cq, cur_head, sq);
                 //printf("cq head_move_count: %llu\n", (unsigned long long) head_move_count);
@@ -366,6 +366,27 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 //            }
         }
     }
+    uint32_t new_head = cq->head.load(simt::memory_order_acquire);
+    uint32_t cur_head_mod = cur_head & (cq->qs_minus_1);
+    do {
+        uint32_t new_head_mod = new_head & (cq->qs_minus_1);
+
+        if (new_head_mod > cur_head_mod) {
+            if ((pos >= cur_head_mod) && (pos < new_head_mod))
+                break;
+
+
+        }
+        else if (new_head_mod < cur_head_mod) {
+            if ((pos >= cur_head_mod))
+                break;
+            if (pos < new_head_mod)
+                break;
+        }
+
+
+        new_head = cq->head.load(simt::memory_order_acquire);
+    } while(true);
 
 
 
