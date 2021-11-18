@@ -763,7 +763,7 @@ __forceinline__
         switch(expected_state){
             case SECTOR_BUSY:
                //do nothing
-               printf("tid %llu\t original_state%16x\t new_state%16x\t in SECTOR_BUSY\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)original_state, (unsigned long long)new_state);
+               //printf("tid %llu\t original_state%16x\t in SECTOR_BUSY\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)original_state);
             break;
             case SECTOR_INVALID:
                //original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
@@ -784,15 +784,18 @@ __forceinline__
                     //uint64_t cache_sector_addr = get_cache_page_addr(page_addresses[page_index]) + (sector*512);
                     //hexdump((void*)cache_sector_addr, 512);
                     //remove loop and replace with fetch_and
-                    if (write) { new_state = (not_mask) | (SECTOR_DIRTY << shift_val);}
+                    /*if (write) { new_state = (not_mask) | (SECTOR_DIRTY << shift_val);}
                     else { new_state = (not_mask) | (SECTOR_VALID << shift_val);}
-                    page_states[page_index].sector_states[sector_index].fetch_and(new_state, simt::memory_order_relaxed);
-                    /*bool caspass = false;
+                    printf("tid %llu\t new_state after read %16x\t in SECTOR_INVALID pass\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)new_state);
+                    page_states[page_index].sector_states[sector_index].fetch_and(new_state, simt::memory_order_relaxed);*/
+                    
+                    bool caspass = false;
                     while (!caspass) {
                         original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
-                        new_state = (original_state & not_mask) | (SECTOR_VALID << 4*sector_number);
+                        if (write) {new_state = (original_state & not_mask) | (SECTOR_DIRTY << shift_val);}
+                        else {new_state = (original_state & not_mask) | (SECTOR_VALID << shift_val); }
                         caspass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
-                    }*/
+                    }
                     fail = false;
                }
             break;
@@ -812,7 +815,8 @@ __forceinline__
                 
             break;
         }
-
+        uint32_t current_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
+        printf("tid %llu\t current_state after read %16x\t in SECTOR_INVALID pass\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)current_state);
     }while (fail);
     return !fail;
     
@@ -1125,7 +1129,7 @@ struct array_d_t
         coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const uint64_t gaddr, const bool write,
                       uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master, bool &sector_acquired_master) const
     {
-        printf("tid %d\t in coalesce_page\n", (blockDim.x*blockIdx.x+threadIdx.x));
+        //printf("tid %d\t in coalesce_page\n", (blockDim.x*blockIdx.x+threadIdx.x));
         uint32_t ctrl;
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;

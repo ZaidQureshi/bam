@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
          
             /*printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
 
-               uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset));
+               uint64_t cpysize = std::min(2*total_cache_size, (sb_in.st_size-settings.ifileoffset));
                fflush(stderr);
                fflush(stdout);
                //cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
                 fprintf(stderr,"munmap error input file\n");
             close(fd_in);*/
             
-            /*uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset));
+            /*uint64_t cpysize = std::min(2*total_cache_size, (sb_in.st_size-settings.ifileoffset));
                 int fd_out, ft;
                 void* map_out;
                 if((fd_out = open(read_f, O_RDWR | O_CREAT, S_IRWXU)) == -1){
@@ -342,7 +342,7 @@ int main(int argc, char** argv) {
                }
                
                size_t orig_sz = sb_orig.st_size - settings.ifileoffset; 
-               uint64_t cpysize = std::min(total_cache_size, orig_sz);
+               uint64_t cpysize = std::min(2*total_cache_size, orig_sz);
                cuda_err_chk(cudaMallocManaged((void**)&orig_h, cpysize)); 
                cuda_err_chk(cudaMemAdvise(orig_h, cpysize, cudaMemAdviseSetAccessedBy, 0));
 //               cuda_err_chk(cudaMemset(orig_h, 0, orig_sz)); 
