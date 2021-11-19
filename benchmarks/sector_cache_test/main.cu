@@ -39,63 +39,23 @@ using std::string;
  //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6"};
 const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
-/*__global__
-void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, //unsigned long long* req_count,
-                                uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint64_t s_offset, uint64_t o_offset){
-    //printf("in threads\n");
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-    // uint32_t bid = blockIdx.x;
-    // uint32_t smid = get_smid();
-
-    uint32_t ctrl = (tid/32) % (num_ctrls);
-    uint32_t queue = (tid/32) % (ctrls[ctrl]->n_qps);
-    uint64_t itr=0; 
-
-//    printf("Num pages: %llu, s_offset: %llu n_reqs: %llu\t req_size: %llu\n", (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) n_reqs, (unsigned long long) req_size); 
-    for (;tid < pc->n_pages; tid = tid+n_reqs){
-            uint64_t start_block = (o_offset+s_offset + tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
-            uint64_t pc_idx = (tid);
-            //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-            //start_block = tid;
-            uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-//            printf("itr:%llu\ttid: %llu\tstart_block: %llu\tn_blocks: %llu\tpc_idx: %llu\n", (unsigned long long)itr, (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks, (unsigned long long) pc_idx);
-            itr = itr+1; 
-            // uint8_t opcode;
-            // for (size_t i = 0; i < reqs_per_thread; i++) {
-                if (access_type == READ) {
-                    read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, pc_idx);
-                    //if(tid ==( pc->n_pages - 1)){
-                    //        printf("I am here\n");
-                    //        hexdump(pc->base_addr+tid*req_size, 4096); 
-                    //}
-                }
-                else {
-                    write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, pc_idx);
-                }
-
-            
-            // }
-            //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-            //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-            //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-            //__syncthreads();
-            //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
-            //printf("tid: %llu finished\n", (unsigned long long) tid);
-    }
-}*/
-
 __global__
-void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer) {
+void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         dr->seq_write((size_t)tid, (uint64_t)(device_buffer[tid]));
     }
+    __syncthreads();
+    if (tid<n_pages)
+    {
+        dr->flushcache(tid, page_size);
+    }
 
 }
 
 __global__
-void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer) {
+void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
@@ -103,20 +63,28 @@ void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uin
         device_buffer[tid]= (*dr)[(tid)];
 
     }
+    __syncthreads();
+    if (tid<n_pages)
+    {
+        dr->flushcache(tid, page_size);
+    }
 
 }
 
 __global__ 
-void verify_kernel(uint64_t* orig_h, uint64_t* nvme_h, uint64_t n_elems,uint32_t n_reqs){
+void verify_kernel(uint64_t* orig_h, uint64_t* nvme_h, uint64_t n_elems,uint32_t n_reqs, int* counter){
         uint64_t tid = blockIdx.x*blockDim.x + threadIdx.x; 
 
         for (;tid < n_elems; tid = tid+n_reqs){
            uint64_t orig_val = orig_h[tid]; 
            uint64_t nvme_val = nvme_h[tid]; 
-           if(orig_val != nvme_val)
+           if(orig_val != nvme_val) {
               printf("MISMATCH: at %llu\torig_val:%llu\tnvme_val:%llu\tn_reqs:%lu\tn_elms:%llu\n",tid, (unsigned long long)orig_val, (unsigned long long)nvme_h, n_reqs, n_elems);
+             atomicAdd(counter, 1);
+           }
         }
         __syncthreads();//really not needed. 
+        
 }
 
 
@@ -223,7 +191,7 @@ int main(int argc, char** argv) {
          
             /*printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
 
-               uint64_t cpysize = std::min(2*total_cache_size, (sb_in.st_size-settings.ifileoffset));
+               uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset));
                fflush(stderr);
                fflush(stdout);
                //cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
@@ -231,7 +199,7 @@ int main(int argc, char** argv) {
                cuda_err_chk(cudaMalloc((void**)(&device_buffer), cpysize));
                cuda_err_chk(cudaMemcpy(device_buffer, map_in+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
                Event before;
-               sequential_access_write_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer); 
+               sequential_access_write_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size); 
                
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
@@ -253,7 +221,7 @@ int main(int argc, char** argv) {
                 fprintf(stderr,"munmap error input file\n");
             close(fd_in);*/
             
-            /*uint64_t cpysize = std::min(2*total_cache_size, (sb_in.st_size-settings.ifileoffset));
+            /*uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset));
                 int fd_out, ft;
                 void* map_out;
                 if((fd_out = open(read_f, O_RDWR | O_CREAT, S_IRWXU)) == -1){
@@ -291,7 +259,7 @@ int main(int argc, char** argv) {
                     cuda_err_chk(cudaMemset(device_buffer, 0, cpysize));
 
                     Event rbefore; 
-                    sequential_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer);
+                    sequential_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size);
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
                     cuda_err_chk(cudaMemcpy(tmprbuff,device_buffer, cpysize, cudaMemcpyDeviceToHost));
@@ -342,7 +310,7 @@ int main(int argc, char** argv) {
                }
                
                size_t orig_sz = sb_orig.st_size - settings.ifileoffset; 
-               uint64_t cpysize = std::min(2*total_cache_size, orig_sz);
+               uint64_t cpysize = std::min(total_cache_size, orig_sz);
                cuda_err_chk(cudaMallocManaged((void**)&orig_h, cpysize)); 
                cuda_err_chk(cudaMemAdvise(orig_h, cpysize, cudaMemAdviseSetAccessedBy, 0));
 //               cuda_err_chk(cudaMemset(orig_h, 0, orig_sz)); 
@@ -376,6 +344,12 @@ int main(int argc, char** argv) {
                cuda_err_chk(cudaMemAdvise(nvme_h, nvme_sz, cudaMemAdviseSetAccessedBy, 0));
   //             cuda_err_chk(cudaMemset(nvme_h, 0, nvme_sz)); 
                memcpy(nvme_h, map_nvme+settings.ifileoffset, nvme_sz);
+
+               int counter;
+               int* counter_d;
+               cuda_err_chk(cudaMalloc((void**)(&counter_d), sizeof(int)));
+               cuda_err_chk(cudaMemset(counter_d, 0, sizeof(int)));
+
                printf("Launching verification kernel");
                 
                
@@ -386,9 +360,12 @@ int main(int argc, char** argv) {
 
                //cuda_err_chk(cudaMallocManaged((void**)&result_h, orig_sz)); 
                //cuda_err_chk(cudaMemset((void**)&result_h, 0, orig_sz)); 
-               verify_kernel<<<g_size, b_size>>>(orig_h,nvme_h, cpysize/sizeof(uint64_t), n_threads); 
+               verify_kernel<<<g_size, b_size>>>(orig_h,nvme_h, cpysize/sizeof(uint64_t), n_threads, counter_d); 
                cuda_err_chk(cudaDeviceSynchronize());
                std::cout<< "Completed. Check for mismatches" <<std::endl;
+               cuda_err_chk(cudaMemcpy(&counter,counter_d, sizeof(int), cudaMemcpyDeviceToHost));
+               std::cout << "total mismatch count "<<counter <<std::endl;
+
 
         
 
