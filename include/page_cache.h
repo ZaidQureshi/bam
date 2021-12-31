@@ -186,7 +186,7 @@ struct page_cache_t {
 
     }
 
-    page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
+    page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls, bool host_cache=false) {
 
         ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
@@ -251,7 +251,15 @@ struct page_cache_t {
         h_ranges_dists = new data_dist_t[max_range];
 
         uint64_t cache_size = ps*np;
-        this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
+        if(host_cache == false){
+            this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
+            printf("created cache in gpu mem\n"); 
+        }
+        else {
+            printf("created cache in cpu mem\n"); 
+            this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16));
+
+        } 
         pdt.base_addr = (uint8_t*) this->pages_dma.get()->vaddr;
         std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
         std::cout << "HEREN\n";
@@ -311,7 +319,11 @@ struct page_cache_t {
             this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t*) this->prp1_buf.get();
             uint32_t prp_list_size =  ctrl.ctrl->page_size  * np;
-            this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cudaDevice);
+            if(host_cache == false)
+                this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cudaDevice);
+            else 
+                this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16));
+            
             this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
             pdt.prp2 = (uint64_t*) this->prp2_buf.get();
             uint64_t* temp1 = new uint64_t[np * sizeof(uint64_t)];

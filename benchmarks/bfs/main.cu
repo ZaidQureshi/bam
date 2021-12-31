@@ -748,16 +748,22 @@ int main(int argc, char *argv[]) {
          fflush(stdout);
          
          page_cache_t* h_pc; 
+         page_cache_t* d_pc; 
          range_t<uint64_t>* h_range;
-         std::vector<range_t<uint64_t>*> vec_range(1);
+         range_t<uint64_t>* d_range;
+         std::vector<range_t<uint64_t>*> vec_range(2);
          array_t<uint64_t>* h_array; 
          uint64_t n_pages = ceil(((float)edge_size)/pc_page_size);
          uint32_t* curr_frontier_d;
          uint32_t* next_frontier_d;
          
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
-            h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
-            h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
+            h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls, true);
+            d_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls, false);
+            uint64_t edge_count_dev = 1000000;
+            uint64_t edge_count_host = edge_count - edge_count_dev; 
+            h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count_dev , (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
+            d_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count_host, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, d_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
             h_array = new array_t<uint64_t>(edge_count, settings.ofileoffset, vec_range, settings.cudaDevice);
             
@@ -908,7 +914,9 @@ int main(int argc, char *argv[]) {
          free(vertexList_h);
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
             delete h_pc; 
+            delete d_pc; 
             delete h_range; 
+            delete d_range; 
             delete h_array;
          }
          if (edgeList_h)

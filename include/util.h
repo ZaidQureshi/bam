@@ -19,6 +19,7 @@
 //#include <ctype>
 #include <cstdio>
 
+#define ALIGN(size, alignment) (size+alignment-1) & ~(alignment-1)
 
 #define cuda_err_chk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 

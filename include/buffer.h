@@ -27,7 +27,6 @@ using error = std::runtime_error;
 using std::string;
 
 
-
 typedef std::shared_ptr<nvm_dma_t> DmaPtr;
 
 typedef std::shared_ptr<void> BufferPtr;
@@ -177,6 +176,36 @@ inline DmaPtr createDma(const nvm_ctrl_t* ctrl, size_t size)
         //cudaFreeHost(buffer);
         free(buffer);
     });
+}
+
+
+inline DmaPtr createDmaHost(const nvm_ctrl_t* ctrl, size_t size){
+    nvm_dma_t* dma = nullptr; 
+    void* buffer = nullptr; 
+
+    //cudaError_t err = cudaHostAlloc(&buffer, size, cudaHostAllocDefault); 
+    // create aligned memory size
+    void* buffer_host= (void*) malloc(ALIGN(size, 4096)); 
+
+    cudaError_t err = cudaHostRegister((void*)buffer_host, size, cudaHostRegisterDefault);
+    if(err!= cudaSuccess){
+        throw error(string("Failed to allocate host memory: ")+ cudaGetErrorString(err));
+    }
+    err = cudaHostGetDevicePointer((void**)&buffer, (void*)buffer_host, 0); 
+    if(err!= cudaSuccess){
+        throw error(string("Failed to get device point for the host memory: ")+ cudaGetErrorString(err));
+    }
+
+    int status = nvm_dma_map_host(&dma, ctrl, buffer, size);
+    if(!nvm_ok(status)){
+        cudaFreeHost(buffer); 
+        throw error(string("Failed to map host memory: ") + nvm_strerror(status));
+    }
+
+    return DmaPtr(dma, [buffer](nvm_dma_t* dma){
+            nvm_dma_unmap(dma); 
+            cudaFreeHost(buffer);
+            });
 }
 
 

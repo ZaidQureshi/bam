@@ -283,9 +283,10 @@ int main(int argc, char** argv) {
             exit(1);
         }
 
-
-        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
-        std::cout << "finished creating cache\n";
+        printf("creating cache of size: %f GB\n", (double)total_cache_size/(1024*1024*1024));
+        fflush(stdout);  
+        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls, true);
+        printf("finished creating cache of size: %f GB\n", (double)total_cache_size/(1024*1024*1024));
 
         //QueuePair* d_qp;
         page_cache_d_t* d_pc = (page_cache_d_t*) (h_pc.d_pc_ptr);
