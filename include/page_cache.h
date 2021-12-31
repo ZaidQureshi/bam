@@ -1149,11 +1149,14 @@ struct array_t {
         cuda_err_chk(cudaMemcpy(rdt.data(), adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
         for (size_t i = 0; i < adt.n_ranges; i++) {
 
+            std::cout << std::dec << "#READ IOs: "   << rdt[i].read_io_cnt  
+                                  << "\t#Accesses: " << rdt[i].access_cnt  
+                                  << "\t#Misses: "   << rdt[i].miss_cnt 
+                                  << "\t#MissRate: " << ((float)rdt[i].miss_cnt/rdt[i].access_cnt)  
+                                  << "\t#Hits: "     << rdt[i].hit_cnt 
+                                  << "\t#HitRate: "  << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) 
+                                  << std::endl;
             std::cout << "*********************************" << std::endl;
-            std::cout << std::dec << "# READ IOs:\t" << rdt[i].read_io_cnt << std::endl;
-            std::cout << std::dec << "# Accesses:\t" << rdt[i].access_cnt << std::endl;
-            std::cout << std::dec << "# Misses:\t" << rdt[i].miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt) << std::endl;
-            std::cout << std::dec << "# Hits:\t" << rdt[i].hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) << std::endl;
             rdt[i].read_io_cnt = 0;
             rdt[i].access_cnt = 0;
             rdt[i].miss_cnt = 0;
@@ -1384,10 +1387,10 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq);
+    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd); 
+    uint32_t head;
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     sq_dequeue(&qp->sq, sq_pos);
 
 
@@ -1423,9 +1426,9 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq);
+    uint32_t head;
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     sq_dequeue(&qp->sq, sq_pos);
 
 

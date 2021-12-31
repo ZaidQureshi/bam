@@ -112,7 +112,7 @@ __global__ void kernel_baseline(bool *label, const WeightT *costList, WeightT *n
         label[tid] = false;
     }
 }
-__global__ __launch_bounds__(1024,2)
+__global__ __launch_bounds__(128,16)
 void kernel_baseline_pc(array_d_t<uint64_t>* de,array_d_t<WeightT>* dw, bool *label, const WeightT *costList, WeightT *newCostList, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, const WeightT *weightList) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     // const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -171,7 +171,7 @@ __global__ void kernel_coalesce(bool *label, const WeightT *costList, WeightT *n
     }
 }
 
-__global__ __launch_bounds__(1024,2)
+__global__ __launch_bounds__(128,16)
 void kernel_coalesce_pc(array_d_t<uint64_t>* de,array_d_t<WeightT>* dw, bool *label, const WeightT *costList, WeightT *newCostList, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, const WeightT *weightList) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -237,7 +237,7 @@ __global__ void kernel_coalesce_chunk(bool *label, const WeightT *costList, Weig
     }
 }
 
-__global__ __launch_bounds__(1024,2)
+__global__ __launch_bounds__(128,16)
 void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* de,array_d_t<WeightT>* dw, bool *label, const WeightT *costList, WeightT *newCostList, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, const WeightT *weightList) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -471,6 +471,7 @@ int main(int argc, char *argv[]) {
                 break;
             case UVM_DIRECT:
             {
+/*
                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
                 cuda_err_chk(cudaMallocManaged((void**)&weightList_d, weight_size));
                 file.read((char*)edgeList_d, edge_size);
@@ -486,6 +487,74 @@ int main(int argc, char *argv[]) {
                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
                 cuda_err_chk(cudaMemAdvise(weightList_d, weight_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
                 break;
+  */          
+
+                file.close();
+                for (uint64_t i = 0; i < vertex_count + 1; i++) {
+                    vertexList_h[i] += 2;
+                }   
+                int fd = open(edge_file.c_str(), O_RDONLY | O_DIRECT);
+                FILE *file_temp = fdopen(fd, "rb");
+                if ((file_temp == NULL) || (fd == -1)) {
+                    printf("edge file fd open failed\n");
+                    exit(1);
+                }   
+                uint64_t edge_count_4k_aligned = ((edge_count + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
+                uint64_t edge_size_4k_aligned = edge_count_4k_aligned * sizeof(uint64_t);
+                cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size_4k_aligned));
+                cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                high_resolution_clock::time_point ft1 = high_resolution_clock::now();
+                      
+                if (fread(edgeList_d, sizeof(uint64_t), edge_count_4k_aligned, file_temp) != edge_count + 2) {
+                    printf("edge file fread failed\n");
+                    exit(1);
+                }   
+                fclose(file_temp);                                                                                                              
+                close(fd);
+                high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
+                      
+                file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
+                if (!file.is_open()) {
+                    printf("edge file open failed\n");
+                    exit(1);
+                }  
+             
+                file2.close();
+                int fdw = open(weight_file.c_str(), O_RDONLY | O_DIRECT); 
+                FILE *fw_tmp = fdopen(fdw, "rb"); 
+                if ((fw_tmp == NULL) || (fdw == -1)) {
+                    printf("Weight file fd open failed\n");
+                    exit(1);
+                }
+                 
+                uint64_t weight_count_4k_aligned = ((weight_count +2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t)); 
+                uint64_t weight_size_4k_aligned = weight_count_4k_aligned * sizeof(uint64_t); 
+                 
+                cuda_err_chk(cudaMallocManaged((void**)&weightList_d, weight_size_4k_aligned));
+                high_resolution_clock::time_point ftw1 = high_resolution_clock::now();                                                                                                                          
+                 
+                 
+                if (fread(weightList_d, sizeof(uint64_t), weight_count_4k_aligned, file_temp) != weight_count + 2) {
+                    printf("Weight file fread failed\n");
+                    exit(1);
+                }
+                high_resolution_clock::time_point ftw2 = high_resolution_clock::now();
+                duration<double> wtime_span = duration_cast<duration<double>>(ftw2 -ftw1);
+                std::cout<< "weight file read time: "<< wtime_span.count() <<std::endl;
+                 
+                for (uint64_t i = 0; i < weight_count; i++)
+                    weightList_d[i] += offset;
+                cuda_err_chk(cudaMemAdvise(edgeList_d, weight_size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                 
+                file2.open(weight_file.c_str(), std::ios::in | std::ios::binary);
+                if (!file2.is_open()) {
+                    printf("weight file open failed\n");
+                    exit(1);
+                }
+                break;
+
             }
             case BAFS_DIRECT:
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
@@ -646,12 +715,12 @@ int main(int argc, char *argv[]) {
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
                 auto end = std::chrono::system_clock::now();
 
-                if(mem == BAFS_DIRECT) {
-                    h_earray->print_reset_stats();
-                    h_warray->print_reset_stats();
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                    std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
-                }
+                //if(mem == BAFS_DIRECT) {
+                //    h_earray->print_reset_stats();
+                //    h_warray->print_reset_stats();
+                //    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                //    std::cout << std::dec << "Time: " << elapsed.count() << " ms" << std::endl;
+                //}
                 //break;
             } while(changed_h);
 
@@ -663,6 +732,10 @@ int main(int argc, char *argv[]) {
                   printf("src %*u, ", 10, src);
                   printf("iteration %*u, ", 3, iter);
                   printf("time %*f ms\n", 12, milliseconds);
+                  if(mem == BAFS_DIRECT) {
+                     h_earray->print_reset_stats();
+                     h_warray->print_reset_stats();
+                  }
                   fflush(stdout);
 
                   avg_milliseconds += (double)milliseconds;
@@ -710,7 +783,8 @@ int main(int argc, char *argv[]) {
             }*/
         }
 
-        printf("Average run time %f ms\n", avg_milliseconds / num_run);
+//        printf("Average run time %f ms\n", avg_milliseconds / num_run);
+        printf("\nSSSP Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
 
 
 

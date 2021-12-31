@@ -50,9 +50,10 @@
 
 using error = std::runtime_error;
 using std::string;
+//const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro1", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
-//const char* const ctrls_paths[] = {"/dev/libnvm1"};
+//const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
+//const char* const ctrls_paths[] = {"/dev/libnvmpro1"};
 
 
 #define WARP_SHIFT 5
@@ -63,7 +64,7 @@ const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2
 
 #define BLOCK_NUM 1024ULL
 
-#define STRIDE (80*64)
+#define MAXWARP 64
 
 typedef uint64_t EdgeT;
 
@@ -180,9 +181,10 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
 
 
 __global__ 
-void kernel_baseline_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+void kernel_baseline_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-    
+    uint64_t STRIDE = sm_count * MAXWARP; 
+
     if(oldtid < vertex_count){
         uint64_t tid; 
         const uint64_t nep = vertex_count/STRIDE; 
@@ -235,8 +237,9 @@ void kernel_baseline_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
 
 
 __global__ //__launch_bounds__(64,32)
-void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    uint64_t STRIDE = sm_count * MAXWARP; 
     
     if(oldtid < vertex_count){
         uint64_t tid; 
@@ -378,11 +381,12 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
 
 
 __global__ 
-void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     // const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = sm_count * MAXWARP; 
 
     if (oldwarpIdx < vertex_count){ 
        uint64_t warpIdx; 
@@ -434,11 +438,12 @@ void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
 
 
 __global__ __launch_bounds__(128,16)
-void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 //    const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = sm_count * MAXWARP; 
     // array_d_t<uint64_t> d_array = *da;
     if (oldwarpIdx < vertex_count){
     //if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
@@ -743,10 +748,50 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case UVM_DIRECT:
+                {/*
+                high_resolution_clock::time_point ft1 = high_resolution_clock::now();
                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
                 file.read((char*)edgeList_d, edge_size);
                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
                 break;
+                */
+                file.close();
+                for (uint64_t i = 0; i < vertex_count + 1; i++) {
+                    vertexList_h[i] += 2;
+                }   
+                int fd = open(edge_file.c_str(), O_RDONLY | O_DIRECT);
+                FILE *file_temp = fdopen(fd, "rb");
+                if ((file_temp == NULL) || (fd == -1)) {
+                    printf("edge file fd open failed\n");
+                    exit(1);
+                }   
+                uint64_t edge_count_4k_aligned = ((edge_count + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
+                uint64_t edge_size_4k_aligned = edge_count_4k_aligned * sizeof(uint64_t);
+                cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size_4k_aligned));
+                cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size_4k_aligned, cudaMemAdviseSetAccessedBy,settings.cudaDevice));
+                high_resolution_clock::time_point ft1 = high_resolution_clock::now();
+                      
+                if (fread(edgeList_d, sizeof(uint64_t), edge_count_4k_aligned, file_temp) != edge_count + 2) {
+                    printf("edge file fread failed\n");
+                    exit(1);
+                }   
+                fclose(file_temp);                                                                                                              
+                close(fd);
+                high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
+                      
+                file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
+                if (!file.is_open()) {
+                    printf("edge file open failed\n");
+                    exit(1);
+                }   
+                break;
+                }
+
             case BAFS_DIRECT: 
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 if (totalbyte < 16*1024*1024*1024ULL)
@@ -877,22 +922,22 @@ int main(int argc, char *argv[]) {
                     kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
                     break;
                 case BASELINE_HASH:
-                    kernel_baseline_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                    kernel_baseline_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                     break;
                 case COALESCE_HASH:
-                    kernel_coalesce_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                    kernel_coalesce_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                     break;
                 // case COALESCE_CHUNK_HASH:
-                    // kernel_coalesce_chunk_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                    // kernel_coalesce_chunk_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                 //     break;
                 case BASELINE_HASH_PC:
-                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                     break;
                 case COALESCE_HASH_PC:
-                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                     break;
                 // case COALESCE_CHUNK_HASH_PC:
-                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                 //     break;
                 default:
                     fprintf(stderr, "Invalid type\n");
@@ -914,7 +959,7 @@ int main(int argc, char *argv[]) {
 
             if(mem == BAFS_DIRECT) {
                      h_array->print_reset_stats();
-		     std::cout<< "itr time: "<< elapsed.count() <<std::endl; 
+		     printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
             }
           //  break; 
         } while(changed_h);
@@ -932,9 +977,10 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf("total iterations: %u\n", iter);
+        printf("total cc iterations: %u\n", iter);
         printf("total components: %u\n", comp_total);
         printf("total time: %f ms\n", milliseconds);
+        printf("\nCC Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t TotalTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, milliseconds); 
         fflush(stdout);
 
         free(vertexList_h);

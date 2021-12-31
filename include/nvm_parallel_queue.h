@@ -296,7 +296,7 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
 }
 
 inline __device__
-uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
+uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid, uint32_t* loc_ = NULL) {
     uint64_t j = 0;
     //uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     //printf("---tid: %llu\tcid: %llu\tcq_start: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (search_cid), (uint64_t) cq->vaddr);
@@ -305,7 +305,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
 
         for (size_t i = 0; i < cq->qs_minus_1; i++) {
             uint32_t cur_head = head + i;
-            bool search_phase = ((~(head >> cq->qs_log2)) & 0x01);
+            bool search_phase = ((~(cur_head >> cq->qs_log2)) & 0x01);
             uint32_t loc = cur_head & (cq->qs_minus_1);
             uint32_t cpl_entry = ((nvm_cpl_t*)cq->vaddr)[loc].dword[3];
             uint32_t cid = (cpl_entry & 0x0000ffff);
@@ -322,6 +322,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
             if ((cid == search_cid) && (phase == search_phase)){
                  //if ((cpl_entry >> 17) != 0)
                  //     printf("NVM Error: %llx\tcid: %llu\n", (unsigned long long) (cpl_entry >> 17), (unsigned long long) search_cid);
+		*loc_ = cur_head;
                 return loc;
             }
             if (phase != search_phase)
@@ -336,10 +337,10 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid) {
 }
 
 inline __device__
-void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
+void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 0) {
 
     //uint32_t pos = cq_poll(cq, cid);
-
+    uint32_t cur_head_ = cq->head.load(simt::memory_order_acquire);
     cq->head_mark[pos].val.store(LOCKED, simt::memory_order_release);
     bool cont = true;
     while (cont) {
@@ -367,6 +368,32 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq) {
 //            }
         }
     }
+	uint64_t j = 0;
+    uint32_t new_head = cq->head.load(simt::memory_order_acquire);
+//    uint32_t cur_head_mod = cur_head_ & (cq->qs_minus_1);
+    do {
+  //      uint32_t new_head_mod = new_head & (cq->qs_minus_1);
+
+        if (new_head > cur_head_) {
+            if ((loc_ >= cur_head_) && (loc_ < new_head))
+                break;
+
+
+        }
+        else if (new_head < cur_head_) {
+            if ((loc_ >= cur_head_))
+                break;
+            if (loc_ < new_head)
+                break;
+        }
+
+/*	else {
+		if (j%1000000 == 0)
+			printf("Stuck here:j:%llu \t pos:%llu \t pos_head: %llu \t c: %llu \t n: %llu\n",(unsigned long long int) j,(unsigned long long int)pos, (unsigned long long) loc_, (unsigned long long int)cur_head_, (unsigned long long           int)new_head);
+	}*/
+	j++;
+        new_head = cq->head.load(simt::memory_order_acquire);
+    } while(true);
 
 
 

@@ -86,7 +86,7 @@ using std::string;
 inline void Controller::print_reset_stats(void) {
     cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
     std::cout << "------------------------------------" << std::endl;
-    std::cout << std::dec << "# Accesses:\t" << access_counter << std::endl;
+    std::cout << std::dec << "#SSDAccesses:\t" << access_counter << std::endl;
 
     cuda_err_chk(cudaMemset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
 }
