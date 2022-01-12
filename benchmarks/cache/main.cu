@@ -41,7 +41,6 @@ using std::string;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 
 
-
 template<typename T>
 __global__ __launch_bounds__(64,32)
 void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned long long* sum, uint64_t type, uint64_t* assignment, uint64_t n_warps, size_t page_size) {
@@ -53,12 +52,15 @@ void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned lo
     bam_ptr<T> ptr(dr);
     T v = 0;
     if (warp_id < n_warps) {
-        size_t start_page = assignment[warp_id];
+        size_t start_page = n_pages_per_warp * warp_id;//assignment[warp_id];
+//	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
         for (size_t i = 0; i < n_pages_per_warp; i++) {
             size_t cur_page = start_page + i;
+//	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
             size_t start_idx = cur_page * n_elems_per_page + lane;
 
             for (size_t j = 0; j < n_elems_per_page; j += 32) {
+//		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                 if (type == ORIG) {
                     v += (*dr)[start_idx + j];
                 }
@@ -73,6 +75,39 @@ void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned lo
 
 }
 
+/*
+template<typename T>
+__global__ __launch_bounds__(64,32)
+void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned long long* sum, uint64_t type, uint64_t* assignment, uint64_t n_warps, size_t page_size) {
+
+    const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint64_t lane = tid % 32;
+    const uint64_t warp_id = tid / 32;
+    const uint64_t n_elems_per_page = page_size / sizeof(T);
+    bam_ptr<T> ptr(dr);
+    T v = 0;
+    if (warp_id < n_warps) {
+        size_t start_page = assignment[warp_id];
+	   #pragma nounroll
+        for (size_t i = 0; i < n_pages_per_warp; i++) {
+            size_t cur_page = start_page + i;
+            size_t start_idx = cur_page * n_elems_per_page + lane;
+	   #pragma nounroll
+            for (size_t j = 0; (start_idx +j) < n_elems_per_page; j += 32) {
+                if (type == ORIG) {
+                    v += (*dr)[start_idx + j];
+                }
+                else {
+                    v += ptr[start_idx + j];
+                }
+            }
+
+        }
+        *sum = v;
+    }
+
+}
+*/
 
 
 int main(int argc, char** argv) {
@@ -120,10 +155,10 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < n_ctrls; i++)
             cuda_err_chk(cudaMemcpy(d_ctrls+i, &(ctrls[i]->d_ctrl), sizeof(Controller*), cudaMemcpyHostToDevice));
         */
-        uint64_t b_size = 64;//64;
+        uint64_t b_size = 64;
         uint64_t g_size = (settings.numThreads + b_size - 1)/b_size;//80*16;
         uint64_t n_threads = b_size * g_size;
-        uint64_t n_warps = n_threads / 32;
+        uint64_t n_warps = n_threads/32;
 
 
         uint64_t page_size = settings.pageSize;

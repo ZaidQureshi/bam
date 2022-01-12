@@ -113,7 +113,7 @@ struct bam_ptr {
 
     __host__ __device__
     void fini(void) {
-        if (page) {
+        if (page) {//printf("here\n");
             array->release_page(page, range_id, start);
             page = nullptr;
         }
@@ -122,8 +122,13 @@ struct bam_ptr {
 
     __host__ __device__
     void update_page(const size_t i) {
+////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
         fini(); //destructor
         addr = (T*) array->acquire_page(i, page, start, end, range_id);
+//	if (range_id < 0 || addr == NULL) //printf("failed\n");
+	//printf("acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
 
     __host__ __device__
@@ -548,7 +553,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
     }
-    //printf("S value: %llu\n", (unsigned long long)s);
+    ////printf("S value: %llu\n", (unsigned long long)s);
     cuda_err_chk(cudaMemcpy(rdt.pages//_states
                             , ts, s * sizeof(data_page_t), cudaMemcpyHostToDevice));
     delete ts;
@@ -750,6 +755,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     if (write)
                         new_state |= VALID_DIRTY;
                     pages[index].state.store(new_state, simt::memory_order_release);
+	            //printf("page: %llu\tpage_trans: %llu\n", (unsigned long long) index, (unsigned long long) page_trans);
                     return page_trans;
 
                     fail = false;
@@ -843,12 +849,12 @@ struct array_d_t {
                 //std::pair<uint64_t, bool> base_memcpyflag;
                 base = r_->acquire_page(page, count, false, ctrl, queue);
                 base_master = base;
-//                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+//                //printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
             }
             base_master = __shfl_sync(eq_mask,  base_master, master);
 
             //if (threadIdx.x == 63) {
-            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            ////printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             //
             ulonglong4* src_ = (ulonglong4*) r_->get_cache_page_addr(base_master);
@@ -910,7 +916,7 @@ struct array_d_t {
             //std::pair<uint64_t, bool> base_memcpyflag;
             base = r_->acquire_page(page, count, dirty, ctrl, queue);
             base_master = base;
-//                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+                //printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, (void*)base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask,  base_master, master);
     }
@@ -1009,14 +1015,14 @@ struct array_d_t {
             uint64_t page = r_->get_page(i);
             uint64_t subindex = r_->get_subindex(i);
             uint64_t gaddr = r_->get_global_address(page);
-
+	    //printf("page: %llu\tsubindex: %llu\n", (unsigned long long) page, (unsigned long long) subindex);
             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
             page_ = &r_->pages[base_master];
 
 
             ret = (void*)r_->get_cache_page_addr(base_master);
-            start = r_->n_elems_per_page * base_master;
-            end = r_->n_elems_per_page * (base_master+1);
+            start = r_->n_elems_per_page * page;
+            end = r_->n_elems_per_page * (page+1);
             //ret.page = page;
             __syncwarp(mask);
         }
@@ -1081,7 +1087,7 @@ struct array_d_t {
             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
 
             //if (threadIdx.x == 63) {
-            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            ////printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T*)(r_->get_cache_page_addr(base_master)+subindex))[0];
             __syncwarp(eq_mask);
@@ -1117,7 +1123,7 @@ struct array_d_t {
             coalesce_page(lane, mask, r, page, gaddr, true, eq_mask, master, count, base_master);
 
             //if (threadIdx.x == 63) {
-            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            ////printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ((T*)(r_->get_cache_page_addr(base_master)+subindex))[0] = val;
             __syncwarp(eq_mask);
@@ -1209,16 +1215,16 @@ struct array_d_t {
             if (master == lane) {
                 base = r_->acquire_page(page, count, true, ctrl, queue);
                 base_master = base;
-            //    printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
+            //    //printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
             }
             base_master = __shfl_sync(eq_mask,  base_master, master);
 
             //if (threadIdx.x == 63) {
-            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            ////printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             // ((T*)(base_master+subindex))[0] = val;
             old_val = atomicAdd((T*)(r_->get_cache_page_addr(base_master)+subindex), val);
-            // printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\tval: %llu\told_val: %llu\tbase_master: %llx\n",
+            // //printf("AtomicAdd: tid: %llu\tpage: %llu\tsubindex: %llu\tval: %llu\told_val: %llu\tbase_master: %llx\n",
             //        (unsigned long long) tid, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) val,
             //     (unsigned long long) old_val, (unsigned long long) base_master);
             __syncwarp(eq_mask);
@@ -1315,7 +1321,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
         //uint64_t unlocked = UNLOCKED;
 
         // uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
-        //printf("tid: %llu page: %llu\n", tid, page);
+        ////printf("tid: %llu page: %llu\n", tid, page);
 
         bool lock = false;
         uint32_t v = this->cache_pages[page].page_take_lock.load(simt::memory_order_acquire);
@@ -1344,7 +1350,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
                 //uint32_t new_state = BUSY;
                 bool pass = false;
                 //if ((previous_range >= range_cap) || (previous_address >= n_pages))
-                //    printf("prev_ga: %llu\tprev_range: %llu\tprev_add: %llu\trange_cap: %llu\tn_pages: %llu\n", (unsigned long long) previous_global_address, (unsigned long long) previous_range, (unsigned long long) previous_address,
+                //    //printf("prev_ga: %llu\tprev_range: %llu\tprev_add: %llu\trange_cap: %llu\tn_pages: %llu\n", (unsigned long long) previous_global_address, (unsigned long long) previous_range, (unsigned long long) previous_address,
                 //           (unsigned long long) range_cap, (unsigned long long) n_pages);
                 expected_state = this->ranges[previous_range][previous_address].state.load(simt::memory_order_acquire);
 
@@ -1382,7 +1388,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
                             uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
                             //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
                             uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-                            // printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                            // //printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
                             //        (unsigned long long) previous_range, (unsigned long long)previous_address,
                             //        (unsigned long long) ctrl, (unsigned long long) index);
                             if (ctrl == ALL_CTRLS) {
@@ -1413,7 +1419,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
                         //}
                         break;
                     default:
-                        //printf("here\n");
+                        ////printf("here\n");
                         break;
 
                 }
@@ -1451,7 +1457,7 @@ inline __device__ void poll_async(QueuePair* qp, uint16_t cid, uint16_t sq_pos) 
 inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode, uint16_t * cid, uint16_t* sq_pos) {
     nvm_cmd_t cmd;
     *cid = get_cid(&(qp->sq));
-    //printf("cid: %u\n", (unsigned int) cid);
+    ////printf("cid: %u\n", (unsigned int) cid);
 
 
     nvm_cmd_header(&cmd, *cid, opcode, qp->nvmNamespace);
@@ -1459,7 +1465,7 @@ inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, cons
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
+    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     *sq_pos = sq_enqueue(&qp->sq, &cmd);
@@ -1479,7 +1485,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
 
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
-    //printf("cid: %u\n", (unsigned int) cid);
+    ////printf("cid: %u\n", (unsigned int) cid);
 
 
     nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
@@ -1487,7 +1493,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
+    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd); 
@@ -1516,8 +1522,8 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
 
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
-    //printf("cid: %u\n", (unsigned int) cid);
-    // printf("write_data startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
+    ////printf("cid: %u\n", (unsigned int) cid);
+    // //printf("write_data startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
     //        (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
@@ -1525,7 +1531,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
+    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
@@ -1553,7 +1559,7 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
 
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
-    //printf("cid: %u\n", (unsigned int) cid);
+    ////printf("cid: %u\n", (unsigned int) cid);
 
 
     nvm_cmd_header(&cmd, cid, opcode, qp->nvmNamespace);
@@ -1561,7 +1567,7 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
+    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
