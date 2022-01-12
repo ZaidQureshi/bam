@@ -63,12 +63,20 @@ struct range_t;
 template<typename T>
 struct array_d_t;
 
-struct data_page_t {
+/*struct data_page_t {
     simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
                                                               //
     uint32_t offset;
 
 };
+*/
+typedef struct __align__(32) {
+    simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
+                                                              //
+    uint32_t offset;
+    uint8_t pad[32-8-4];
+
+} __attribute__((aligned (32))) data_page_t;
 
 typedef data_page_t* pages_t;
 
@@ -113,7 +121,7 @@ struct bam_ptr {
 
     __host__ __device__
     void fini(void) {
-        if (page) {//printf("here\n");
+        if (page) {
             array->release_page(page, range_id, start);
             page = nullptr;
         }
@@ -122,12 +130,11 @@ struct bam_ptr {
 
     __host__ __device__
     void update_page(const size_t i) {
-////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+        ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
         fini(); //destructor
         addr = (T*) array->acquire_page(i, page, start, end, range_id);
-//	if (range_id < 0 || addr == NULL) //printf("failed\n");
-	//printf("acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
 
@@ -148,14 +155,20 @@ struct bam_ptr {
     }
 };
 
+typedef struct __align__(32) {
+    simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock; //state
+                                                              //
+    uint32_t page_translation;
+    uint8_t pad[32-8];
 
-
+} __attribute__((aligned (32))) cache_page_t;
+/*
 struct cache_page_t {
     simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock;
     uint32_t  page_translation;
     uint8_t   range_id;
 };
-
+*/
 struct page_cache_d_t {
     uint8_t* base_addr;
     uint64_t page_size;
@@ -755,7 +768,6 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     if (write)
                         new_state |= VALID_DIRTY;
                     pages[index].state.store(new_state, simt::memory_order_release);
-	            //printf("page: %llu\tpage_trans: %llu\n", (unsigned long long) index, (unsigned long long) page_trans);
                     return page_trans;
 
                     fail = false;
@@ -916,7 +928,7 @@ struct array_d_t {
             //std::pair<uint64_t, bool> base_memcpyflag;
             base = r_->acquire_page(page, count, dirty, ctrl, queue);
             base_master = base;
-                //printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, (void*)base_master, (unsigned long long) page);
+//                //printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask,  base_master, master);
     }
@@ -1015,14 +1027,14 @@ struct array_d_t {
             uint64_t page = r_->get_page(i);
             uint64_t subindex = r_->get_subindex(i);
             uint64_t gaddr = r_->get_global_address(page);
-	    //printf("page: %llu\tsubindex: %llu\n", (unsigned long long) page, (unsigned long long) subindex);
+
             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
             page_ = &r_->pages[base_master];
 
 
             ret = (void*)r_->get_cache_page_addr(base_master);
             start = r_->n_elems_per_page * page;
-            end = r_->n_elems_per_page * (page+1);
+            end = start +r_->n_elems_per_page;// * (page+1);
             //ret.page = page;
             __syncwarp(mask);
         }
@@ -1308,7 +1320,7 @@ __device__
 uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_) {
     bool fail = true;
     uint64_t count = 0;
-    //uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
+    uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
     uint32_t page = 0;
     do {
 
@@ -1330,8 +1342,8 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
         if ( v == FREE ) {
             lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if ( lock ) {
-                this->cache_pages[page].page_translation = address;
-                this->cache_pages[page].range_id = range_id;
+                this->cache_pages[page].page_translation = global_address;
+                //this->cache_pages[page].range_id = range_id;
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
                 this->cache_pages[page].page_take_lock.store(UNLOCKED, simt::memory_order_release);
                 fail = false;
@@ -1342,10 +1354,11 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 
             lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (lock) {
-                uint32_t previous_address = this->cache_pages[page].page_translation;
-                //uint32_t previous_global_address = this->page_translation[page].load(simt::memory_order_acquire);
-                uint8_t previous_range = this->cache_pages[page].range_id;
-                //uint32_t previous_address = previous_global_address >> n_ranges_bits;
+                //uint32_t previous_address = this->cache_pages[page].page_translation;
+                uint32_t previous_global_address = this->cache_pages[page].page_translation;
+                //uint8_t previous_range = this->cache_pages[page].range_id;
+                uint32_t previous_range = previous_global_address & n_ranges_mask;
+                uint32_t previous_address = previous_global_address >> n_ranges_bits;
                 uint64_t expected_state = VALID;
                 //uint32_t new_state = BUSY;
                 bool pass = false;
@@ -1424,8 +1437,10 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 
                 }
                 if (!fail) {
-                    this->cache_pages[page].page_translation = address;
-                    this->cache_pages[page].range_id = range_id;
+                    //this->cache_pages[page].page_translation = address;
+                    //this->cache_pages[page].range_id = range_id;
+//                    this->page_translation[page] = global_address;
+		this->cache_pages[page].page_translation = global_address;
                 }
                 //this->page_translation[page].store(global_address, simt::memory_order_release);
                 this->cache_pages[page].page_take_lock.store(UNLOCKED, simt::memory_order_release);
