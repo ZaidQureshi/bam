@@ -49,10 +49,10 @@ void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned lo
     const uint64_t lane = tid % 32;
     const uint64_t warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
-    bam_ptr<T> ptr(dr);
     T v = 0;
     if (warp_id < n_warps) {
-        size_t start_page = n_pages_per_warp * warp_id;//assignment[warp_id];
+	bam_ptr<T> ptr(dr);
+        size_t start_page = assignment[warp_id];//n_pages_per_warp * warp_id;//assignment[warp_id];
 //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
         for (size_t i = 0; i < n_pages_per_warp; i++) {
             size_t cur_page = start_page + i;
