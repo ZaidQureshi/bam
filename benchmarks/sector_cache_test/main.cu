@@ -40,22 +40,23 @@ using std::string;
 const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 __global__
-void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size) {
+void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
         dr->seq_write((size_t)tid, (uint64_t)(device_buffer[tid]));
     }
     __syncthreads();
-    if (tid<n_pages)
+    /*atomicAdd(counter, 1);
+    if ((tid<n_pages) && ((uint64_t)(*counter) == n_reqs))
     {
         dr->flushcache(tid, page_size);
-    }
+    }*/
 
 }
 
 __global__
-void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size) {
+void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_reqs) {
@@ -64,10 +65,11 @@ void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uin
 
     }
     __syncthreads();
-    if (tid<n_pages)
+    /*atomicAdd(counter, 1);
+    if ((tid<n_pages)&&((uint64_t)(*counter) == n_reqs))
     {
         dr->flushcache(tid, page_size);
-    }
+    }*/
 
 }
 
@@ -189,17 +191,22 @@ int main(int argc, char** argv) {
         array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
         std::cout << "finished creating array\n";
          
-            /*printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
+            printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
 
-               uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset));
+               uint64_t cpysize = std::min(4*total_cache_size, (sb_in.st_size-settings.ifileoffset));
+            std::cout << "cpysize = " << cpysize << std::endl;
                fflush(stderr);
                fflush(stdout);
                //cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
                uint64_t* device_buffer;
                cuda_err_chk(cudaMalloc((void**)(&device_buffer), cpysize));
                cuda_err_chk(cudaMemcpy(device_buffer, map_in+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
+               int* counter_d;
+               cuda_err_chk(cudaMalloc((void**)(&counter_d), sizeof(int)));
+               cuda_err_chk(cudaMemset(counter_d, 0, sizeof(int)));
+
                Event before;
-               sequential_access_write_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size); 
+               sequential_access_write_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size, counter_d); 
                
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
@@ -219,9 +226,9 @@ int main(int argc, char** argv) {
             
             if(munmap(map_in, sb_in.st_size) == -1) 
                 fprintf(stderr,"munmap error input file\n");
-            close(fd_in);*/
+            close(fd_in);
             
-            /*uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset));
+            /*uint64_t cpysize = std::min(4*total_cache_size, (sb_in.st_size-settings.ifileoffset));
                 int fd_out, ft;
                 void* map_out;
                 if((fd_out = open(read_f, O_RDWR | O_CREAT, S_IRWXU)) == -1){
@@ -257,9 +264,12 @@ int main(int argc, char** argv) {
                     uint64_t* device_buffer;
                     cuda_err_chk(cudaMalloc((void**)(&device_buffer), cpysize));
                     cuda_err_chk(cudaMemset(device_buffer, 0, cpysize));
+                    int* counter_d;
+                    cuda_err_chk(cudaMalloc((void**)(&counter_d), sizeof(int)));
+                    cuda_err_chk(cudaMemset(counter_d, 0, sizeof(int)));
 
                     Event rbefore; 
-                    sequential_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size);
+                    sequential_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size, counter_d);
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
                     cuda_err_chk(cudaMemcpy(tmprbuff,device_buffer, cpysize, cudaMemcpyDeviceToHost));
@@ -283,7 +293,7 @@ int main(int argc, char** argv) {
                 close(fd_in);*/
 
         
-               uint64_t* orig_h;
+               /*uint64_t* orig_h;
                uint64_t* nvme_h;
         
                if(munmap(map_in, sb_in.st_size) == -1) 
@@ -310,7 +320,7 @@ int main(int argc, char** argv) {
                }
                
                size_t orig_sz = sb_orig.st_size - settings.ifileoffset; 
-               uint64_t cpysize = std::min(total_cache_size, orig_sz);
+               uint64_t cpysize = std::min(8*total_cache_size, orig_sz);
                cuda_err_chk(cudaMallocManaged((void**)&orig_h, cpysize)); 
                cuda_err_chk(cudaMemAdvise(orig_h, cpysize, cudaMemAdviseSetAccessedBy, 0));
 //               cuda_err_chk(cudaMemset(orig_h, 0, orig_sz)); 
@@ -364,7 +374,7 @@ int main(int argc, char** argv) {
                cuda_err_chk(cudaDeviceSynchronize());
                std::cout<< "Completed. Check for mismatches" <<std::endl;
                cuda_err_chk(cudaMemcpy(&counter,counter_d, sizeof(int), cudaMemcpyDeviceToHost));
-               std::cout << "total mismatch count "<<counter <<std::endl;
+               std::cout << "total mismatch count "<<counter <<std::endl;*/
 
 
         
