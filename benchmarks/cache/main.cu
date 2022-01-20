@@ -126,14 +126,14 @@ void random_access_warp(array_d_t<uint64_t>* dr, uint64_t n_reqs, unsigned long 
     uint64_t end_req = (warp_id + 1) * reqs_per_warp;
 
     uint64_t acc = 0;
-    if (type == ORIG) {
+    //if (type == ORIG) {
         for (; (start_req < n_reqs) && (start_req < end_req); start_req += 32)
             acc += (*dr)[assignment[start_req]];
-    }
+    /*}
     else {
         for (; (start_req < n_reqs) && (start_req < end_req); start_req += 32)
             acc += (dr)->seq_read(assignment[start_req]);
-    }
+    }*/
 
     if (threadIdx.x == 0)
         *sum = acc;
@@ -254,7 +254,7 @@ int main(int argc, char** argv) {
         std::cout << "finished creating range\n";
 
 
-        uint64_t n_reqs = settings.numReqs;
+        uint64_t n_reqs = settings.numReqs * settings.numThreads;
         uint64_t gran = settings.gran; //(settings.gran == WARP) ? 32 : b_size;
         uint64_t type = settings.type;
 
@@ -275,10 +275,10 @@ int main(int argc, char** argv) {
         uint64_t* d_assignment;
         if (settings.random) {
             assignment = (uint64_t*) malloc(n_reqs*sizeof(uint64_t));
-            if (settings.trueRandom) {
+            //if (settings.trueRandom) {
                 for (size_t i = 0; i< n_reqs; i++)
                     assignment[i] = rand() % (n_elems);
-            }
+            /*}
             else {
                 for (size_t i = 0; i < n_reqs_pages; i++) {
                     uint64_t page = rand() % (n_data_pages);
@@ -287,7 +287,7 @@ int main(int argc, char** argv) {
                         assignment[i*n_elems_per_page + j] = page_starting_idx + j;
                 }
 
-            }
+            }*/
 
             cuda_err_chk(cudaMalloc(&d_assignment, n_reqs*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_reqs*sizeof(uint64_t), cudaMemcpyHostToDevice));

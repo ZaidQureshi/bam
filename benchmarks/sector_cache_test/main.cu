@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
             printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
 
                uint64_t cpysize = std::min(4*total_cache_size, (sb_in.st_size-settings.ifileoffset));
-            std::cout << "cpysize = " << cpysize << std::endl;
+               std::cout << "cpysize = " << cpysize << std::endl;
                fflush(stderr);
                fflush(stdout);
                //cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));

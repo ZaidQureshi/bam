@@ -786,7 +786,7 @@ __forceinline__
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    read_data(cache, (c->d_qps) + queue, ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, sector_trans);
+                    //read_data(cache, (c->d_qps) + queue, ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, sector_trans);
                     //uint64_t cache_sector_addr = get_cache_page_addr(page_addresses[page_index]) + (sector*512);
                     //hexdump((void*)cache_sector_addr, 512);
                     //remove loop and replace with fetch_and
@@ -883,7 +883,7 @@ __forceinline__
                 //read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                 //read_data(&cache, (c->d_qps) + queue, ((b_page)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
                 page_addresses[index] = page_trans;
-                printf("tid %d\t index %llu\tfound slot page_trans %16x\n",(unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)index, (unsigned long long)page_trans );
+                //printf("tid %d\t index %llu\tfound slot page_trans %16x\n",(unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)index, (unsigned long long)page_trans );
                 //miss_cnt.fetch_add(count, simt::memory_order_relaxed);
                 new_state = count;
                 if (write)
@@ -1431,7 +1431,7 @@ __forceinline__
         uint32_t
         page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_)
 {
-    printf("tid = %llu\taddress = %llu\t in find_slot\n",(unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)address);
+    //printf("tid = %llu\taddress = %llu\t in find_slot\n",(unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)address);
     bool fail = true;
     uint64_t count = 0; 
     uint32_t page = 0;
@@ -1444,11 +1444,11 @@ __forceinline__
 
         if (v == FREE)
         {
-            printf("tid: %llu\t in find slot lock is free\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
+            //printf("tid: %llu\t in find slot lock is free\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
             lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (lock)
             {
-                printf("tid: %llu\t in find slot lock was free and now acquired\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
+                //printf("tid: %llu\t in find slot lock was free and now acquired\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
                 //bool pass = 0;
                 //pass = this->ranges[range_id][address].state.compare_exchange_weak(INVALID, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
                 //if (pass) {
@@ -1490,7 +1490,7 @@ __forceinline__
                     }
                     break;
                 case INVALID:
-                    printf("tid: %llu\t in find slot lock is UNLOCKED and IVNALID\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
+                    //printf("tid: %llu\t in find slot lock is UNLOCKED and IVNALID\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
                     /*pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
@@ -1502,7 +1502,7 @@ __forceinline__
                     }*/
                     break;
                 case VALID_DIRTY:
-                    printf("tid: %llu\t in find slot lock is UNLOCKED and VALID_DIRTY\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
+                    //printf("tid: %llu\t in find slot lock is UNLOCKED and VALID_DIRTY\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
                     pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
@@ -1529,7 +1529,7 @@ __forceinline__
                                     //for debugging
                                     if (sect_states != VALID) {
                                         int sector = (i*N_SECTORS_PER_STATE);
-                                        write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector * N_SECTORS_PER_STATE, (page<<(this->n_sectors_per_page_log))+sector);
+                                        //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector * N_SECTORS_PER_STATE, (page<<(this->n_sectors_per_page_log))+sector);
                                     }
                                     
 
@@ -1553,7 +1553,7 @@ __forceinline__
                                 //for debugging
                                     if (sect_states != VALID) {
                                         int sector = (i*N_SECTORS_PER_STATE);
-                                        write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector * N_SECTORS_PER_STATE, (page<<(this->n_sectors_per_page_log))+sector);
+                                        //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector * N_SECTORS_PER_STATE, (page<<(this->n_sectors_per_page_log))+sector);
                                     }
                             }
 
