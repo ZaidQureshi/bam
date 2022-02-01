@@ -100,6 +100,30 @@ typedef enum {
 } mem_type;
 
 
+__device__ void cc_compute(uint64_t cid, unsigned long long *comp, EdgeT next, bool *next_visit, bool *changed){
+
+    unsigned long long comp_src = comp[cid];
+    unsigned long long comp_next = comp[next];
+    unsigned long long comp_target;
+    EdgeT next_target;
+
+    if (comp_next != comp_src) {
+       if (comp_src < comp_next) {
+          next_target = next;
+          comp_target = comp_src;
+       }
+       else {
+          next_target = cid;
+          comp_target = comp_next;
+       }
+       
+       atomicMin(&comp[next_target], comp_target);
+       next_visit[next_target] = true;
+       *changed = true;
+    }
+}
+
+
 __global__ 
 void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -112,31 +136,9 @@ void kernel_baseline(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
         for(uint64_t i = shift_start; i < end; i++){
         //for(uint64_t i = start; i < end; i++){
             if(i >= start){
-                unsigned long long comp_src = comp[tid];
                 const EdgeT next = edgeList[i];
-
-                unsigned long long comp_next = comp[next];
-                unsigned long long comp_target;
-                EdgeT next_target;
-
-                if (comp_next != comp_src) {
-                    if (comp_src < comp_next) {
-                        next_target = next;
-                        comp_target = comp_src;
-                    }
-                    else {
-                        next_target = tid;
-                        comp_target = comp_next;
-                    }
-                    // if(tid==0)
-                    //     printf("next_target: %llu", (uint64_t)next_target);                
-
-                    atomicMin(&comp[next_target], comp_target);
-                    next_visit[next_target] = true;
-                    *changed = true;
-                }
+                cc_compute(tid, comp, next, next_visit, changed);
             }
-            
         }
     }
 }
@@ -155,32 +157,11 @@ void kernel_baseline_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
         for(uint64_t i = shift_start; i < end; i++){
         //for(uint64_t i = start; i < end; i++){
             if(i >= start){
-                unsigned long long comp_src = comp[tid];
                 // const EdgeT next = edgeList[i];
                 const EdgeT next = da->seq_read(i);
-
-                unsigned long long comp_next = comp[next];
-                unsigned long long comp_target;
-                EdgeT next_target;
-
-                if (comp_next != comp_src) {
-                    if (comp_src < comp_next) {
-                        next_target = next;
-                        comp_target = comp_src;
-                    }
-                    else {
-                        next_target = tid;
-                        comp_target = comp_next;
-                    }
-                    // if(tid==0)
-                    //     printf("next_target: %llu", (uint64_t)next_target);                
-
-                    atomicMin(&comp[next_target], comp_target);
-                    next_visit[next_target] = true;
-                    *changed = true;
-                }
+                
+                cc_compute(tid, comp, next, next_visit, changed);
              }
-            
         }
     }
 }
@@ -207,33 +188,11 @@ void kernel_baseline_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
             const uint64_t end = vertexList[tid+1];
 
             for(uint64_t i = shift_start; i < end; i++){
-            //for(uint64_t i = start; i < end; i++){
                 if(i >= start){
-                    unsigned long long comp_src = comp[tid];
                     const EdgeT next = edgeList[i];
+                    cc_compute(tid, comp, next, next_visit, changed);
 
-                    unsigned long long comp_next = comp[next];
-                    unsigned long long comp_target;
-                    EdgeT next_target;
-
-                    if (comp_next != comp_src) {
-                        if (comp_src < comp_next) {
-                            next_target = next;
-                            comp_target = comp_src;
-                        }
-                        else {
-                            next_target = tid;
-                            comp_target = comp_next;
-                        }
-                        // if(tid==0)
-                        //     printf("next_target: %llu", (uint64_t)next_target);                
-
-                        atomicMin(&comp[next_target], comp_target);
-                        next_visit[next_target] = true;
-                        *changed = true;
-                    }
                 }
-                
             }
         }
     }
@@ -263,34 +222,12 @@ void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
             const uint64_t end = vertexList[tid+1];
 
             for(uint64_t i = shift_start; i < end; i++){
-            //for(uint64_t i = start; i < end; i++){
                 if(i >= start){
-                    unsigned long long comp_src = comp[tid];
                     // const EdgeT next = edgeList[i];
                     EdgeT next = da->seq_read(i);
+                    cc_compute(tid, comp, next, next_visit, changed);
 
-                    unsigned long long comp_next = comp[next];
-                    unsigned long long comp_target;
-                    EdgeT next_target;
-
-                    if (comp_next != comp_src) {
-                        if (comp_src < comp_next) {
-                            next_target = next;
-                            comp_target = comp_src;
-                        }
-                        else {
-                            next_target = tid;
-                            comp_target = comp_next;
-                        }
-                        // if(tid==0)
-                        //     printf("next_target: %llu", (uint64_t)next_target);                
-
-                        atomicMin(&comp[next_target], comp_target);
-                        next_visit[next_target] = true;
-                        *changed = true;
-                    }
                 }
-                
             }
         }
     }
@@ -303,38 +240,17 @@ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
 
     if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
-            const uint64_t start = vertexList[warpIdx];
-            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
-            const uint64_t end = vertexList[warpIdx+1];
+       const uint64_t start = vertexList[warpIdx];
+       const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+       const uint64_t end = vertexList[warpIdx+1];
 
-            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
-                if (i >= start) {
-                    unsigned long long comp_src = comp[warpIdx];
-                    const EdgeT next = edgeList[i];
+       for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+           if (i >= start) {
+               const EdgeT next = edgeList[i];
+               cc_compute(warpIdx, comp, next, next_visit, changed);
 
-                    unsigned long long comp_next = comp[next];
-                    unsigned long long comp_target;
-                    EdgeT next_target;
-
-                    if (comp_next != comp_src) {
-                        if (comp_src < comp_next) {
-                            next_target = next;
-                            comp_target = comp_src;
-                        }
-                        else {
-                            next_target = warpIdx;
-                            comp_target = comp_next;
-                        }
-
-                        // if(laneIdx==0 && warpIdx==0)
-                        //     printf("next_target: %llu", (uint64_t)next_target);
-
-                        atomicMin(&comp[next_target], comp_target);
-                        next_visit[next_target] = true;
-                        *changed = true;
-                    }
-                }
-            }
+           }
+       }
    }
 }
 
@@ -355,31 +271,10 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
 
         for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
             if (i >= start) {
-                unsigned long long comp_src = comp[warpIdx];
                 // const EdgeT next = edgeList[i];
                 EdgeT next = da->seq_read(i);
 
-                unsigned long long comp_next = comp[next];
-                unsigned long long comp_target;
-                EdgeT next_target;
-
-                if (comp_next != comp_src) {
-                    if (comp_src < comp_next) {
-                        next_target = next;
-                        comp_target = comp_src;
-                    }
-                    else {
-                        next_target = warpIdx;
-                        comp_target = comp_next;
-                    }
-
-                    // if(laneIdx==0 && warpIdx==0)
-                    //     printf("next_target: %llu", (uint64_t)next_target);
-
-                    atomicMin(&comp[next_target], comp_target);
-                    next_visit[next_target] = true;
-                    *changed = true;
-                }
+                cc_compute(warpIdx, comp, next, next_visit, changed);
             }
         }
     }
@@ -393,6 +288,8 @@ void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
     // const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     uint64_t STRIDE = sm_count * MAXWARP; 
+
+
 
     if (oldwarpIdx < vertex_count){ 
        uint64_t warpIdx; 
@@ -411,30 +308,9 @@ void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
 
             for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
                 if (i >= start) {
-                    unsigned long long comp_src = comp[warpIdx];
                     const EdgeT next = edgeList[i];
 
-                    unsigned long long comp_next = comp[next];
-                    unsigned long long comp_target;
-                    EdgeT next_target;
-
-                    if (comp_next != comp_src) {
-                        if (comp_src < comp_next) {
-                            next_target = next;
-                            comp_target = comp_src;
-                        }
-                        else {
-                            next_target = warpIdx;
-                            comp_target = comp_next;
-                        }
-
-                        // if(laneIdx==0 && warpIdx==0)
-                        //     printf("next_target: %llu", (uint64_t)next_target);
-
-                        atomicMin(&comp[next_target], comp_target);
-                        next_visit[next_target] = true;
-                        *changed = true;
-                    }
+                    cc_compute(warpIdx, comp, next, next_visit, changed);
                 }
             }
         }
@@ -449,7 +325,7 @@ void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 //    const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
-    uint64_t STRIDE = sm_count * MAXWARP; 
+    uint64_t STRIDE = sm_count;// * MAXWARP; 
     // array_d_t<uint64_t> d_array = *da;
     if (oldwarpIdx < vertex_count){
     //if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
@@ -468,32 +344,12 @@ void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
              
              uint64_t i = shift_start+laneIdx;
              for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
-//             {
                  if (i >= start) {
-                     unsigned long long comp_src = comp[warpIdx];
                      // const EdgeT next = edgeList[i];
                      // EdgeT next = d_array.seq_read(i);
                      EdgeT next = da->seq_read(i);
 
-
-                     unsigned long long comp_next = comp[next];
-                     unsigned long long comp_target;
-                     EdgeT next_target;
-
-                     if (comp_next != comp_src) {
-                         if (comp_src < comp_next) {
-                             next_target = next;
-                             comp_target = comp_src;
-                         }
-                         else {
-                             next_target = warpIdx;
-                             comp_target = comp_next;
-                         }
-
-                         atomicMin(&comp[next_target], comp_target);
-                         next_visit[next_target] = true;
-                         *changed = true;
-                     }
+                     cc_compute(warpIdx, comp, next, next_visit, changed);
                  }
              }
         }
@@ -502,13 +358,30 @@ void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 
 
 __global__ __launch_bounds__(128,16)
-void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
+void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 //    const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t oldwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
-    uint64_t STRIDE = sm_count * MAXWARP;
+    uint64_t STRIDE = sm_count;// * MAXWARP;
     // array_d_t<uint64_t> d_array = *da;
+    
+
+    /*bam_ptr<uint64_t> ptr(da);
+    if(tid < vertex_count){
+        if(curr_visit[tid] == true){
+            const uint64_t init_start = vertexList[tid];
+            const uint64_t init_shift_start = init_start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t init_end = vertexList[tid+1];
+            uint64_t numelems = pc_page_size/sizeof(uint64_t);
+            for(uint64_t i= init_shift_start; i < init_end; i+= numelems) {
+                if(i >= init_start){
+                    EdgeT next = ptr[i];
+                }
+            }
+        }
+    }
+    */
     if (oldwarpIdx < vertex_count){
     //if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
         uint64_t warpIdx;
@@ -527,33 +400,13 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool
 
              uint64_t i = shift_start+laneIdx;
              for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
-//             {
                  if (i >= start) {
-                     unsigned long long comp_src = comp[warpIdx];
                      // const EdgeT next = edgeList[i];
                      // EdgeT next = d_array.seq_read(i);
                      //EdgeT next = da->seq_read(i);
                      EdgeT next = ptr[i];
-
-
-                     unsigned long long comp_next = comp[next];
-                     unsigned long long comp_target;
-                     EdgeT next_target;
-
-                     if (comp_next != comp_src) {
-                         if (comp_src < comp_next) {
-                             next_target = next;
-                             comp_target = comp_src;
-                         }
-                         else {
-                             next_target = warpIdx;
-                             comp_target = comp_next;
-                         }
-
-                         atomicMin(&comp[next_target], comp_target);
-                         next_visit[next_target] = true;
-                         *changed = true;
-                     }
+                     cc_compute(warpIdx, comp, next, next_visit, changed);
+                     
                  }
              }
         }
@@ -589,24 +442,7 @@ __global__ void kernel_coalesce_chunk(bool *curr_visit, bool *next_visit, uint64
                 if (j >= start) {
                     const EdgeT next = edgeList[j];
 
-                    unsigned long long comp_next = comp[next];
-                    unsigned long long comp_target;
-                    EdgeT next_target;
-
-                    if (comp_next != comp_src) {
-                        if (comp_src < comp_next) {
-                            next_target = next;
-                            comp_target = comp_src;
-                        }
-                        else {
-                            next_target = i;
-                            comp_target = comp_next;
-                        }
-
-                        atomicMin(&comp[next_target], comp_target);
-                        next_visit[next_target] = true;
-                        *changed = true;
-                    }
+                    cc_compute(warpIdx, comp, next, next_visit, changed);
                 }
             }
         }
@@ -643,24 +479,7 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *n
                     // EdgeT next = d_array.seq_read(j);
                     EdgeT next = da->seq_read(j);
 
-                    unsigned long long comp_next = comp[next];
-                    unsigned long long comp_target;
-                    EdgeT next_target;
-
-                    if (comp_next != comp_src) {
-                        if (comp_src < comp_next) {
-                            next_target = next;
-                            comp_target = comp_src;
-                        }
-                        else {
-                            next_target = i;
-                            comp_target = comp_next;
-                        }
-
-                        atomicMin(&comp[next_target], comp_target);
-                        next_visit[next_target] = true;
-                        *changed = true;
-                    }
+                    cc_compute(warpIdx, comp, next, next_visit, changed);
                 }
             }
         }
@@ -858,14 +677,14 @@ int main(int argc, char *argv[]) {
                 }
 
             case BAFS_DIRECT: 
-                cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
-                if (totalbyte < 16*1024*1024*1024ULL)
-                    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
-                else {
-                    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
-                    cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
-                    throttle_memory<<<1,1>>>(pad);
-                }
+                //cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
+                //if (totalbyte < 16*1024*1024*1024ULL)
+                //    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                //else {
+                //    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                //    cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
+                //    throttle_memory<<<1,1>>>(pad);
+                //}
                 break;
             }
 
@@ -957,100 +776,120 @@ int main(int argc, char *argv[]) {
             fflush(stdout);
         }
 
-        iter = 0;
-        cuda_err_chk(cudaEventRecord(start, 0));
-        // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
-        //          fflush(stdout);
+        for(int titr=0; titr<1; titr+=1){
+            iter = 0;
+            cuda_err_chk(cudaEventRecord(start, 0));
+            // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
+            //          fflush(stdout);
 
-        // Run CC
-        do {
-            changed_h = false;
-            cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
-            auto itrstart = std::chrono::system_clock::now();
+           printf("Hash Stride: %llu\n", (pc_pages/settings.stride));
+            // Run CC
+            do {
+                changed_h = false;
+                cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
+                auto itrstart = std::chrono::system_clock::now();
 
-            switch (type) {
-                case BASELINE:
-                    kernel_baseline<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
-                    break;
-                case COALESCE:
-                    kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
-                    break;
-                case COALESCE_CHUNK:
-                    kernel_coalesce_chunk<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
-                    break;
-                case BASELINE_PC:
-                    kernel_baseline_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
-                    break;
-                case COALESCE_PC:
-                    kernel_coalesce_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
-                    break;
-                case COALESCE_CHUNK_PC:
-                    kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
-                    break;
-                case BASELINE_HASH:
-                    kernel_baseline_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                    break;
-                case COALESCE_HASH:
-                    kernel_coalesce_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                    break;
-                // case COALESCE_CHUNK_HASH:
-                    // kernel_coalesce_chunk_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                //     break;
-                case BASELINE_HASH_PC:
-                    kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                    break;
-                case COALESCE_HASH_PC:
-                    kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                    break;
-                case COALESCE_HASH_PTR_PC:
-                    kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                    break;
-                // case COALESCE_CHUNK_HASH_PC:
-                //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                //     break;
-                default:
-                    fprintf(stderr, "Invalid type\n");
-                    exit(1);
-                    break;
+                switch (type) {
+                    case BASELINE:
+                        kernel_baseline<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                        break;
+                    case COALESCE:
+                        kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                        break;
+                    case COALESCE_CHUNK:
+                        kernel_coalesce_chunk<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                        break;
+                    case BASELINE_PC:
+                        kernel_baseline_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                        break;
+                    case COALESCE_PC:
+                        kernel_coalesce_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                        break;
+                    case COALESCE_CHUNK_PC:
+                        kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
+                        break;
+                    case BASELINE_HASH:
+                        kernel_baseline_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
+                        break;
+                    case COALESCE_HASH:
+                        kernel_coalesce_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
+                        break;
+                    // case COALESCE_CHUNK_HASH:
+                        // kernel_coalesce_chunk_hash<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
+                    //     break;
+                    case BASELINE_HASH_PC:
+                        kernel_baseline_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_pages/(settings.stride));
+                        break;
+                    case COALESCE_HASH_PC:
+                        //kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
+                        kernel_coalesce_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_pages/settings.stride);
+                        break;
+                    case COALESCE_HASH_PTR_PC:
+                        //kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
+                        kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, pc_pages/settings.stride);
+                        break;
+                    // case COALESCE_CHUNK_HASH_PC:
+                    //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
+                    //     break;
+                    default:
+                        fprintf(stderr, "Invalid type\n");
+                        exit(1);
+                        break;
+                }
+
+                cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
+
+                bool *temp = curr_visit_d;
+                curr_visit_d = next_visit_d;
+                next_visit_d = temp;
+
+                iter++;
+                cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
+                auto itrend = std::chrono::system_clock::now();
+	            //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
+
+                //if(mem == BAFS_DIRECT) {
+                //         h_array->print_reset_stats();
+		        // printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
+                //}
+              //  break;
+
+            } while(changed_h);
+
+            cuda_err_chk(cudaEventRecord(end, 0));
+            cuda_err_chk(cudaEventSynchronize(end));
+            cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
+
+            cuda_err_chk(cudaMemcpy(comp_h, comp_d, vertex_count * sizeof(unsigned long long), cudaMemcpyDeviceToHost));
+
+            for (uint64_t i = 0; i < vertex_count; i++) {
+                if (comp_check[comp_h[i]] == false) {
+                    comp_check[comp_h[i]] = true;
+                    comp_total++;
+                }
             }
 
-            cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
-
-            bool *temp = curr_visit_d;
-            curr_visit_d = next_visit_d;
-            next_visit_d = temp;
-
-            iter++;
-            cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
-            auto itrend = std::chrono::system_clock::now();
-	        //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
-
+            printf("total cc iterations: %u\n", iter);
+            printf("total components: %u\n", comp_total);
+            printf("total time: %f ms\n", milliseconds);
             if(mem == BAFS_DIRECT) {
-                     h_array->print_reset_stats();
-		     printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
+                 h_array->print_reset_stats();
+                 cuda_err_chk(cudaDeviceSynchronize());
             }
-          //  break; 
-        } while(changed_h);
-
-        cuda_err_chk(cudaEventRecord(end, 0));
-        cuda_err_chk(cudaEventSynchronize(end));
-        cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
-
-        cuda_err_chk(cudaMemcpy(comp_h, comp_d, vertex_count * sizeof(unsigned long long), cudaMemcpyDeviceToHost));
-
-        for (uint64_t i = 0; i < vertex_count; i++) {
-            if (comp_check[comp_h[i]] == false) {
-                comp_check[comp_h[i]] = true;
-                comp_total++;
+            printf("\nCC %d Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t CacheSize: %llu \t StrideFactor: %d \t TotalTime %f ms\n", titr, filename.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride,  milliseconds); 
+            fflush(stdout);
+            if(titr>1){ 
+              comp_total =0; 
+              for (uint64_t i = 0; i < vertex_count; i++)
+                  comp_h[i] = i;
+              memset(comp_check, 0, vertex_count * sizeof(bool));
+              cuda_err_chk(cudaMemset(curr_visit_d, 0x01, vertex_count * sizeof(bool)));
+              cuda_err_chk(cudaMemset(next_visit_d, 0x00, vertex_count * sizeof(bool)));
+              cuda_err_chk(cudaMemcpy(comp_d, comp_h, vertex_count * sizeof(uint64_t), cudaMemcpyHostToDevice));
+        
             }
         }
-
-        printf("total cc iterations: %u\n", iter);
-        printf("total components: %u\n", comp_total);
-        printf("total time: %f ms\n", milliseconds);
-        printf("\nCC Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t TotalTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, milliseconds); 
-        fflush(stdout);
 
         free(vertexList_h);
 

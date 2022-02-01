@@ -54,6 +54,7 @@ struct Settings
     size_t repeat;
     size_t src;
     uint64_t maxPageCacheSize;
+    uint64_t stride;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -381,6 +382,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth per queue", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
+        {'P', OptionPtr(new Option<uint64_t>(stride, "number", "stride", "Hashing stride factor for cc. It is calculated as P = pc_pages/stride. Assumes power of 2", "1"))},
 //        {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
     };
 
@@ -481,6 +483,7 @@ Settings::Settings()
     repeat = 32;
     src = 0;
     maxPageCacheSize = 8589934592;
+    stride = 1;
 }
 
 
