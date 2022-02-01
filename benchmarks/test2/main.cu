@@ -57,7 +57,7 @@ void flush_kernel(page_cache_d_t* cache) {
     // if (tid == 0) {
     //     hexdump(cache->base_addr, 4096);
     // }
-    if (page < cache->n_pages) {
+ /*   if (page < cache->n_pages) {
         uint32_t v = cache->cache_pages[page].page_take_lock.load(simt::memory_order_acquire);
         if (v != FREE) {
             uint32_t previous_global_address = cache->cache_pages[page].page_translation;
@@ -92,7 +92,7 @@ void flush_kernel(page_cache_d_t* cache) {
             }
         }
 
-    }
+    }*/
 }
 __global__
 void sequential_access_kernel(array_d_t<unsigned long long int>* dr, uint64_t n_reqs, unsigned long long* req_count, uint64_t reqs_per_thread) {
