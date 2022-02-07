@@ -55,6 +55,9 @@ struct Settings
     size_t src;
     uint64_t maxPageCacheSize;
     uint64_t stride;
+    uint64_t coarse;
+    uint64_t largebin;
+    uint64_t binelems;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -366,7 +369,7 @@ void Settings::parseArguments(int argc, char** argv)
     OptionMap parsers = {
         {'f', OptionPtr(new Option<const char*>(input, "path", "input", "File path where the vertex file is. Provide .bel path."))},
         {'l', OptionPtr(new Range(ofileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "loffset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
-        {'v', OptionPtr(new Range(type, 0, 18, "impl_type", "BASELINE=0, COALESCE = 1, COALESCE_CHUNK = 2, BASELINE_PC=3, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5\n BASELINE_HASH = 6, COALESCE_HASH = 7, BASELINE_HASH_PC = 9, COALESCE_HASH_PC = 10", "1"))},
+        {'v', OptionPtr(new Range(type, 0, 30, "impl_type", "BASELINE=0, COALESCE = 1, COALESCE_CHUNK = 2, BASELINE_PC=3, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5\n BASELINE_HASH = 6, COALESCE_HASH = 7, BASELINE_HASH_PC = 9, COALESCE_HASH_PC = 10", "1"))},
         {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
         {'r', OptionPtr(new Range(repeat, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "repeat", "number of random source iteration to run", "32"))},
         {'s', OptionPtr(new Range(src, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "src", "start node of the graph", "0"))},
@@ -382,7 +385,10 @@ void Settings::parseArguments(int argc, char** argv)
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth per queue", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
-        {'P', OptionPtr(new Option<uint64_t>(stride, "number", "stride", "Hashing stride factor for cc. It is calculated as P = pc_pages/stride. Assumes power of 2", "1"))},
+        {'P', OptionPtr(new Option<uint64_t>(stride, "number", "STRIDE", "Hashing stride factor for cc. It is calculated as P = stride. Assumes power of 2", "1"))},
+        {'C', OptionPtr(new Option<uint64_t>(coarse, "number", "COARSE", "Thread coarsening factor", "1"))},
+        {'B', OptionPtr(new Option<uint64_t>(largebin, "number", "largebin", "Number of bins", "128"))},
+        {'E', OptionPtr(new Option<uint64_t>(binelems, "number", "binelems", "Number of elems per bin", "1"))},
 //        {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
     };
 
@@ -484,6 +490,9 @@ Settings::Settings()
     src = 0;
     maxPageCacheSize = 8589934592;
     stride = 1;
+    coarse = 1;
+    largebin = 128;
+    binelems = 64;
 }
 
 
