@@ -554,27 +554,27 @@ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visi
     }
 }
 
-__global__ //__launch_bounds__(128,16)
+__global__ __launch_bounds__(128,16)
 void kernel_coalesce_hash_half(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t stride) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-    const uint64_t oldwarpIdx = tid >> 4;
-    const uint64_t laneIdx = tid & ((1 << 4) - 1);
+    const uint64_t oldhalfwarpIdx = tid >> 4;
+    const uint64_t halflaneIdx = tid & ((1 << 4) - 1);
     uint64_t STRIDE = stride;//sm_count * MAXWARP;
     
     const uint64_t nep = (vertex_count+(STRIDE))/(STRIDE); 
-    uint64_t warpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+    uint64_t halfwarpIdx = (oldhalfwarpIdx/nep) + ((oldhalfwarpIdx % nep)*(STRIDE));
     
-    if (warpIdx < vertex_count){ 
-           if(curr_visit[warpIdx] == true) {
-                const uint64_t start = vertexList[warpIdx];
+    if (halfwarpIdx < vertex_count){ 
+           if(curr_visit[halfwarpIdx] == true) {
+                const uint64_t start = vertexList[halfwarpIdx];
                 const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFFC;
-                const uint64_t end = vertexList[warpIdx+1];
+                const uint64_t end = vertexList[halfwarpIdx+1];
 
-                for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                for(uint64_t i = shift_start + halflaneIdx; i < end; i += 16) {
                     if (i >= start) 
                     {
                         EdgeT next = edgeList[i];
-                        cc_compute(warpIdx, comp, next, next_visit, changed);
+                        cc_compute(halfwarpIdx, comp, next, next_visit, changed);
                     }
                 }
            }
@@ -585,28 +585,28 @@ void kernel_coalesce_hash_half(bool *curr_visit, bool *next_visit, uint64_t vert
 
 __global__ __launch_bounds__(128,16)
 void kernel_coalesce_hash_half_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
-    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-    const uint64_t oldwarpIdx = oldtid >> 4;
-    const uint64_t laneIdx = oldtid & ((1 << 4) - 1);
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t oldhalfwarpIdx = tid >> 4;
+    const uint64_t halflaneIdx = tid & ((1 << 4) - 1);
     uint64_t STRIDE = stride;//sm_count * MAXWARP;
     
     //const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
     const uint64_t nep = (vertex_count+(STRIDE))/(STRIDE); 
-    uint64_t warpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+    uint64_t halfwarpIdx = (oldhalfwarpIdx/nep) + ((oldhalfwarpIdx % nep)*(STRIDE));
     
-    if (warpIdx < vertex_count){ 
-           if(curr_visit[warpIdx] == true) {
+    if (halfwarpIdx < vertex_count){ 
+           if(curr_visit[halfwarpIdx] == true) {
                 bam_ptr<uint64_t> ptr(da);
-                const uint64_t start = vertexList[warpIdx];
+                const uint64_t start = vertexList[halfwarpIdx];
 //                const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFFC;
                 const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFFC;
-                const uint64_t end = vertexList[warpIdx+1];
+                const uint64_t end = vertexList[halfwarpIdx+1];
 
-                for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                for(uint64_t i = shift_start + halflaneIdx; i < end; i += 16) {
                     if (i >= start) 
                     {
                         EdgeT next = ptr[i];
-                        cc_compute(warpIdx, comp, next, next_visit, changed);
+                        cc_compute(halfwarpIdx, comp, next, next_visit, changed);
                     }
                 }
            }
@@ -1089,10 +1089,10 @@ int main(int argc, char *argv[]) {
                         break;
                 }
 
-                //cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
-                //bool *temp = curr_visit_d;
-                //curr_visit_d = next_visit_d;
-                //next_visit_d = temp;
+                cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
+                bool *temp = curr_visit_d;
+                curr_visit_d = next_visit_d;
+                next_visit_d = temp;
 
                 iter++;
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
