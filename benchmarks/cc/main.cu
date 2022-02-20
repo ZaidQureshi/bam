@@ -1089,11 +1089,10 @@ int main(int argc, char *argv[]) {
                         break;
                 }
 
-                cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
-
-                bool *temp = curr_visit_d;
-                curr_visit_d = next_visit_d;
-                next_visit_d = temp;
+                //cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
+                //bool *temp = curr_visit_d;
+                //curr_visit_d = next_visit_d;
+                //next_visit_d = temp;
 
                 iter++;
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
