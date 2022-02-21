@@ -48,8 +48,7 @@ void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, ui
         atomicAdd(counter, 1);
     }
     //__syncthreads();
-    printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
-
+     
     //printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
     /*bool hastoflushpage = true;
     while (hastoflushpage && (tid < n_pages)) {
@@ -58,8 +57,7 @@ void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, ui
             //dr->flushcache(tid, page_size);
             hastoflushpage = false;
             printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
-        }printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
-
+        }
     }*/
     
 
@@ -80,9 +78,24 @@ __global__
 void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    bam_ptr<uint64_t> ptr(dr);
     if (tid < n_reqs) {
         
-        device_buffer[tid]= (*dr)[(tid)];
+        //device_buffer[tid]= (*dr)[(tid)];
+        device_buffer[tid]= ptr[tid];
+
+    }
+    __syncthreads();
+
+}
+
+__global__
+void random_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t* assignment_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
+
+    size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < n_reqs) {
+        
+        device_buffer[tid]= (*dr)[(assignment_buffer[tid])];
 
         /*uint64_t result;
         //result = (*dr)[(tid)];
@@ -166,7 +179,7 @@ int main(int argc, char** argv) {
         array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
         std::cout << "finished creating array\n";
          
-            printf("Writing contents to NVMe Device at %llu\n", settings.ofileoffset); 
+            /*printf("Writing contents to NVMe Device at %llu\n", settings.ofileoffset); 
 
                //uint64_t cpysize = 16*total_cache_size;
                //std::cout << "cpysize = " << cpysize << std::endl;
@@ -182,11 +195,10 @@ int main(int argc, char** argv) {
                
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
-//               sequential_access_flush_kernel<<<1, n_pages>>>(a.d_array_ptr, n_pages, page_size);
-//               cuda_err_chk(cudaDeviceSynchronize());
-               int counter;   
-	       cuda_err_chk(cudaMemcpy(&counter, counter_d, sizeof(int), cudaMemcpyDeviceToHost));
-	       std::cout << "Counter: " << counter << std::endl;
+               sequential_access_flush_kernel<<<1, n_pages>>>(a.d_array_ptr, n_pages, page_size);
+               cuda_err_chk(cudaDeviceSynchronize());
+               
+
                double elapsed = after - before;
 
                std::cout << "Completed Time:" <<elapsed << std::endl;
@@ -197,8 +209,8 @@ int main(int argc, char** argv) {
                // double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
                // std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
                // std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
-                
-                /*printf("Reading NVMe contents from %llu", settings.ofileoffset);                  
+                */
+                printf("Reading NVMe contents from %llu", settings.ofileoffset);                  
                 fflush(stderr);
                 fflush(stdout);
 
@@ -216,9 +228,18 @@ int main(int argc, char** argv) {
                     int* counter_d;
                     cuda_err_chk(cudaMalloc((void**)(&counter_d), sizeof(int)));
                     cuda_err_chk(cudaMemset(counter_d, 0, sizeof(int)));
+                    uint64_t* assignment;
+                    assignment = (uint64_t*) malloc(n_threads*sizeof(uint64_t));
+                    //memset(assignment, 0, cpysize);
+                    for (size_t i = 0; i< n_threads; i++)
+                        assignment[i] = rand() % (n_threads);
+                    uint64_t* assignment_d;
+                    cuda_err_chk(cudaMalloc((void**)(&assignment_d),n_threads*sizeof(uint64_t)));
+                    cuda_err_chk(cudaMemcpy(assignment_d, assignment, n_threads*sizeof(uint64_t), cudaMemcpyHostToDevice ));
 
                     Event rbefore; 
                     sequential_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size, counter_d);
+                    //random_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, assignment_d, n_pages, page_size, counter_d);
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
                     cuda_err_chk(cudaMemcpy(tmprbuff,device_buffer, cpysize, cudaMemcpyDeviceToHost));
@@ -234,8 +255,8 @@ int main(int argc, char** argv) {
                             std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }
                     }
-                    std::cout << "Total error count : " << errorcnt <<std::endl;
-		    */
+                    std::cout << "Total error count : " << errorcnt <<std::endl; 
+
 
         
 

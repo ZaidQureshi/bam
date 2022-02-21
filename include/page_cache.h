@@ -414,8 +414,11 @@ struct range_d_t
     uint64_t range_id;
     uint64_t page_start_offset;
     uint64_t page_size;
+    uint64_t sector_size;
     uint64_t page_start;
     uint64_t page_count;
+    size_t n_elems_per_page;
+    size_t n_elems_per_sector;
     data_dist_t dist;
     uint8_t *src;
 
@@ -488,6 +491,11 @@ struct range_d_t
         __device__
             uint64_t
             get_cache_page_addr(const uint32_t page_trans) const;
+            
+    __forceinline__
+        __device__
+            uint64_t
+            get_cache_sector_addr(const uint32_t page_trans, const size_t sector) const;
     __forceinline__
         __device__
             uint64_t
@@ -533,9 +541,12 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     rdt.page_start = ps;
     rdt.page_count = pc;
     rdt.page_size = c_h->pdt.page_size;
+    rdt.sector_size = c_h->pdt.sector_size;
     rdt.page_start_offset = pso;
     rdt.dist = dist;
     size_t s = pc; //(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
+    rdt.n_elems_per_page = rdt.page_size / sizeof(T);
+    rdt.n_elems_per_sector = rdt.sector_size / sizeof(T);
     std::cout << "creating range\n";
     cache = (page_cache_d_t *)(c_h->d_pc_ptr);
     std::cout << "n_sectors_per_page = " << c_h->pdt.n_sectors_per_page << "\n";
@@ -718,6 +729,15 @@ __forceinline__
         range_d_t<T>::get_cache_page_addr(const uint32_t page_trans) const
 {
     return ((uint64_t)((cache->base_addr + (page_trans * cache->page_size))));
+}
+
+template <typename T>
+__forceinline__
+    __device__
+        uint64_t
+        range_d_t<T>::get_cache_sector_addr(const uint32_t page_trans, const size_t sector) const
+{
+    return ((uint64_t)((cache->base_addr + (page_trans * cache->page_size) + (sector*cache->sector_size))));
 }
 
 template <typename T>
@@ -1130,12 +1150,82 @@ struct array_d_t
         }
     }
 
+        __forceinline__
+    __device__
+    void* acquire_page(const size_t i, data_page_t*& page_, size_t& start, size_t& end, int64_t& r, size_t& sector) const {
+        uint32_t lane = lane_id();
+        r = find_range(i);
+        auto r_ = d_ranges+r;
+
+        void* ret = nullptr;
+        page_ = nullptr;
+        sector = 0;
+        if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
+            uint32_t mask = __activemask();
+#endif
+            uint32_t eq_mask;
+            int master;
+            uint64_t base_master;
+            bool sector_acquired_master;
+            uint32_t count;
+            uint64_t page = r_->get_page(i);
+            uint64_t subindex = r_->get_subindex(i);
+            uint64_t gaddr = r_->get_global_address(page);
+            size_t sector_index = d_ranges[r].get_sectorindex(i);
+
+            coalesce_page(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
+            //page_ = &r_->pages[base_master];
+            sector = sector_index;
+
+            ret = (void*)r_->get_cache_sector_addr(base_master, sector);
+            start = (r_->n_elems_per_page * page) + (sector * r_->n_elems_per_sector);
+            end = start +r_->n_elems_per_sector;// * (page+1);
+            //ret.page = page;
+            __syncwarp(mask);
+        }
+        return ret;
+    }
+
+     __forceinline__
+    __device__
+    void release_page(data_page_t* page_, const int64_t r, const size_t i) const {
+        uint32_t lane = lane_id();
+        auto r_ = d_ranges+r;
+
+        if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
+            uint32_t mask = __activemask();
+#endif
+            uint32_t eq_mask;
+            int master;
+            uint64_t base_master;
+            uint32_t count;
+            uint64_t page = r_->get_page(i);
+            uint64_t gaddr = r_->get_global_address(page);
+
+            uint32_t active_cnt = __popc(mask);
+            eq_mask = __match_any_sync(mask, gaddr);
+            eq_mask &= __match_any_sync(mask, (uint64_t)this);
+            master = __ffs(eq_mask) - 1;
+            count = __popc(eq_mask);
+            if (master == lane)
+                r_->release_page(page, count);
+            __syncwarp(mask);
+
+        }
+    }
+
     __forceinline__
         __device__
             void
             flushcache(const size_t page, const uint64_t page_size) const
     {
-        int64_t r = find_range(page*page_size);
+        int64_t r = find_range(page*page_size/sizeof(T));
         page_cache_d_t *pc = d_ranges[r].cache;
         pc->cache_flush(page, r);
 
@@ -1417,6 +1507,62 @@ struct array_t
         }
 
         cuda_err_chk(cudaMemcpy(d_array_ptr, &adt, sizeof(array_d_t<T>), cudaMemcpyHostToDevice));
+    }
+};
+
+
+template<typename T>
+struct bam_ptr {
+    data_page_t* page = nullptr;
+    array_d_t<T>* array = nullptr;
+    size_t sector_n = 0;
+    size_t start = 0;
+    size_t end = 0;
+    int64_t range_id = -1;
+    T* addr = nullptr;
+
+    __host__ __device__
+    bam_ptr(array_d_t<T>* a) { init(a); }
+
+    __host__ __device__
+    ~bam_ptr() { fini(); }
+
+    __host__ __device__
+    void init(array_d_t<T>* a) { array = a; }
+
+    __host__ __device__
+    void fini(void) {
+        if (page) {
+            array->release_page(page, range_id, start);
+            page = nullptr;
+        }
+
+    }
+
+    __host__ __device__
+    void update_page(const size_t i) {
+        ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+        fini(); //destructor
+        addr = (T*) array->acquire_page(i, page, start, end, range_id, sector_n);
+//        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+    }
+
+    __host__ __device__
+    T operator[](const size_t i) const {
+        if ((i < start) || (i >= end)) {
+            update_page(i);
+        }
+        return addr[i-start];
+    }
+
+    __host__ __device__
+    T& operator[](const size_t i) {
+        if ((i < start) || (i >= end)) {
+            update_page(i);
+        }
+        return addr[i-start];
     }
 };
 
