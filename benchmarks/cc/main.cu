@@ -92,10 +92,12 @@ typedef enum {
     BASELINE_HASH_PTR_PC= 15,
     COALESCE_HASH_PTR_PC= 16,
     COALESCE_CHUNK_HASH_PTR_PC= 17,
-    COALESCE_COARSE_PTR_PC = 18, 
-    COALESCE_HASH_COARSE_PTR_PC = 19, 
-    COALESCE_HASH_HALF = 20, 
-    COALESCE_HASH_HALF_PTR_PC = 21, 
+    COALESCE_COARSE= 18, 
+    COALESCE_HASH_COARSE = 19, 
+    COALESCE_COARSE_PTR_PC = 20, 
+    COALESCE_HASH_COARSE_PTR_PC = 21, 
+    COALESCE_HASH_HALF = 22, 
+    COALESCE_HASH_HALF_PTR_PC = 23, 
 } impl_type;
 
 typedef enum {
@@ -322,6 +324,28 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *nex
     }
 }
 
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    
+    for(uint64_t j = 0; j < coarse; j++){
+        uint64_t cwarpIdx = warpIdx*coarse+j; 
+        if (cwarpIdx < vertex_count && curr_visit[cwarpIdx] == true) {
+            const uint64_t start = vertexList[cwarpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[cwarpIdx+1];
+
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                if (i >= start) {
+                    EdgeT next = edgeList[i];
+                    cc_compute(cwarpIdx, comp, next, next_visit, changed);
+                }
+            }
+        }
+    }
+}
 
 
 __global__ __launch_bounds__(128,16)
@@ -521,6 +545,38 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool
     }
     
 }
+
+
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_hash_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
+    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
+    const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = stride;//sm_count * MAXWARP;
+    
+    const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
+    uint64_t cwarpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+
+    for(uint64_t j=0; j<coarse; j++){
+        uint64_t warpIdx = cwarpIdx*coarse+j;
+        if (warpIdx < vertex_count){ 
+           
+           if(curr_visit[warpIdx] == true) {
+                const uint64_t start = vertexList[warpIdx];
+                const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+                const uint64_t end = vertexList[warpIdx+1];
+
+                for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                    if (i >= start) {
+                        EdgeT next = edgeList[i];
+                        cc_compute(warpIdx, comp, next, next_visit, changed);
+                    }
+                }
+           }
+       }
+    }
+}
+
 
 
 __global__ __launch_bounds__(128,16)
@@ -957,6 +1013,8 @@ int main(int argc, char *argv[]) {
             case COALESCE_HASH_PTR_PC:
                 numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
                 break;
+            case COALESCE_COARSE:
+            case COALESCE_HASH_COARSE:
             case COALESCE_COARSE_PTR_PC:
             case COALESCE_HASH_COARSE_PTR_PC:
                 numblocks = ((vertex_count * (WARP_SIZE/settings.coarse) + numthreads) / numthreads);
@@ -1046,6 +1104,9 @@ int main(int argc, char *argv[]) {
                     case COALESCE_PTR_PC:
                         kernel_coalesce_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
                         break;
+                    case COALESCE_COARSE:
+                        kernel_coalesce_coarse<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.coarse);
+                        break;
                     case COALESCE_COARSE_PTR_PC:
                         kernel_coalesce_coarse_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.coarse);
                         break;
@@ -1069,6 +1130,9 @@ int main(int argc, char *argv[]) {
                         //kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                         //preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
+                        break;
+                    case COALESCE_HASH_COARSE:
+                        kernel_coalesce_hash_coarse<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.coarse, settings.stride);
                         break;
                     case COALESCE_HASH_COARSE_PTR_PC:
                         kernel_coalesce_hash_coarse_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.coarse, settings.stride);
