@@ -126,7 +126,7 @@ struct returned_cache_page_t {
 #endif
 
 #define INVALID_ 0x00000000
-#define VALID_ 0xa0000000
+#define VALID_ 0x80000000
 #define BUSY_ 0x40000000
 #define CNT_MASK_ 0x3fffffff
 #define INVALID_MASK_ 0x7fffffff
@@ -138,79 +138,27 @@ struct tlb_entry {
     simt::atomic<uint32_t, _scope> state;
     data_page_t* page = nullptr;
 
+    __forceinline__
     __host__ __device__
     tlb_entry() { init(); }
 
+    __forceinline__
     __host__ __device__
     void init() {
         global_id = 0;
-        state.store(INVALID_, simt::memory_order_relaxed);
+        state.store(0, simt::memory_order_relaxed);
+        page = nullptr;
     }
 
+    __forceinline__
     __device__
     void release(const uint32_t count) { state.fetch_sub(count, simt::memory_order_release); }
 
+    __forceinline__
     __device__
-    void release() { if (page) page->state.fetch_sub(1, simt::memory_order_release); }
-
-    __device__
-    void complete_acquire(data_page_t* p) {
-        page = p;
-        state.fetch_or(VALID_, simt::memory_order_release);
-        state.fetch_and(DISABLE_BUSY_MASK_, simt::memory_order_release);
-    }
-
-    __device__
-    bool acquire(const uint64_t gid, const uint32_t count) {
-        do {
-            uint32_t st = state.load(simt::memory_order_relaxed);
-
-            if (!(st & VALID_)) {
-                st = state.fetch_or(BUSY_, simt::memory_order_acquire);
-                //good to fetch
-                if (!(st & BUSY_)) {
-                    global_id = gid;
-                    state.fetch_add(count, simt::memory_order_relaxed);
-                    return true;
-                }
-            }
-            else if (st & VALID_) {
-                st = state.fetch_add(count, simt::memory_order_acquire);
-                if (global_id != gid) {
-                    st = state.fetch_or(BUSY_, simt::memory_order_relaxed);
-                    if (!(st & BUSY_)) {
-                        st = state.fetch_and(INVALID_MASK_, simt::memory_order_acquire);
-                        while((st &  CNT_MASK_) != count) {
-
-#ifdef __CUDACC__
-                            __nanosleep(100);
-#endif
-                            st = state.load(simt::memory_order_acquire);
-                        }
-                        //release page;
-                        page->state.fetch_sub(1, simt::memory_order_release);
-                        global_id = gid;
-                        return true;
-                    }
-
-                    else {
-                        state.fetch_sub(count, simt::memory_order_relaxed);
-                        continue;
-                    }
-                }
-                else if (st & VALID_) {
-                    return false;
-                }
-                else {
-                    state.fetch_sub(count, simt::memory_order_relaxed);
-                    continue;
-                }
+    void release() { if (page != nullptr) page->state.fetch_sub(1, simt::memory_order_release); }
 
 
-            }
-            
-        } while (true);
-    }
 
 };
 
@@ -222,12 +170,15 @@ struct tlb {
     tlb_entry<_scope> entries[n];
     array_d_t<T>* array = nullptr;
 
+    __forceinline__
     __host__ __device__
     tlb() {}
 
+    __forceinline__
     __device__
     tlb(array_d_t<T>* a) { init(a); }
 
+    __forceinline__
     __device__
     void init(array_d_t<T>* a) {
         SYNC;
@@ -243,6 +194,7 @@ struct tlb {
 
     }
 
+    __forceinline__
     __device__
     void fini() {
         SYNC;
@@ -256,9 +208,11 @@ struct tlb {
         SYNC;
     }
 
+    __forceinline__
     __device__
     ~tlb() { fini(); }
 
+    __forceinline__
     __device__
     T* acquire(const size_t i, const size_t gid, size_t& start, size_t& end, range_d_t<T>* range, const size_t page_) {
 
@@ -273,14 +227,44 @@ struct tlb {
         uint32_t count = __popc(eq_mask);
         uint64_t base_master, base;
         if (lane == master) {
-            bool fill = entry->acquire(gid, count);
-            if (fill) {
-                data_page_t* page;
-                base_master = (uint64_t) array->acquire_page_(i, page, start, end, range, page_);
-                entry->complete_acquire(page);
-            }
-            else
-                base_master = (uint64_t) range->get_cache_page_addr(entry->page->offset);
+            bool cont = false;
+            uint32_t st;
+            do {
+
+                //lock;
+                do {
+                    st = entry->state.fetch_or(0x8000000, simt::memory_order_acquire);
+                    if ((st & VALID_) == 0)
+                        break;
+                    __nanosleep(100);
+                } while (true);
+
+                if ((entry->page != nullptr) && (gid == entry->global_id)) {
+
+                    st += count;
+
+                    base_master = (uint64_t) range->get_cache_page_addr(entry->page->offset);
+                    entry->state.store(st, simt::memory_order_release);
+                    break;
+                }
+                else if(((entry->page == nullptr)) || ((st & 0x7fffffff == 0))) {
+                    data_page_t* page;
+                    base_master = (uint64_t) array->acquire_page_(i, page, start, end, range, page_);
+                    entry->page = page;
+                    entry->global_id = gid;
+                    st += count;
+                    entry->state.store(st, simt::memory_order_release);
+                    break;
+
+                }
+                else {
+                    __nanosleep(100);
+                }
+
+            } while(true);
+
+
+
         }
 
         base_master = __shfl_sync(eq_mask,  base_master, master);
@@ -289,6 +273,7 @@ struct tlb {
 
     }
 
+    __forceinline__
     __device__
     void release(const size_t gid) {
         //size_t gid = array->get_page_gid(i);
@@ -319,15 +304,19 @@ struct bam_ptr_tlb {
     //int64_t range_id = -1;
     T* addr = nullptr;
 
+    __forceinline__
     __host__ __device__
     bam_ptr_tlb(array_d_t<T>* a, tlb<T,n,_scope,loc>* t) { init(a, t); }
 
+    __forceinline__
     __device__
     ~bam_ptr_tlb() { fini(); }
 
+    __forceinline__
     __host__ __device__
     void init(array_d_t<T>* a, tlb<T,n,_scope,loc>* t) { array = a; tlb_ = t; }
 
+    __forceinline__
     __device__
     void fini(void) {
         if (addr) {
@@ -338,6 +327,7 @@ struct bam_ptr_tlb {
 
     }
 
+    __forceinline__
     __device__
     void update_page(const size_t i) {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
@@ -351,6 +341,7 @@ struct bam_ptr_tlb {
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
 
+    __forceinline__
     __device__
     T operator[](const size_t i) const {
         if ((i < start) || (i >= end)) {
@@ -359,6 +350,7 @@ struct bam_ptr_tlb {
         return addr[i-start];
     }
 
+    __forceinline__
     __device__
     T& operator[](const size_t i) {
         if ((i < start) || (i >= end)) {
@@ -378,15 +370,19 @@ struct bam_ptr {
     int64_t range_id = -1;
     T* addr = nullptr;
 
+    __forceinline__
     __host__ __device__
     bam_ptr(array_d_t<T>* a) { init(a); }
 
+    __forceinline__
     __host__ __device__
     ~bam_ptr() { fini(); }
 
+    __forceinline__
     __host__ __device__
     void init(array_d_t<T>* a) { array = a; }
 
+    __forceinline__
     __host__ __device__
     void fini(void) {
         if (page) {
@@ -396,6 +392,7 @@ struct bam_ptr {
 
     }
 
+    __forceinline__
     __host__ __device__
     void update_page(const size_t i) {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
@@ -406,6 +403,7 @@ struct bam_ptr {
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
 
+    __forceinline__
     __host__ __device__
     T operator[](const size_t i) const {
         if ((i < start) || (i >= end)) {
@@ -414,6 +412,7 @@ struct bam_ptr {
         return addr[i-start];
     }
 
+    __forceinline__
     __host__ __device__
     T& operator[](const size_t i) {
         if ((i < start) || (i >= end)) {
@@ -1093,8 +1092,13 @@ struct array_d_t {
         r_ = d_ranges+r;
 
         if (r != -1) {
+            r_ = d_ranges+r;
             pg = r_->get_page(i);
             gid = r_->get_global_address(pg);
+        }
+        else {
+            r_ = nullptr;
+            printf("here\n");
         }
     }
     __forceinline__
