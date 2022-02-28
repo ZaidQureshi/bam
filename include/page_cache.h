@@ -258,6 +258,7 @@ struct tlb {
 
                 }
                 else {
+                    entry->state.store(st, simt::memory_order_relaxed);
                     __nanosleep(100);
                 }
 
