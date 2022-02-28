@@ -63,6 +63,9 @@ struct range_t;
 template<typename T>
 struct array_d_t;
 
+template <typename T>
+struct range_d_t;
+
 /*struct data_page_t {
     simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
                                                               //
@@ -100,6 +103,271 @@ struct returned_cache_page_t {
             return addr[0];
     }
 };
+#define THREAD_ 0
+#define SHARED_ 1
+#define GLOBAL_ 2
+
+#ifdef __CUDACC__
+#define TID (loc != THREAD_ ? (threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z)) : 0 )
+#else
+#define TID 0
+#endif
+
+#ifdef __CUDACC__
+#define BLKSIZE (loc != THREAD_ ? (blockDim.x * blockDim.y * blockDim.z) : 1)
+#else
+#define BLKSIZE 1
+#endif
+
+#ifdef __CUDACC__
+#define SYNC (loc != THREAD_ ? __syncthreads() : (void)0)
+#else
+#define SYNC (void)0
+#endif
+
+#define INVALID_ 0x00000000
+#define VALID_ 0xa0000000
+#define BUSY_ 0x40000000
+#define CNT_MASK_ 0x3fffffff
+#define INVALID_MASK_ 0x7fffffff
+#define DISABLE_BUSY_MASK_ 0xbfffffff
+
+template<simt::thread_scope _scope = simt::thread_scope_device>
+struct tlb_entry {
+    uint64_t global_id;
+    simt::atomic<uint32_t, _scope> state;
+    data_page_t* page = nullptr;
+
+    __host__ __device__
+    tlb_entry() { init(); }
+
+    __host__ __device__
+    void init() {
+        global_id = 0;
+        state.store(INVALID_, simt::memory_order_relaxed);
+    }
+
+    __device__
+    void release(const uint32_t count) { state.fetch_sub(count, simt::memory_order_release); }
+
+    __device__
+    void release() { if (page) page->state.fetch_sub(1, simt::memory_order_release); }
+
+    __device__
+    void complete_acquire(data_page_t* p) {
+        page = p;
+        state.fetch_or(VALID_, simt::memory_order_release);
+        state.fetch_and(DISABLE_BUSY_MASK_, simt::memory_order_release);
+    }
+
+    __device__
+    bool acquire(const uint64_t gid, const uint32_t count) {
+        do {
+            uint32_t st = state.load(simt::memory_order_relaxed);
+
+            if (!(st & VALID_)) {
+                st = state.fetch_or(BUSY_, simt::memory_order_acquire);
+                //good to fetch
+                if (!(st & BUSY_)) {
+                    global_id = gid;
+                    state.fetch_add(count, simt::memory_order_relaxed);
+                    return true;
+                }
+            }
+            else if (st & VALID_) {
+                st = state.fetch_add(count, simt::memory_order_acquire);
+                if (global_id != gid) {
+                    st = state.fetch_or(BUSY_, simt::memory_order_relaxed);
+                    if (!(st & BUSY_)) {
+                        st = state.fetch_and(INVALID_MASK_, simt::memory_order_acquire);
+                        while((st &  CNT_MASK_) != count) {
+
+#ifdef __CUDACC__
+                            __nanosleep(100);
+#endif
+                            st = state.load(simt::memory_order_acquire);
+                        }
+                        //release page;
+                        page->state.fetch_sub(1, simt::memory_order_release);
+                        global_id = gid;
+                        return true;
+                    }
+
+                    else {
+                        state.fetch_sub(count, simt::memory_order_relaxed);
+                        continue;
+                    }
+                }
+                else if (st & VALID_) {
+                    return false;
+                }
+                else {
+                    state.fetch_sub(count, simt::memory_order_relaxed);
+                    continue;
+                }
+
+
+            }
+            
+        } while (true);
+    }
+
+};
+
+
+
+
+template<typename T, size_t n = 32, simt::thread_scope _scope = simt::thread_scope_device, size_t loc = GLOBAL_>
+struct tlb {
+    tlb_entry<_scope> entries[n];
+    array_d_t<T>* array = nullptr;
+
+    __host__ __device__
+    tlb() {}
+
+    __device__
+    tlb(array_d_t<T>* a) { init(a); }
+
+    __device__
+    void init(array_d_t<T>* a) {
+        SYNC;
+
+        if (n) {
+            size_t tid = TID;
+            if (tid == 0)
+                array = a;
+            for (; tid < n; tid+=BLKSIZE)
+                entries[tid].init();
+        }
+        SYNC;
+
+    }
+
+    __device__
+    void fini() {
+        SYNC;
+
+        if (n) {
+            size_t tid = TID;
+            for (; tid < n; tid+=BLKSIZE)
+                entries[tid].release();
+        }
+
+        SYNC;
+    }
+
+    __device__
+    ~tlb() { fini(); }
+
+    __device__
+    T* acquire(const size_t i, const size_t gid, size_t& start, size_t& end, range_d_t<T>* range, const size_t page_) {
+
+        //size_t gid = array->get_page_gid(i);
+        uint32_t lane = lane_id();
+        size_t ent = gid % n;
+        tlb_entry<_scope>* entry = entries + ent;
+        uint32_t mask = __activemask();
+        uint32_t eq_mask = __match_any_sync(mask, gid);
+        eq_mask &= __match_any_sync(mask, (uint64_t)this);
+        uint32_t master = __ffs(eq_mask) - 1;
+        uint32_t count = __popc(eq_mask);
+        uint64_t base_master, base;
+        if (lane == master) {
+            bool fill = entry->acquire(gid, count);
+            if (fill) {
+                data_page_t* page;
+                base_master = (uint64_t) array->acquire_page_(i, page, start, end, range, page_);
+                entry->complete_acquire(page);
+            }
+            else
+                base_master = (uint64_t) range->get_cache_page_addr(entry->page->offset);
+        }
+
+        base_master = __shfl_sync(eq_mask,  base_master, master);
+
+        return (T*) base_master;
+
+    }
+
+    __device__
+    void release(const size_t gid) {
+        //size_t gid = array->get_page_gid(i);
+        uint32_t lane = lane_id();
+        uint32_t mask = __activemask();
+        uint32_t eq_mask = __match_any_sync(mask, gid);
+        eq_mask &= __match_any_sync(mask, (uint64_t)this);
+        uint32_t master = __ffs(eq_mask) - 1;
+        uint32_t count = __popc(eq_mask);
+
+        size_t ent = gid % n;
+        tlb_entry<_scope>* entry = entries + ent;
+        if (lane == master)
+            entry->release(count);
+        __syncwarp(eq_mask);
+
+    }
+
+};
+
+template<typename T, size_t n = 32, simt::thread_scope _scope = simt::thread_scope_device, size_t loc = GLOBAL_>
+struct bam_ptr_tlb {
+    tlb<T,n,_scope,loc>* tlb_ = nullptr;
+    array_d_t<T>* array = nullptr;
+    size_t start = 0;
+    size_t end = 0;
+    size_t gid = 0;
+    //int64_t range_id = -1;
+    T* addr = nullptr;
+
+    __host__ __device__
+    bam_ptr_tlb(array_d_t<T>* a, tlb<T,n,_scope,loc>* t) { init(a, t); }
+
+    __device__
+    ~bam_ptr_tlb() { fini(); }
+
+    __host__ __device__
+    void init(array_d_t<T>* a, tlb<T,n,_scope,loc>* t) { array = a; tlb_ = t; }
+
+    __device__
+    void fini(void) {
+        if (addr) {
+
+            tlb_->release(gid);
+            addr = nullptr;
+        }
+
+    }
+
+    __device__
+    void update_page(const size_t i) {
+        ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+        fini(); //destructor
+        range_d_t<T>* range;
+        size_t page;
+        array->get_page_gid(i, range, page, gid);
+        addr = (T*) tlb_->acquire(i, gid, start, end, range, page);
+//        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+    }
+
+    __device__
+    T operator[](const size_t i) const {
+        if ((i < start) || (i >= end)) {
+            update_page(i);
+        }
+        return addr[i-start];
+    }
+
+    __device__
+    T& operator[](const size_t i) {
+        if ((i < start) || (i >= end)) {
+            update_page(i);
+        }
+        return addr[i-start];
+    }
+};
+
 
 template<typename T>
 struct bam_ptr {
@@ -818,7 +1086,17 @@ struct array_d_t {
 
     range_d_t<T>* d_ranges;
 
+    __forceinline__
+    __device__
+    void get_page_gid(const uint64_t i, range_d_t<T>*& r_, size_t& pg, size_t& gid) const {
+        int64_t r = find_range(i);
+        r_ = d_ranges+r;
 
+        if (r != -1) {
+            pg = r_->get_page(i);
+            gid = r_->get_global_address(pg);
+        }
+    }
     __forceinline__
     __device__
     void memcpy(const uint64_t i, const uint64_t count, T* dest) {
@@ -1004,6 +1282,37 @@ struct array_d_t {
 
 
         }
+    }
+
+    __forceinline__
+    __device__
+    void* acquire_page_(const size_t i, data_page_t*& page_, size_t& start, size_t& end, range_d_t<T>* r_, const size_t page) const {
+        //uint32_t lane = lane_id();
+
+
+
+        void* ret = nullptr;
+        page_ = nullptr;
+        if (r_) {
+            //uint64_t page = r_->get_page(i);
+            uint64_t subindex = r_->get_subindex(i);
+            uint64_t gaddr = r_->get_global_address(page);
+            page_cache_d_t* pc = &(r_->cache);
+            uint32_t ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+            uint32_t queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+            uint64_t base_master = r_->acquire_page(page, 1, false, ctrl, queue);
+            //coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
+
+            page_ = &r_->pages[base_master];
+
+
+            ret = (void*)r_->get_cache_page_addr(base_master);
+            start = r_->n_elems_per_page * page;
+            end = start +r_->n_elems_per_page;// * (page+1);
+            //ret.page = page;
+
+        }
+        return ret;
     }
     __forceinline__
     __device__

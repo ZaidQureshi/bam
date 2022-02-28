@@ -460,6 +460,43 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint
     }
 }
 
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_ptr_tlb_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
+    __shared__ tlb<uint64_t, 32, simt::thread_scope_block, SHARED_> t;
+
+    t.init(da);
+
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    //array_d_t<uint64_t> d_array = *da;
+    if(warpIdx < vertex_count && label[warpIdx] == level) {
+        bam_ptr_tlb<uint64_t, 32, simt::thread_scope_block, SHARED_> ptr(da, &t);
+        const uint64_t start = vertexList[warpIdx];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[warpIdx+1];
+
+        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+            if (i >= start) {
+                //const EdgeT next = edgeList[i];
+                //EdgeT next = da->seq_read(i);
+                EdgeT next = ptr[i];
+//                printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+
+                if(label[next] == MYINFINITY) {
+                //    if(level ==0)
+                //            printf("tid:%llu, level:%llu, next: %llu\n", tid, (unsigned long long)level, (unsigned long long)next);
+                    label[next] = level + 1;
+                    *changed = true;
+                }
+            }
+        }
+    }
+
+    t.fini();
+}
+
+
 
 __global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -883,7 +920,7 @@ int main(int argc, char *argv[]) {
                          break;
                      case COALESCE_PTR_PC:
                          //printf("Calling Page cache enabled coalesce kernel\n");
-                         kernel_coalesce_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
+                         kernel_coalesce_ptr_tlb_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
                          break;
                      case COALESCE_CHUNK_PC:
                          //printf("Calling Page cache enabled coalesce chunk kernel\n");

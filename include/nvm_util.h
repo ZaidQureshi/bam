@@ -276,7 +276,12 @@ uint32_t nvm_dis_node_from_ctrl(const nvm_ctrl_t* ctrl);
 __forceinline__ __device__ uint32_t lane_id()
 {
     uint32_t ret;
+
+#ifdef __CUDACC__
     asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+#else
+    ret = 0;
+#endif
     return ret;
 }
 
