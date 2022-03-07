@@ -596,7 +596,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     //uint32_t ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
                     uint64_t ctrl = get_backing_ctrl(index);
                     if (ctrl == ALL_CTRLS)
-                        ctrl = ctrl_;
+                        ctrl = cache.ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache.n_ctrls);
                     uint64_t b_page = get_backing_page(index);
                     Controller* c = cache.d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
@@ -684,10 +684,10 @@ struct array_d_t {
             uint32_t leader = 0;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
                 queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
-            ctrl = __shfl_sync(mask, ctrl, leader);
+            ctrl = 0; __shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
 
             uint64_t page = d_ranges[r].get_page(i);
@@ -760,10 +760,10 @@ struct array_d_t {
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
                 queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
-            ctrl = __shfl_sync(mask, ctrl, leader);
+            ctrl = 0;__shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
 
             uint64_t page = d_ranges[r].get_page(i);
@@ -818,10 +818,10 @@ struct array_d_t {
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                ctrl = 0;//pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
                 queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
-            ctrl = __shfl_sync(mask, ctrl, leader);
+            ctrl = 0;//__shfl_sync(mask, ctrl, leader);
             queue = __shfl_sync(mask, queue, leader);
 
             uint64_t page = d_ranges[r].get_page(i);
@@ -911,7 +911,7 @@ struct array_d_t {
             uint32_t leader = __ffs(mask) - 1;
             if (lane == leader) {
                 page_cache_d_t* pc = &(d_ranges[r].cache);
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                ctrl = 0;//pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
                 queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
             ctrl = __shfl_sync(mask, ctrl, leader);
