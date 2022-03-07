@@ -107,17 +107,17 @@ struct returned_cache_page_t {
 #define SHARED_ 1
 #define GLOBAL_ 2
 
-#ifdef __CUDACC__
-#define TID (loc != THREAD_ ? (threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z)) : 0 )
-#else
-#define TID 0
-#endif
+//#ifdef __CUDACC__
+#define TID ( (threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z)))
+//#else
+//#define TID 0
+//#endif
 
-#ifdef __CUDACC__
-#define BLKSIZE (loc != THREAD_ ? (blockDim.x * blockDim.y * blockDim.z) : 1)
-#else
-#define BLKSIZE 1
-#endif
+//#ifdef __CUDACC__
+#define BLKSIZE ( (blockDim.x * blockDim.y * blockDim.z) )
+//#else
+//#define BLKSIZE 1
+//#endif
 
 #ifdef __CUDACC__
 #define SYNC (loc != THREAD_ ? __syncthreads() : (void)0)
@@ -152,11 +152,19 @@ struct tlb_entry {
 
     __forceinline__
     __device__
-    void release(const uint32_t count) { state.fetch_sub(count, simt::memory_order_release); }
+    void release(const uint32_t count) {
+//		    if (global_id == 515920192) 
+//			printf("--(2)st: %llx\tcount: %llu\n", (unsigned long long) state.load(simt::memory_order_relaxed), (unsigned long long) count);
+			
+ state.fetch_sub(count, simt::memory_order_release); }
 
     __forceinline__
     __device__
-    void release() { if (page != nullptr) page->state.fetch_sub(1, simt::memory_order_release); }
+    void release() { if (page != nullptr)  { 
+//		    if (global_id == 515920192) 
+//			printf("--(1)st: %llx\tcount: %llu\n", (unsigned long long) state.load(simt::memory_order_relaxed), (unsigned long long) 1);
+
+page->state.fetch_sub(1, simt::memory_order_release); }}
 
 
 
@@ -173,44 +181,48 @@ struct tlb {
     __forceinline__
     __host__ __device__
     tlb() {}
-
+/*
     __forceinline__
     __device__
     tlb(array_d_t<T>* a) { init(a); }
-
+*/
     __forceinline__
     __device__
     void init(array_d_t<T>* a) {
-        SYNC;
-
-        if (n) {
+        //SYNC;
+//	__syncthreads();
+      if (n) {
             size_t tid = TID;
             if (tid == 0)
                 array = a;
             for (; tid < n; tid+=BLKSIZE)
                 entries[tid].init();
         }
-        SYNC;
+
+//	__syncthreads();
+//        SYNC;
 
     }
 
     __forceinline__
     __device__
     void fini() {
-        SYNC;
+  //      SYNC;
+//	__syncthreads();
 
         if (n) {
             size_t tid = TID;
             for (; tid < n; tid+=BLKSIZE)
                 entries[tid].release();
         }
+//	__syncthreads();
 
-        SYNC;
+//        SYNC;
     }
 
     __forceinline__
     __device__
-    ~tlb() { fini(); }
+    ~tlb() {  }
 
     __forceinline__
     __device__
@@ -227,29 +239,37 @@ struct tlb {
         uint32_t count = __popc(eq_mask);
         uint64_t base_master, base;
         if (lane == master) {
+	    uint64_t c = 0;
             bool cont = false;
             uint32_t st;
             do {
 
                 //lock;
                 do {
-                    st = entry->state.fetch_or(0x8000000, simt::memory_order_acquire);
+                    st = entry->state.fetch_or(VALID_, simt::memory_order_acquire);
                     if ((st & VALID_) == 0)
                         break;
                     __nanosleep(100);
                 } while (true);
 
                 if ((entry->page != nullptr) && (gid == entry->global_id)) {
+//		    if (gid == 515920192) 
+//			printf("++(1)st: %llx\tst&Val: %llx\tcount: %llu\n", (unsigned long long) st, (unsigned long long) (st & VALID_), (unsigned long long) count);
 
                     st += count;
 
                     base_master = (uint64_t) range->get_cache_page_addr(entry->page->offset);
+		    
                     entry->state.store(st, simt::memory_order_release);
                     break;
                 }
-                else if(((entry->page == nullptr)) || ((st & 0x7fffffff == 0))) {
-                    data_page_t* page;
+                else if(((entry->page == nullptr)) || (((st & 0x7fffffff) == 0))) {
+//		    if (gid == 515920192) 
+//			printf("++(2)st: %llx\tst&Val: %llx\tVal: %llx\tcount: %llu\n", (unsigned long long) st, (unsigned long long) (st & VALID_), (unsigned long long) VALID_, (unsigned long long) count);
+                    data_page_t* page = nullptr;// = (data_page_t*)0xffffffffffffffff;
                     base_master = (uint64_t) array->acquire_page_(i, page, start, end, range, page_);
+			if (((uint64_t) page == 0xffffffffffffffff) || (page == nullptr))
+				printf("failure\n");
                     entry->page = page;
                     entry->global_id = gid;
                     st += count;
@@ -258,12 +278,14 @@ struct tlb {
 
                 }
                 else {
+		if (++c % 100000 == 0)
+			printf("c: %llu\ttid: %llu\twanted_gid: %llu\tgot_gid: %llu\tst: %llx\tst&0x7: %llx\n", (unsigned long long) c, (unsigned long long) (TID), (unsigned long long) gid, (unsigned long long) entry->global_id, (unsigned long long) st, (unsigned long long) (st & 0x7fffffff));
                     entry->state.store(st, simt::memory_order_relaxed);
                     __nanosleep(100);
+
                 }
 
             } while(true);
-
 
 
         }
@@ -1637,6 +1659,9 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
     uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
     uint32_t page = 0;
     do {
+
+//	if (++count %100000 == 0)
+//		printf("here\tc: %llu\n", (unsigned long long) count);
 
         //if (count < this->n_pages)
         page = page_ticket->fetch_add(1, simt::memory_order_relaxed)  % (this->n_pages);
