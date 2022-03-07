@@ -263,13 +263,16 @@ struct tlb {
                     entry->state.store(st, simt::memory_order_release);
                     break;
                 }
-                else if(((entry->page == nullptr)) || (((st & 0x7fffffff) == 0))) {
+                else if(((entry->page == nullptr)) || (((st & 0x3fffffff) == 0))) {
 //		    if (gid == 515920192) 
 //			printf("++(2)st: %llx\tst&Val: %llx\tVal: %llx\tcount: %llu\n", (unsigned long long) st, (unsigned long long) (st & VALID_), (unsigned long long) VALID_, (unsigned long long) count);
+//
+                    if (entry->page != nullptr)
+                        entry->page->state.fetch_sub(1, simt::memory_order_release);
                     data_page_t* page = nullptr;// = (data_page_t*)0xffffffffffffffff;
                     base_master = (uint64_t) array->acquire_page_(i, page, start, end, range, page_);
-			if (((uint64_t) page == 0xffffffffffffffff) || (page == nullptr))
-				printf("failure\n");
+                    if (((uint64_t) page == 0xffffffffffffffff) || (page == nullptr))
+                        printf("failure\n");
                     entry->page = page;
                     entry->global_id = gid;
                     st += count;
@@ -278,8 +281,8 @@ struct tlb {
 
                 }
                 else {
-		if (++c % 100000 == 0)
-			printf("c: %llu\ttid: %llu\twanted_gid: %llu\tgot_gid: %llu\tst: %llx\tst&0x7: %llx\n", (unsigned long long) c, (unsigned long long) (TID), (unsigned long long) gid, (unsigned long long) entry->global_id, (unsigned long long) st, (unsigned long long) (st & 0x7fffffff));
+                    if (++c % 100000 == 0)
+                        printf("c: %llu\ttid: %llu\twanted_gid: %llu\tgot_gid: %llu\tst: %llx\tst&0x7: %llx\n", (unsigned long long) c, (unsigned long long) (TID), (unsigned long long) gid, (unsigned long long) entry->global_id, (unsigned long long) st, (unsigned long long) (st & 0x7fffffff));
                     entry->state.store(st, simt::memory_order_relaxed);
                     __nanosleep(100);
 
