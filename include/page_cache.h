@@ -129,22 +129,33 @@ struct bam_ptr {
     }
 
     __host__ __device__
-    void update_page(const size_t i) {
+    T* update_page(const size_t i) {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
         fini(); //destructor
         addr = (T*) array->acquire_page(i, page, start, end, range_id);
 //        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+        return addr;
     }
 
     __host__ __device__
     T operator[](const size_t i) const {
         if ((i < start) || (i >= end)) {
-            update_page(i);
+           T* tmpaddr =  update_page(i);
         }
         return addr[i-start];
     }
+    
+    __host__ __device__
+    T* memref(size_t i) {
+        T* ret_; 
+        if ((i < start) || (i >= end)) {
+           ret_ =  update_page(i);
+        }
+        return ret_;
+    }
+
 
     __host__ __device__
     T& operator[](const size_t i) {
@@ -1272,11 +1283,15 @@ struct array_t {
         cuda_err_chk(cudaMemcpy(rdt.data(), adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
         for (size_t i = 0; i < adt.n_ranges; i++) {
 
+            std::cout << std::dec << "#READ IOs: "  << rdt[i].read_io_cnt 
+                                  << "\t#Accesses:" << rdt[i].access_cnt
+                                  << "\t#Misses:"   << rdt[i].miss_cnt 
+                                  << "\tMiss Rate:" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt)
+                                  << "\t#Hits: "    << rdt[i].hit_cnt 
+                                  << "\tHit Rate:"  << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) 
+                                  << "\tCLSize:"    << rdt[i].page_size 
+                                  << std::endl;
             std::cout << "*********************************" << std::endl;
-            std::cout << std::dec << "# READ IOs:\t" << rdt[i].read_io_cnt << std::endl;
-            std::cout << std::dec << "# Accesses:\t" << rdt[i].access_cnt << std::endl;
-            std::cout << std::dec << "# Misses:\t" << rdt[i].miss_cnt << std::endl << "Miss Rate:\t" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt) << std::endl;
-            std::cout << std::dec << "# Hits:\t" << rdt[i].hit_cnt << std::endl << "Hit Rate:\t" << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) << std::endl;
             rdt[i].read_io_cnt = 0;
             rdt[i].access_cnt = 0;
             rdt[i].miss_cnt = 0;
