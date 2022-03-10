@@ -48,7 +48,7 @@ void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, ui
         atomicAdd(counter, 1);
     }
     //__syncthreads();
-    printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
+//    printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
 
     //printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
     /*bool hastoflushpage = true;
@@ -70,7 +70,7 @@ void sequential_access_flush_kernel(array_d_t<uint64_t>* dr, uint64_t n_pages, i
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < n_pages) {
             dr->flushcache(tid, page_size);
-            //printf ("tid: %llu counter: %llu\n", (unsigned long long)tid, (unsigned long long)(*counter));
+            printf ("tid: %llu\n", (unsigned long long)tid);
     }
     
 
@@ -154,10 +154,10 @@ int main(int argc, char** argv) {
         page_cache_d_t* d_pc = (page_cache_d_t*) (h_pc.d_pc_ptr);
 
         #define TYPE uint64_t
-        uint64_t n_elems = (settings.numBlks*512)/sizeof(TYPE);
+        uint64_t n_elems = (settings.numBlks*4096)/sizeof(TYPE);
         uint64_t t_size = n_elems * sizeof(TYPE);
         std::cout << "started creating range\n";
-        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
+        range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, (uint64_t)(t_size/page_size), (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice, REPLICATE);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
         std::cout << "finished creating range\n";
 
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
         array_t<uint64_t> a(n_elems, 0, vr, settings.cudaDevice);
         std::cout << "finished creating array\n";
          
-            printf("Writing contents to NVMe Device at %llu\n", settings.ofileoffset); 
+               /*printf("Writing contents to NVMe Device at %llu\n", settings.ofileoffset); 
 
                //uint64_t cpysize = 16*total_cache_size;
                //std::cout << "cpysize = " << cpysize << std::endl;
@@ -182,8 +182,8 @@ int main(int argc, char** argv) {
                
                Event after;
                cuda_err_chk(cudaDeviceSynchronize());
-//               sequential_access_flush_kernel<<<1, n_pages>>>(a.d_array_ptr, n_pages, page_size);
-//               cuda_err_chk(cudaDeviceSynchronize());
+               sequential_access_flush_kernel<<<1, n_pages>>>(a.d_array_ptr, n_pages, page_size);
+               cuda_err_chk(cudaDeviceSynchronize());
                int counter;   
 	       cuda_err_chk(cudaMemcpy(&counter, counter_d, sizeof(int), cudaMemcpyDeviceToHost));
 	       std::cout << "Counter: " << counter << std::endl;
@@ -197,12 +197,12 @@ int main(int argc, char** argv) {
                // double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
                // std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
                // std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
-                
-                /*printf("Reading NVMe contents from %llu", settings.ofileoffset);                  
+                */
+                printf("Reading NVMe contents from %llu", settings.ofileoffset);                  
                 fflush(stderr);
                 fflush(stdout);
 
-                    uint64_t cpysize = 8*total_cache_size; 
+                    uint64_t cpysize = 4*total_cache_size; 
 
                     cuda_err_chk(cudaMemset(h_pc.pdt.base_addr, 0, total_cache_size));
 
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
                         }
                     }
                     std::cout << "Total error count : " << errorcnt <<std::endl;
-		    */
+		
 
         
 

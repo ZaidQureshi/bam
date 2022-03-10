@@ -69,7 +69,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 256
+#define N_SECTORS_PER_PAGE 32
 #define N_SECTORS_PER_STATE 8
 #define N_SECTOR_STATES ((N_SECTORS_PER_PAGE+8-1) / 8)
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
@@ -148,6 +148,8 @@ struct page_cache_d_t
     size_t n_sectors_per_state_minus_1;
     size_t n_sectors_per_state_log;
     uint32_t how_many_in_one;
+    size_t n_sectors_per_block;
+    size_t n_sectors_per_block_log;
 
     uint64_t *ranges_page_starts;
     data_dist_t *ranges_dists;
@@ -295,8 +297,11 @@ struct page_cache_t
         {
             std::cout << "Cond1\n";
             pdt.how_many_in_one = ceil((1.0f*pdt.page_size)/ctrl.ctrl->page_size);
+	        pdt.n_sectors_per_block = ceil((1.0f*ctrl.ctrl->page_size)/pdt.sector_size);
+	        pdt.n_sectors_per_block_log = std::log2(pdt.n_sectors_per_block);
             std::cout << "ctrl.page_size = " << ctrl.ctrl->page_size << "\n";
             std::cout << "how_many_in_one = " << pdt.how_many_in_one << "\n";
+	    std::cout << "pdt.n_sectors_per_block = " << pdt.n_sectors_per_block << "\n";
             this->prp1_buf = createBuffer(np*pdt.how_many_in_one*sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
 
@@ -308,7 +313,7 @@ struct page_cache_t
 
             for (size_t i = 0; (i < np*pdt.how_many_in_one); i++)
             {
-                //std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
+                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 temp[i] = (uint64_t)this->pages_dma.get()->ioaddrs[i];
                 /*for (size_t j = 0; (j < how_many_in_one); j++)
                 {
@@ -754,7 +759,7 @@ __forceinline__
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
     uint64_t sector_trans = (page_addresses[page_index] * N_SECTORS_PER_PAGE) + sector;//cache->n_sectors_per_page_log) + sector;
-    //printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
+    //printf("tid %llu\t page_address %llu\tpage_trans %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)page_addresses[page_index], (unsigned long long)sector_trans);
     uint32_t shift_val = 4*sector_number;
     uint32_t mask = 0x0000000F << shift_val;
     uint32_t not_mask = ~mask;
@@ -779,8 +784,12 @@ __forceinline__
                if (pass) {
                     //printf("tid %llu\t original_state%16x\t new_state%16x\t in SECTOR_INVALID passed\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)original_state, (unsigned long long)new_state);
                     uint64_t ctrl = get_backing_ctrl(page_index);
-                    if (ctrl == ALL_CTRLS)
+                    if (ctrl == ALL_CTRLS) {
                         ctrl = ctrl_;
+                        ctrl = cache->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache->n_ctrls);
+
+                    }
+                        
                     uint64_t b_page = get_backing_page(page_index);
                     Controller *c = cache->d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
@@ -1012,7 +1021,7 @@ struct array_d_t
     __forceinline__
         __device__ void
         coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const uint64_t gaddr, const bool write,
-                      uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master, bool &sector_acquired_master) const
+                      uint32_t &eq_mask, uint32_t &sector_mask, int &master, uint32_t &count, uint64_t &base_master, bool &sector_acquired_master) const
     {
         //printf("tid %d\t in coalesce_page\n", (blockDim.x*blockIdx.x+threadIdx.x));
         uint32_t ctrl;
@@ -1021,11 +1030,11 @@ struct array_d_t
         if (lane == leader)
         {
             page_cache_d_t *pc = d_ranges[r].cache;
-            ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+            //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
             queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
         }
 
-        ctrl = __shfl_sync(mask, ctrl, leader);
+        ctrl = 0;//__shfl_sync(mask, ctrl, leader);
         queue = __shfl_sync(mask, queue, leader);
 
         uint32_t active_cnt = __popc(mask);
@@ -1046,21 +1055,23 @@ struct array_d_t
             //printf("++tid: %llu\tbase: %llu\tpage:%llu\n", (unsigned long long) (blockIdx.x*blockDim.x+ threadIdx.x), (unsigned long long)base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask, base_master, master);
+        __syncwarp(eq_mask);
         //printf("tid: %llu\tafter base master\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
-        eq_mask &= __match_any_sync(eq_mask, sector);
+        sector_mask = __match_any_sync(eq_mask, sector);
+        
         //printf("tid %d\teq_mask for sector %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
-        master = __ffs(eq_mask) - 1;
-        dirty = __any_sync(eq_mask, write);
+        int sector_master = __ffs(sector_mask) - 1;
+        uint32_t sector_dirty = __any_sync(sector_mask, write);
 
         bool sector_acquired;
-        count = __popc(eq_mask);
-        if (master == lane)
+        uint32_t sector_count = __popc(sector_mask);
+        if (sector_master == lane)
         {
-            sector_acquired = d_ranges[r].acquire_sector(page, sector, count, dirty, ctrl, queue);
+            sector_acquired = d_ranges[r].acquire_sector(page, sector, sector_count, sector_dirty, ctrl, queue);
             sector_acquired_master = sector_acquired;
-            //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+            //printf("++tid: %llu\tbase: %llx\tpage:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long)base_master, (unsigned long long) page);
         }
-        sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
+        sector_acquired_master = __shfl_sync(sector_mask, sector_acquired_master, sector_master);
     }
 
     __forceinline__
@@ -1080,6 +1091,7 @@ struct array_d_t
             uint32_t mask = __activemask();
 #endif
             uint32_t eq_mask;
+            uint32_t sector_mask;
             int master;
             uint64_t base_master;
             uint32_t count;
@@ -1087,7 +1099,7 @@ struct array_d_t
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
 
-            coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
+            coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, sector_mask, master, count, base_master);
 
             ret.addr = (T *)base_master;
             ret.size = d_ranges[r].get_sector_size() / sizeof(T);
@@ -1160,6 +1172,7 @@ struct array_d_t
             uint32_t mask = __activemask();
 #endif
             uint32_t eq_mask;
+            uint32_t sector_mask;
             int master;
             uint64_t base_master;
             bool sector_acquired_master;
@@ -1168,9 +1181,10 @@ struct array_d_t
             uint64_t subindex = d_ranges[r].get_subindex(i);
             size_t sector_index = d_ranges[r].get_sectorindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
-            //printf("tid %d\tpage %llu\tsubindex %llu\tsector_index %d\tgaddr %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)page, (unsigned long long)subindex, sector_index, (unsigned long long)gaddr);
+	    //if (threadIdx.x%32 == 0) {
+         //      printf("tid %d\tpage %llu\tsubindex %llu\tsector_index %d\tgaddr %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)page, (unsigned long long)subindex, sector_index, (unsigned long long)gaddr); }
 
-            coalesce_page(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
+            coalesce_page(lane, mask, r, page, sector_index, gaddr, false, eq_mask, sector_mask, master, count, base_master, sector_acquired_master);
         
             /*uint32_t temp_eq_mask = eq_mask;
             coalesce_sector(lane, temp_eq_mask, r, page, sector_index, false, eq_mask, master, sector_acquired_master);*/
@@ -1207,6 +1221,7 @@ struct array_d_t
             uint32_t mask = __activemask();
 #endif
             uint32_t eq_mask;
+            uint32_t sector_mask;
             int master;
             uint64_t base_master;
             bool sector_acquired_master;
@@ -1216,11 +1231,11 @@ struct array_d_t
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             size_t sector_index = d_ranges[r].get_sectorindex(i);
 
-            coalesce_page(lane, mask, r, page, sector_index, gaddr, true, eq_mask, master, count, base_master, sector_acquired_master);
+            coalesce_page(lane, mask, r, page, sector_index, gaddr, true, eq_mask, sector_mask, master, count, base_master, sector_acquired_master);
 
-            //if (threadIdx.x == 63) {
-            //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
-            //}
+            /*if (threadIdx.x%32 == 0) {
+            printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
+            }*/
             ((T *)(base_master + subindex))[0] = val;
             __syncwarp(eq_mask);
             //printf("tid: %llu\tsubindex %llu\tstored value %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)subindex, (unsigned long long)val);
@@ -1771,11 +1786,11 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];*/
     uint64_t sector = (pc_entry & (pc->n_sectors_per_page_minus_1));
-    uint64_t prp_entry = ((pc_entry >> (pc->n_sectors_per_page_log))*(pc->how_many_in_one))+(sector/N_SECTORS_PER_STATE);
+    uint64_t prp_entry = ((pc_entry >> (pc->n_sectors_per_page_log))*(pc->how_many_in_one))+(sector/(pc->n_sectors_per_block));
     uint64_t prp1 = pc->prp1[prp_entry];
     //printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
-    prp1 = (prp1) + ((sector&(N_SECTORS_PER_STATE-1))<<pc->sector_size_log);
-    //printf("read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (void*)prp1);
+    prp1 = (prp1) + ((sector&(pc->n_sectors_per_block-1))<<pc->sector_size_log);
+    //printf("read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("read_data tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
@@ -1810,11 +1825,11 @@ inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint6
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];*/
     uint64_t sector = (pc_entry & (pc->n_sectors_per_page_minus_1));
-    uint64_t prp_entry = ((pc_entry >> (pc->n_sectors_per_page_log))*(pc->how_many_in_one))+(sector/N_SECTORS_PER_STATE);
+    uint64_t prp_entry = ((pc_entry >> (pc->n_sectors_per_page_log))*(pc->how_many_in_one))+(sector/(pc->n_sectors_per_block));
     uint64_t prp1 = pc->prp1[prp_entry];
     //printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
-    prp1 = (prp1) + ((sector&(N_SECTORS_PER_STATE-1))<<pc->sector_size_log);
-    //printf("write_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (void*)prp1);
+    prp1 = (prp1) + ((sector&(pc->n_sectors_per_block-1))<<pc->sector_size_log);
+    //printf("write_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("write_data tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
