@@ -80,6 +80,7 @@ __global__
 void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    //printf("here");
     if (tid < n_reqs) {
         
         device_buffer[tid]= (*dr)[(tid)];
@@ -90,7 +91,7 @@ void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uin
         printf("%llu : %16x\n", (unsigned long long)tid, result);*/
 
     }
-    __syncthreads();
+    //__syncthreads();
 
 }
 
@@ -202,7 +203,7 @@ int main(int argc, char** argv) {
                 fflush(stderr);
                 fflush(stdout);
 
-                    uint64_t cpysize = 4*total_cache_size; 
+                    uint64_t cpysize = n_threads*sizeof(TYPE);//total_cache_size; 
 
                     cuda_err_chk(cudaMemset(h_pc.pdt.base_addr, 0, total_cache_size));
 
@@ -219,6 +220,8 @@ int main(int argc, char** argv) {
 
                     Event rbefore; 
                     sequential_access_read_kernel<<<g_size, b_size>>>(a.d_array_ptr, n_threads, device_buffer, n_pages, page_size, counter_d);
+                    cudaError_t cudaerr = cudaDeviceSynchronize();
+                    std::cout << cudaerr <<std::endl;
                     Event rafter;
                     cuda_err_chk(cudaDeviceSynchronize());
                     cuda_err_chk(cudaMemcpy(tmprbuff,device_buffer, cpysize, cudaMemcpyDeviceToHost));
@@ -231,7 +234,7 @@ int main(int argc, char** argv) {
                         //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
                         if (i != tmprbuff[(size_t)i]) {
                             errorcnt++;
-                            std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
+                            //std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }
                     }
                     std::cout << "Total error count : " << errorcnt <<std::endl;

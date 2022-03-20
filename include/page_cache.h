@@ -69,7 +69,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 32
+#define N_SECTORS_PER_PAGE 256
 #define N_SECTORS_PER_STATE 8
 #define N_SECTOR_STATES ((N_SECTORS_PER_PAGE+8-1) / 8)
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
@@ -1027,27 +1027,25 @@ struct array_d_t
         uint32_t ctrl;
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;
-        if (lane == leader)
-        {
+        //if (lane == leader)
+        //{
             page_cache_d_t *pc = d_ranges[r].cache;
             //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
             queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-        }
+        //}
 
         ctrl = 0;//__shfl_sync(mask, ctrl, leader);
-        queue = __shfl_sync(mask, queue, leader);
+        /*queue = __shfl_sync(mask, queue, leader);
 
         uint32_t active_cnt = __popc(mask);
         eq_mask = __match_any_sync(mask, gaddr);
         eq_mask &= __match_any_sync(mask, (uint64_t)this);
-        //eq_mask &= __match_any_sync(mask, sector_index); // not sure if correct
         master = __ffs(eq_mask) - 1;
         //printf("tid %d\teq_mask for page %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
 
         uint32_t dirty = __any_sync(eq_mask, write);
 
         uint64_t base;
-        //count = __popc(eq_mask);
         if (master == lane)
         {
             base = d_ranges[r].acquire_page(page, __popc(eq_mask), dirty, queue);
@@ -1055,9 +1053,10 @@ struct array_d_t
             //printf("++tid: %llu\tbase: %llu\tpage:%llu\n", (unsigned long long) (blockIdx.x*blockDim.x+ threadIdx.x), (unsigned long long)base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask, base_master, master);
-        __syncwarp(eq_mask);
+        __syncwarp(eq_mask);*/
+        base_master = d_ranges[r].acquire_page(page, 1, (uint32_t)write, queue);
         //printf("tid: %llu\tafter base master\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
-        sector_mask = __match_any_sync(eq_mask, sector);
+        /*sector_mask = __match_any_sync(eq_mask, sector);
         
         //printf("tid %d\teq_mask for sector %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
         int sector_master = __ffs(sector_mask) - 1;
@@ -1071,7 +1070,8 @@ struct array_d_t
             sector_acquired_master = sector_acquired;
             //printf("++tid: %llu\tbase: %llx\tpage:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long)base_master, (unsigned long long) page);
         }
-        sector_acquired_master = __shfl_sync(sector_mask, sector_acquired_master, sector_master);
+        sector_acquired_master = __shfl_sync(sector_mask, sector_acquired_master, sector_master);*/
+        sector_acquired_master = d_ranges[r].acquire_sector(page, sector, 1, (uint32_t)write, ctrl, queue);
     }
 
     __forceinline__
@@ -1166,11 +1166,13 @@ struct array_d_t
 
         if (r != -1)
         {
-#ifndef __CUDACC__
+/*#ifndef __CUDACC__
             uint32_t mask = 1;
 #else
             uint32_t mask = __activemask();
-#endif
+#endif*/
+uint32_t mask = 0;
+
             uint32_t eq_mask;
             uint32_t sector_mask;
             int master;
@@ -1193,7 +1195,7 @@ struct array_d_t
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T *)(base_master + subindex))[0];
-            __syncwarp(eq_mask);
+            //__syncwarp(eq_mask);
             //printf("tid: %llu\tsubindex %llu\tsector_index %llu\treturn value %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)subindex, (unsigned long long)sector_index, (unsigned long long)ret);
             
             /*if (master == lane) {
@@ -1202,7 +1204,7 @@ struct array_d_t
                 d_ranges[r].release_page(page, count);
             }*/
             d_ranges[r].release_page(page);
-            __syncwarp(mask);
+            //__syncwarp(mask);
         }
         return ret;
     }
@@ -1790,7 +1792,8 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint64_t prp1 = pc->prp1[prp_entry];
     //printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
     prp1 = (prp1) + ((sector&(pc->n_sectors_per_block-1))<<pc->sector_size_log);
-    //printf("read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
+    //printf("++read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
+    //prp1 = pc->prp1[0];
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("read_data tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
@@ -1803,6 +1806,8 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     sq_dequeue(&qp->sq, sq_pos);
     //printf("read_data entry dequeued\n");   
     put_cid(&qp->sq, cid);
+    //printf("--read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
+
 }
 
 inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry)
