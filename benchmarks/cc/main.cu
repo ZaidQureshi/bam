@@ -53,7 +53,8 @@
 using error = std::runtime_error;
 using std::string;
 //const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro1", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
+//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
 //const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
 //const char* const ctrls_paths[] = {"/dev/libnvmpro1"};
 
@@ -92,10 +93,14 @@ typedef enum {
     BASELINE_HASH_PTR_PC= 15,
     COALESCE_HASH_PTR_PC= 16,
     COALESCE_CHUNK_HASH_PTR_PC= 17,
-    COALESCE_COARSE_PTR_PC = 18, 
-    COALESCE_HASH_COARSE_PTR_PC = 19, 
-    COALESCE_HASH_HALF = 20, 
-    COALESCE_HASH_HALF_PTR_PC = 21, 
+    COALESCE_COARSE= 18, 
+    COALESCE_HASH_COARSE = 19, 
+    COALESCE_COARSE_PTR_PC = 20, 
+    COALESCE_HASH_COARSE_PTR_PC = 21, 
+    COALESCE_HASH_HALF = 22, 
+    COALESCE_HASH_HALF_PTR_PC = 23, 
+    COALESCE_HASH_PTR_PRELOAD = 24, //preload kernel requires to be implemented with the sharedmem on the memref. Without this it wont work. 
+    COALESCE_HASH_PTR_PRELOAD_PC = 25,
 } impl_type;
 
 typedef enum {
@@ -322,6 +327,28 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *nex
     }
 }
 
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    
+    for(uint64_t j = 0; j < coarse; j++){
+        uint64_t cwarpIdx = warpIdx*coarse+j; 
+        if (cwarpIdx < vertex_count && curr_visit[cwarpIdx] == true) {
+            const uint64_t start = vertexList[cwarpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[cwarpIdx+1];
+
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                if (i >= start) {
+                    EdgeT next = edgeList[i];
+                    cc_compute(cwarpIdx, comp, next, next_visit, changed);
+                }
+            }
+        }
+    }
+}
 
 
 __global__ __launch_bounds__(128,16)
@@ -432,7 +459,11 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
     
 
     bam_ptr<uint64_t> ptr(da);
-    /*if(oldtid < vertex_count){
+//    uint64_t* memref = ptr.memref(oldtid);
+
+    __shared__ uint64_t memref[32*32];
+    
+    if(oldtid < vertex_count){
         uint64_t tid; 
         const uint64_t nep = vertex_count/STRIDE; 
         if(oldtid <(STRIDE*nep)){
@@ -446,15 +477,21 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
             const uint64_t start = vertexList[tid];
             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
             const uint64_t end = vertexList[tid+1];
-            uint64_t numelems = pc_page_size/sizeof(uint64_t);
+            //uint64_t numelems = pc_page_size/sizeof(uint64_t);
             
-            for(uint64_t i = shift_start; i < end; i+=numelems){
-                if(i >= start){
-                     EdgeT next = ptr[i];
+            for(uint64_t i = shift_start; i < shift_start+1; i+=WARP_SIZE){//run only one iteration. 
+                if(i >= shift_start){
+                     uint64_t *tmp= ptr.memref(i);
                 }
             }
         }
-    }*/
+    }
+    __syncthreads();
+    //if(oldtid==0){
+    //uint64_t* addr = memref[0];
+    //EdgeT next = addr[0];
+    //printf("Value in next is:%llu\n", next);
+    //}
     if (oldwarpIdx < vertex_count){
         uint64_t warpIdx;
         const uint64_t nep = vertex_count/STRIDE;
@@ -521,6 +558,38 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool
     }
     
 }
+
+
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_hash_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
+    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
+    const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = stride;//sm_count * MAXWARP;
+    
+    const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
+    uint64_t cwarpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+
+    for(uint64_t j=0; j<coarse; j++){
+        uint64_t warpIdx = cwarpIdx*coarse+j;
+        if (warpIdx < vertex_count){ 
+           
+           if(curr_visit[warpIdx] == true) {
+                const uint64_t start = vertexList[warpIdx];
+                const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+                const uint64_t end = vertexList[warpIdx+1];
+
+                for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+                    if (i >= start) {
+                        EdgeT next = edgeList[i];
+                        cc_compute(warpIdx, comp, next, next_visit, changed);
+                    }
+                }
+           }
+       }
+    }
+}
+
 
 
 __global__ __launch_bounds__(128,16)
@@ -957,8 +1026,11 @@ int main(int argc, char *argv[]) {
             case COALESCE_HASH_PTR_PC:
                 numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
                 break;
+            case COALESCE_COARSE:
+            case COALESCE_HASH_COARSE:
             case COALESCE_COARSE_PTR_PC:
             case COALESCE_HASH_COARSE_PTR_PC:
+            case COALESCE_HASH_PTR_PRELOAD_PC:
                 numblocks = ((vertex_count * (WARP_SIZE/settings.coarse) + numthreads) / numthreads);
                 break;
             case COALESCE_HASH_HALF:
@@ -981,7 +1053,7 @@ int main(int argc, char *argv[]) {
         dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
         //dim3 blockDim(16, 80); //(numblocks+BLOCK_NUM)/BLOCK_NUM);
 
-        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
         }
         std::vector<Controller*> ctrls(settings.n_ctrls);
@@ -1001,7 +1073,7 @@ int main(int argc, char *argv[]) {
         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
 
 
-        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
@@ -1046,6 +1118,9 @@ int main(int argc, char *argv[]) {
                     case COALESCE_PTR_PC:
                         kernel_coalesce_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
                         break;
+                    case COALESCE_COARSE:
+                        kernel_coalesce_coarse<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.coarse);
+                        break;
                     case COALESCE_COARSE_PTR_PC:
                         kernel_coalesce_coarse_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.coarse);
                         break;
@@ -1067,8 +1142,10 @@ int main(int argc, char *argv[]) {
                         break;
                     case COALESCE_HASH_PTR_PC:
                         //kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
-                        //preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
+                        break;
+                    case COALESCE_HASH_COARSE:
+                        kernel_coalesce_hash_coarse<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.coarse, settings.stride);
                         break;
                     case COALESCE_HASH_COARSE_PTR_PC:
                         kernel_coalesce_hash_coarse_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.coarse, settings.stride);
@@ -1082,6 +1159,9 @@ int main(int argc, char *argv[]) {
                     case COALESCE_HASH_HALF_PTR_PC:
                         //printf("blockDim: %d %d numthreads: %d\n", blockDim.x,blockDim.y, numthreads);
                         kernel_coalesce_hash_half_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, 2, settings.stride);
+                        break;
+                    case COALESCE_HASH_PTR_PRELOAD_PC:
+                        preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         break;
                     default:
                         fprintf(stderr, "Invalid type\n");
@@ -1100,10 +1180,10 @@ int main(int argc, char *argv[]) {
 	            //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
-                if(mem == BAFS_DIRECT) {
-                         h_array->print_reset_stats();
-		         printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
-                }
+                //if(mem == BAFS_DIRECT) {
+                //         h_array->print_reset_stats();
+		        // printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
+                //}
 
                 if(type == BASELINE){
                     //cuda_err_chk(cudaMemcpy(vertexVisitCount_h.data(), vertexVisitCount_d, vertex_count*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
@@ -1234,7 +1314,7 @@ int main(int argc, char *argv[]) {
 
         free(vertexList_h);
 
-        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
             delete h_pc;
             delete h_range;
             delete h_array;
