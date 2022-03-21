@@ -69,7 +69,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 256
+#define N_SECTORS_PER_PAGE 8
 #define N_SECTORS_PER_STATE 8
 #define N_SECTOR_STATES ((N_SECTORS_PER_PAGE+8-1) / 8)
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
@@ -313,7 +313,7 @@ struct page_cache_t
 
             for (size_t i = 0; (i < np*pdt.how_many_in_one); i++)
             {
-                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
+                //std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 temp[i] = (uint64_t)this->pages_dma.get()->ioaddrs[i];
                 /*for (size_t j = 0; (j < how_many_in_one); j++)
                 {
@@ -1027,15 +1027,15 @@ struct array_d_t
         uint32_t ctrl;
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;
-        //if (lane == leader)
-        //{
+        if (lane == leader)
+        {
             page_cache_d_t *pc = d_ranges[r].cache;
             //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
             queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-        //}
+        }
 
         ctrl = 0;//__shfl_sync(mask, ctrl, leader);
-        /*queue = __shfl_sync(mask, queue, leader);
+        queue = __shfl_sync(mask, queue, leader);
 
         uint32_t active_cnt = __popc(mask);
         eq_mask = __match_any_sync(mask, gaddr);
@@ -1053,10 +1053,10 @@ struct array_d_t
             //printf("++tid: %llu\tbase: %llu\tpage:%llu\n", (unsigned long long) (blockIdx.x*blockDim.x+ threadIdx.x), (unsigned long long)base_master, (unsigned long long) page);
         }
         base_master = __shfl_sync(eq_mask, base_master, master);
-        __syncwarp(eq_mask);*/
-        base_master = d_ranges[r].acquire_page(page, 1, (uint32_t)write, queue);
+        __syncwarp(eq_mask);
+        //base_master = d_ranges[r].acquire_page(page, 1, (uint32_t)write, queue);
         //printf("tid: %llu\tafter base master\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
-        /*sector_mask = __match_any_sync(eq_mask, sector);
+        sector_mask = __match_any_sync(eq_mask, sector);
         
         //printf("tid %d\teq_mask for sector %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
         int sector_master = __ffs(sector_mask) - 1;
@@ -1070,8 +1070,8 @@ struct array_d_t
             sector_acquired_master = sector_acquired;
             //printf("++tid: %llu\tbase: %llx\tpage:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long)base_master, (unsigned long long) page);
         }
-        sector_acquired_master = __shfl_sync(sector_mask, sector_acquired_master, sector_master);*/
-        sector_acquired_master = d_ranges[r].acquire_sector(page, sector, 1, (uint32_t)write, ctrl, queue);
+        sector_acquired_master = __shfl_sync(sector_mask, sector_acquired_master, sector_master);
+        //sector_acquired_master = d_ranges[r].acquire_sector(page, sector, 1, (uint32_t)write, ctrl, queue);
     }
 
     __forceinline__
@@ -1166,12 +1166,12 @@ struct array_d_t
 
         if (r != -1)
         {
-/*#ifndef __CUDACC__
+#ifndef __CUDACC__
             uint32_t mask = 1;
 #else
             uint32_t mask = __activemask();
-#endif*/
-uint32_t mask = 0;
+#endif
+//uint32_t mask = 0;
 
             uint32_t eq_mask;
             uint32_t sector_mask;
@@ -1195,7 +1195,7 @@ uint32_t mask = 0;
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T *)(base_master + subindex))[0];
-            //__syncwarp(eq_mask);
+            __syncwarp(eq_mask);
             //printf("tid: %llu\tsubindex %llu\tsector_index %llu\treturn value %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)subindex, (unsigned long long)sector_index, (unsigned long long)ret);
             
             /*if (master == lane) {
@@ -1204,7 +1204,7 @@ uint32_t mask = 0;
                 d_ranges[r].release_page(page, count);
             }*/
             d_ranges[r].release_page(page);
-            //__syncwarp(mask);
+            __syncwarp(mask);
         }
         return ret;
     }
