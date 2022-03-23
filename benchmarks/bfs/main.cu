@@ -84,6 +84,11 @@ typedef enum {
     FRONTIER_COALESCE = 7,
     FRONTIER_BASELINE_PC = 8,
     FRONTIER_COALESCE_PC = 9,
+    BASELINE_PTR_PC = 10,
+    COALESCE_PTR_PC = 11,
+    COALESCE_CHUNK_PTR_PC = 12,
+    FRONTIER_BASELINE_PTR_PC = 13,
+    FRONTIER_COALESCE_PTR_PC = 14,
 } impl_type;
 
 typedef enum {
@@ -425,6 +430,36 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t
     }
 }
 
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    //array_d_t<uint64_t> d_array = *da;
+    if(warpIdx < vertex_count && label[warpIdx] == level) {
+        bam_ptr<uint64_t> ptr(da);
+        const uint64_t start = vertexList[warpIdx];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[warpIdx+1];
+
+        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+            if (i >= start) {
+                //const EdgeT next = edgeList[i];
+                //EdgeT next = da->seq_read(i);
+                EdgeT next = ptr[i];
+//                printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+
+                if(label[next] == MYINFINITY) {
+                //    if(level ==0)
+                //            printf("tid:%llu, level:%llu, next: %llu\n", tid, (unsigned long long)level, (unsigned long long)next);
+                    label[next] = level + 1;
+                    *changed = true;
+                }
+            }
+        }
+    }
+}
+
 
 __global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -663,7 +698,7 @@ int main(int argc, char *argv[]) {
                  break;
              case UVM_DIRECT:
              {
-                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
+             /*    cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size));
                  // printf("Address is %p   %p\n", edgeList_d, &edgeList_d[0]); 
                  high_resolution_clock::time_point ft1 = high_resolution_clock::now();
                  file.read((char*)edgeList_d, edge_size);
@@ -672,6 +707,40 @@ int main(int argc, char *argv[]) {
                  duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
                  std::cout<< "edge file read time: "<< time_span.count() <<std::endl;
                  cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                 break;
+             */
+
+                 file.close();
+                 for (uint64_t i = 0; i < vertex_count + 1; i++) {
+                     vertexList_h[i] += 2;
+                 }   
+                 int fd = open(edge_file.c_str(), O_RDONLY | O_DIRECT);
+                 FILE *file_temp = fdopen(fd, "rb");
+                 if ((file_temp == NULL) || (fd == -1)) {
+                     printf("edge file fd open failed\n");
+                     exit(1);
+                 }   
+                 uint64_t edge_count_4k_aligned = ((edge_count + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
+                 uint64_t edge_size_4k_aligned = edge_count_4k_aligned * sizeof(uint64_t);
+                 cuda_err_chk(cudaMallocManaged((void**)&edgeList_d, edge_size_4k_aligned));
+                 cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                 high_resolution_clock::time_point ft1 = high_resolution_clock::now();
+                       
+                 if (fread(edgeList_d, sizeof(uint64_t), edge_count_4k_aligned, file_temp) != edge_count + 2) {
+                     printf("edge file fread failed\n");
+                     exit(1);
+                 }   
+                 fclose(file_temp);                                                                                                              
+                 close(fd);
+                 high_resolution_clock::time_point ft2 = high_resolution_clock::now();
+                 duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
+                 std::cout<< "Edge file read time: "<< time_span.count() <<std::endl;
+                       
+                 file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
+                 if (!file.is_open()) {
+                     printf("edge file open failed\n");
+                     exit(1);
+                 }   
                  break;
              }
              case BAFS_DIRECT: 
@@ -705,6 +774,7 @@ int main(int argc, char *argv[]) {
                  break;
              case COALESCE:
              case COALESCE_PC:
+             case COALESCE_PTR_PC:
                  numblocks = ((vertex_count * WARP_SIZE + numthreads) / numthreads);
                  break;
              case COALESCE_CHUNK:
@@ -755,7 +825,7 @@ int main(int argc, char *argv[]) {
          uint32_t* curr_frontier_d;
          uint32_t* next_frontier_d;
          
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
@@ -810,6 +880,10 @@ int main(int argc, char *argv[]) {
                      case COALESCE_PC:
                          //printf("Calling Page cache enabled coalesce kernel\n");
                          kernel_coalesce_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
+                         break;
+                     case COALESCE_PTR_PC:
+                         //printf("Calling Page cache enabled coalesce kernel\n");
+                         kernel_coalesce_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
                          break;
                      case COALESCE_CHUNK_PC:
                          //printf("Calling Page cache enabled coalesce chunk kernel\n");
@@ -903,10 +977,10 @@ int main(int argc, char *argv[]) {
             
              src += vertex_count / total_run;
          }
-         printf("\nBFS SSD: %d \t PageSize: %d \t Average run time %f ms\n", settings.n_ctrls, settings.pageSize,avg_milliseconds / num_run);
+         printf("\nBFS Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
          
          free(vertexList_h);
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC)||(type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
             delete h_pc; 
             delete h_range; 
             delete h_array;

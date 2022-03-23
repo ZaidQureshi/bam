@@ -37,7 +37,7 @@ using error = std::runtime_error;
 using std::string;
 
  //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6"};
-const char* const ctrls_paths[] = {"/dev/libnvm0"};
+const char* const ctrls_paths[] = {"/dev/libnvm1"};
 
 __global__
 void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t n_pages, uint64_t page_size, int* counter) {
@@ -78,11 +78,14 @@ __global__
 void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t stride = gridDim.x*blockDim.x;
+    printf("stride %llu\n", (unsigned long long)stride);
     bam_ptr<uint64_t> ptr(dr);
     if (tid < n_reqs) {
         
         //device_buffer[tid]= (*dr)[(tid)];
         device_buffer[tid]= ptr[tid];
+        device_buffer[stride + tid]= ptr[tid];
 
     }
     __syncthreads();
@@ -214,7 +217,7 @@ int main(int argc, char** argv) {
                 fflush(stderr);
                 fflush(stdout);
 
-                    uint64_t cpysize = total_cache_size; 
+                    uint64_t cpysize = 4*total_cache_size; 
 
                     cuda_err_chk(cudaMemset(h_pc.pdt.base_addr, 0, total_cache_size));
 
@@ -248,9 +251,17 @@ int main(int argc, char** argv) {
                     std::cout << "Read Completed  Read Time:" <<relapsed << std::endl;
 
                     int errorcnt=0;
+                    
                     for (uint64_t i=0; i<n_threads; i++) {
                         //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
                         if (i != tmprbuff[(size_t)i]) {
+                            errorcnt++;
+                            std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
+                        }
+                    }
+                    for (uint64_t i=n_threads; i<n_threads*2; i++) {
+                        //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
+                        if (i-n_threads != tmprbuff[(size_t)i]) {
                             errorcnt++;
                             std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }

@@ -69,7 +69,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 8
+#define N_SECTORS_PER_PAGE 256
 #define N_SECTORS_PER_STATE 8
 #define N_SECTOR_STATES ((N_SECTORS_PER_PAGE+8-1) / 8)
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
@@ -85,8 +85,8 @@ struct range_t;
 typedef struct __align__(32) {
     simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
     simt::atomic<uint32_t, simt::thread_scope_device> sector_states[N_SECTOR_STATES];                                                       //
-    uint32_t offset;
-    uint8_t pad[32-8-4-4*N_SECTOR_STATES];
+    uint64_t offset;
+    //uint8_t pad[32-8-8-4*N_SECTOR_STATES];
 
 } __attribute__((aligned (32))) data_page_t;
 
@@ -318,7 +318,7 @@ struct page_cache_t
 
             for (size_t i = 0; (i < np*pdt.how_many_in_one); i++)
             {
-                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
+                //std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 temp[i] = (uint64_t)this->pages_dma.get()->ioaddrs[i];
                 //std::cout << std::dec << "\ti: " << i << "\tj: " << j << "\tindex: "<< (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps) << std::dec << std::endl;
                 /*for (size_t j = 0; (j < how_many_in_one); j++)
@@ -1049,16 +1049,16 @@ struct array_d_t
         //printf("tid %d\t in coalesce_page\n", (blockDim.x*blockIdx.x+threadIdx.x));
         uint32_t ctrl;
         uint32_t queue;
-        //uint32_t leader = __ffs(mask) - 1;
+        uint32_t leader = __ffs(mask) - 1;
         auto r_ = d_ranges+r;
-        //if (lane == leader)
-        //{
+        if (lane == leader)
+        {
             page_cache_d_t *pc = d_ranges[r].cache;
             ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
             queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-        //}
+        }
 
-        /*ctrl = __shfl_sync(mask, ctrl, leader);
+        ctrl = __shfl_sync(mask, ctrl, leader);
         queue = __shfl_sync(mask, queue, leader);
 
         uint32_t active_cnt = __popc(mask);
@@ -1083,11 +1083,11 @@ struct array_d_t
         eq_mask &= __match_any_sync(eq_mask, sector);
         //printf("tid %d\teq_mask for sector %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
         master = __ffs(eq_mask) - 1;
-        dirty = __any_sync(eq_mask, write);*/
+        dirty = __any_sync(eq_mask, write);
 
-        base_master = r_->acquire_page(page, 1, write, queue);
+        //base_master = r_->acquire_page(page, 1, write, queue);
 
-        /*bool sector_acquired;
+        bool sector_acquired;
         count = __popc(eq_mask);
         if (master == lane)
         {
@@ -1095,8 +1095,8 @@ struct array_d_t
             sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
-        sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);*/
-        sector_acquired_master = r_->acquire_sector(page, sector, 1, write, ctrl, queue);
+        sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
+        //sector_acquired_master = r_->acquire_sector(page, sector, 1, write, ctrl, queue);
     }
 
     __forceinline__
@@ -1177,12 +1177,12 @@ struct array_d_t
         page_ = nullptr;
         bamptr_sector = 0;
         if (r != -1) {
-/*#ifndef __CUDACC__
+#ifndef __CUDACC__
             uint32_t mask = 1;
 #else
             uint32_t mask = __activemask();
-#endif*/
-            uint32_t mask = 0;
+#endif
+            //uint32_t mask = 0;
             uint32_t eq_mask;
             int master;
             uint64_t base_master;
@@ -1196,13 +1196,13 @@ struct array_d_t
             coalesce_page_array(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
             page_ = &(r_->page_states[base_master]);
             bamptr_sector = sector_index;
-
-            ret = (void*)r_->get_cache_sector_addr(base_master, sector_index);
+            
+            ret = (void*)(base_master + (sector_index*r_->n_elems_per_sector*sizeof(T)));//r_->get_cache_sector_addr(base_master, sector_index);
             start = (r_->n_elems_per_page * page) + (sector_index * r_->n_elems_per_sector);
             end = start +r_->n_elems_per_sector;// * (page+1);
-            printf("tid: %llu\tpage %llu\tsector %llu\tret %16x\tstart %llu\tend %llu\n", (unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)page, (unsigned long long)bamptr_sector, ret, (unsigned long long)start, (unsigned long long)end);
+            //printf("tid: %llu\tpage %llu\tsector %llu\tret %32x\tstart %llu\tend %llu\tbasemaster %32x\n", (unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)page, (unsigned long long)bamptr_sector, ret, (unsigned long long)start, (unsigned long long)end, base_master);
             //ret.page = page;
-            //__syncwarp(mask);
+            __syncwarp(mask);
         }
         return ret;
     }
@@ -1470,6 +1470,65 @@ struct array_d_t
     }
 };
 
+template<typename T>
+struct bam_ptr {
+    data_page_t* page = nullptr;
+    array_d_t<T>* array = nullptr;
+    size_t sector_n = 0;
+    size_t start = 0;
+    size_t end = 0;
+    int64_t range_id = -1;
+    T* addr = nullptr;
+
+    __host__ __device__
+    bam_ptr(array_d_t<T>* a) { init(a); }
+
+    __host__ __device__
+    ~bam_ptr() { fini(); }
+
+    __host__ __device__
+    void init(array_d_t<T>* a) { array = a; }
+
+    __host__ __device__
+    void fini(void) {
+        if (page) {
+            array->release_page(page, range_id, start);
+            page = nullptr;
+        }
+
+    }
+
+    __host__ __device__
+    void update_page(const size_t i) {
+        ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+        fini(); //destructor
+        addr = (T*) array->acquire_page_array(i, page, start, end, range_id, sector_n);
+//        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+    }
+
+    __host__ __device__
+    T operator[](const size_t i) const {
+        if ((i < start) || (i >= end)) {
+            //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
+            update_page(i);
+        }
+        
+        return addr[i-start];
+    }
+
+    __host__ __device__
+    T& operator[](const size_t i) {
+        if ((i < start) || (i >= end)) {
+            //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
+            update_page(i);
+        }
+        //printf("tid %llu\ti %llu\taddr %16x\tvalue %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i, &addr[i-start], addr[i-start]);
+        return addr[i-start];
+    }
+};
+
 template <typename T>
 struct array_t
 {
@@ -1528,61 +1587,6 @@ struct array_t
     }
 };
 
-
-template<typename T>
-struct bam_ptr {
-    data_page_t* page = nullptr;
-    array_d_t<T>* array = nullptr;
-    size_t sector_n = 0;
-    size_t start = 0;
-    size_t end = 0;
-    int64_t range_id = -1;
-    T* addr = nullptr;
-
-    __host__ __device__
-    bam_ptr(array_d_t<T>* a) { init(a); }
-
-    __host__ __device__
-    ~bam_ptr() { fini(); }
-
-    __host__ __device__
-    void init(array_d_t<T>* a) { array = a; }
-
-    __host__ __device__
-    void fini(void) {
-        if (page) {
-            array->release_page(page, range_id, start);
-            page = nullptr;
-        }
-
-    }
-
-    __host__ __device__
-    void update_page(const size_t i) {
-        ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
-//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
-        fini(); //destructor
-        addr = (T*) array->acquire_page_array(i, page, start, end, range_id, sector_n);
-//        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
-//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
-    }
-
-    __host__ __device__
-    T operator[](const size_t i) const {
-        if ((i < start) || (i >= end)) {
-            update_page(i);
-        }
-        return addr[i-start];
-    }
-
-    __host__ __device__
-    T& operator[](const size_t i) {
-        if ((i < start) || (i >= end)) {
-            update_page(i);
-        }
-        return addr[i-start];
-    }
-};
 
 __forceinline__
     __device__
