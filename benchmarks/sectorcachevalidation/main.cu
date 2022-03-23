@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
                 fflush(stderr);
                 fflush(stdout);
 
-                    uint64_t cpysize = 8*total_cache_size; 
+                    uint64_t cpysize = total_cache_size; 
 
                     cuda_err_chk(cudaMemset(h_pc.pdt.base_addr, 0, total_cache_size));
 
