@@ -69,7 +69,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 256
+#define N_SECTORS_PER_PAGE 8
 #define N_SECTORS_PER_STATE 8
 #define N_SECTOR_STATES ((N_SECTORS_PER_PAGE+8-1) / 8)
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
@@ -1168,7 +1168,7 @@ struct array_d_t
 
         __forceinline__
     __device__
-    void* acquire_page_array(const size_t i, data_page_t*& page_, size_t& start, size_t& end, int64_t& r, size_t& bamptr_sector) const {
+    void* acquire_page_array(const size_t i, data_page_t*& page_, size_t& start, size_t& end, size_t& sector_start, size_t& sector_end, int64_t& r, size_t& bamptr_sector, uint64_t& base_master) const {
         uint32_t lane = lane_id();
         r = find_range(i);
         auto r_ = d_ranges+r;
@@ -1185,7 +1185,7 @@ struct array_d_t
             //uint32_t mask = 0;
             uint32_t eq_mask;
             int master;
-            uint64_t base_master;
+            //uint64_t base_master;
             bool sector_acquired_master;
             uint32_t count;
             uint64_t page = r_->get_page(i);
@@ -1198,10 +1198,116 @@ struct array_d_t
             bamptr_sector = sector_index;
             
             ret = (void*)(base_master + (sector_index*r_->n_elems_per_sector*sizeof(T)));//r_->get_cache_sector_addr(base_master, sector_index);
-            start = (r_->n_elems_per_page * page) + (sector_index * r_->n_elems_per_sector);
-            end = start +r_->n_elems_per_sector;// * (page+1);
-            //printf("tid: %llu\tpage %llu\tsector %llu\tret %32x\tstart %llu\tend %llu\tbasemaster %32x\n", (unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)page, (unsigned long long)bamptr_sector, ret, (unsigned long long)start, (unsigned long long)end, base_master);
+            start = (r_->n_elems_per_page * page);
+            end = start +r_->n_elems_per_page;
+            sector_start = (r_->n_elems_per_page * page) + (sector_index * r_->n_elems_per_sector);
+            sector_end = sector_start +r_->n_elems_per_sector;// * (page+1);
+            //printf("tid: %llu\tpage %llu\tsector %llu\tret %32x\tstart %llu\tend %llu\tsector_start %llu\tsector_end %llu\tbasemaster %32x\n", (unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)page, (unsigned long long)bamptr_sector, ret, (unsigned long long)start, (unsigned long long)end, (unsigned long long)sector_start, (unsigned long long)sector_end, base_master);
             //ret.page = page;
+            __syncwarp(mask);
+        }
+        return ret;
+    }
+
+    __forceinline__
+    __device__
+    void* acquire_sector_array(const size_t i, data_page_t*& page_, size_t start, size_t end, size_t& sector_start, size_t& sector_end, int64_t r, size_t& bamptr_sector, uint64_t base_master) const {
+        uint32_t lane = lane_id();
+        auto r_ = d_ranges+r;
+
+        void* ret = nullptr;
+        bamptr_sector = 0;
+        if (r != -1) {
+#ifndef __CUDACC__
+            uint32_t mask = 1;
+#else
+            uint32_t mask = __activemask();
+#endif
+            //uint32_t mask = 0;
+            uint32_t eq_mask;
+            int master;
+            //uint64_t base_master;
+            bool sector_acquired_master;
+            uint32_t count;
+            uint64_t page = r_->get_page(i);
+            uint64_t subindex = r_->get_subindex(i);
+            uint64_t gaddr = r_->get_global_address(page);
+            size_t sector_index = r_->get_sectorindex(i);
+
+            uint32_t ctrl;
+            uint32_t queue;
+            uint32_t leader = __ffs(mask) - 1;
+            if (lane == leader)
+            {
+                page_cache_d_t *pc = d_ranges[r].cache;
+                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+            }
+
+            ctrl = __shfl_sync(mask, ctrl, leader);
+            queue = __shfl_sync(mask, queue, leader);
+
+            eq_mask = __match_any_sync(mask, gaddr);
+            //eq_mask &= __match_any_sync(mask, (uint64_t)this);
+            eq_mask &= __match_any_sync(eq_mask, sector_index);
+            //printf("tid %d\teq_mask for sector %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
+            master = __ffs(eq_mask) - 1;
+            uint32_t dirty = 0;//__any_sync(eq_mask, write);
+
+            bool sector_acquired;
+            count = __popc(eq_mask);
+
+            /*uint64_t expected_state = VALID;
+            uint32_t new_state = VALID;
+            uint64_t index = page;
+            if (master == lane)
+            {
+                bool fail = true;
+                do
+                {
+                    bool pass = false;
+                    expected_state = r_->page_states[index].state.load(simt::memory_order_acquire);
+                    switch (expected_state)
+                    {
+                        case VALID:
+                        break;
+                        case BUSY:
+                        break;
+                        case INVALID:
+                        break;
+                        default:
+                            new_state = expected_state + count;
+                            if (dirty)
+                                new_state |= VALID_DIRTY;
+                            pass = r_->page_states[index].state.compare_exchange_weak(expected_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
+                            if (pass)
+                            {
+                                sector_acquired = d_ranges[r].acquire_sector(page, sector_index, count, dirty, ctrl, queue); 
+                                sector_acquired_master = sector_acquired;
+                                //printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
+                            }
+                            fail = false;
+                        break;
+                    }
+                } while (fail);
+            }    */
+
+            if (master == lane)
+            {
+                sector_acquired = d_ranges[r].acquire_sector(page, sector_index, count, dirty, ctrl, queue); 
+                sector_acquired_master = sector_acquired;
+            }
+            
+            sector_acquired_master = __shfl_sync(eq_mask, sector_acquired_master, master);
+
+            bamptr_sector = sector_index;
+            
+            ret = (void*)(base_master + (sector_index*r_->n_elems_per_sector*sizeof(T)));//r_->get_cache_sector_addr(base_master, sector_index);
+            sector_start = (r_->n_elems_per_page * page) + (sector_index * r_->n_elems_per_sector);
+            sector_end = sector_start +r_->n_elems_per_sector;// * (page+1);
+            //printf("tid: %llu\tpage %llu\tsector %llu\tret %32x\tsector_start %llu\tsector_end %llu\tbasemaster %32x\n", (unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)page, (unsigned long long)bamptr_sector, ret, (unsigned long long)sector_start, (unsigned long long)sector_end, base_master);
+            //ret.page = page;
+            
             __syncwarp(mask);
         }
         return ret;
@@ -1477,8 +1583,11 @@ struct bam_ptr {
     size_t sector_n = 0;
     size_t start = 0;
     size_t end = 0;
+    size_t sector_start = 0;
+    size_t sector_end = 0;
     int64_t range_id = -1;
     T* addr = nullptr;
+    uint64_t base_master;
 
     __host__ __device__
     bam_ptr(array_d_t<T>* a) { init(a); }
@@ -1503,7 +1612,17 @@ struct bam_ptr {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
         fini(); //destructor
-        addr = (T*) array->acquire_page_array(i, page, start, end, range_id, sector_n);
+        addr = (T*) array->acquire_page_array(i, page, start, end, sector_start, sector_end, range_id, sector_n, base_master);
+//        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+    }
+
+    __host__ __device__
+    void update_sector(const size_t i) {
+        ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
+//            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
+        //fini(); //destructor
+        addr = (T*) array->acquire_sector_array(i, page, start, end, sector_start, sector_end, range_id, sector_n, base_master);
 //        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
@@ -1514,18 +1633,26 @@ struct bam_ptr {
             //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
             update_page(i);
         }
+        else if ((i < sector_start) || (i>= sector_end)) {
+            //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
+            update_sector(i);
+        }
         
-        return addr[i-start];
+        return addr[i-sector_start];
     }
 
     __host__ __device__
     T& operator[](const size_t i) {
         if ((i < start) || (i >= end)) {
-            //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
+            //printf("tid %llu\ti %llu updating page\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
             update_page(i);
         }
-        //printf("tid %llu\ti %llu\taddr %16x\tvalue %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i, &addr[i-start], addr[i-start]);
-        return addr[i-start];
+        else if ((i < sector_start) || (i >= sector_end)) {
+            //printf("tid %llu\ti %llu updating sector\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
+            update_sector(i);
+        }
+        //printf("tid %llu\ti %llu\taddr %16x\tvalue %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i, &addr[i-sector_start], addr[i-sector_start]);
+        return addr[i-sector_start];
     }
 };
 

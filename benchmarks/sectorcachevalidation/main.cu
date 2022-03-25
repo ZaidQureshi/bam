@@ -79,13 +79,13 @@ void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uin
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = gridDim.x*blockDim.x;
-    printf("stride %llu\n", (unsigned long long)stride);
+    //printf("stride %llu\n", (unsigned long long)stride);
     bam_ptr<uint64_t> ptr(dr);
     if (tid < n_reqs) {
         
         //device_buffer[tid]= (*dr)[(tid)];
         device_buffer[tid]= ptr[tid];
-        device_buffer[stride + tid]= ptr[tid];
+        //device_buffer[stride + tid]= ptr[tid];
 
     }
     __syncthreads();
@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
                 fflush(stderr);
                 fflush(stdout);
 
-                    uint64_t cpysize = 4*total_cache_size; 
+                    uint64_t cpysize = n_threads*sizeof(TYPE); 
 
                     cuda_err_chk(cudaMemset(h_pc.pdt.base_addr, 0, total_cache_size));
 
@@ -259,13 +259,13 @@ int main(int argc, char** argv) {
                             std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }
                     }
-                    for (uint64_t i=n_threads; i<n_threads*2; i++) {
+                    /*for (uint64_t i=n_threads; i<n_threads*2; i++) {
                         //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
                         if (i-n_threads != tmprbuff[(size_t)i]) {
                             errorcnt++;
                             std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }
-                    }
+                    }*/
                     std::cout << "Total error count : " << errorcnt <<std::endl; 
 
 
