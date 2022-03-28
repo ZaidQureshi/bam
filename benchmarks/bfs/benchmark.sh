@@ -1,18 +1,64 @@
 #!/usr/bin/env bash
-set -eux
+set -x
+
+if [ $# -ne 3 ]
+then
+	echo Usage $0 numssd gpuid tbsize && exit 1
+fi
 
 
-P=4096
-R=1
-B=1024
-G=2
-for C in 1 2 3 4 5 6 7
+#Initialize set of files are taken from EMOGI and graphBIG.
+
+NUMDATASET=6
+declare -a GraphFileArray=(
+"/home/vsm2/bafsdata/GAP-kron.bel"
+"/home/vsm2/bafsdata/GAP-urand.bel"
+"/home/vsm2/bafsdata/com-Friendster.bel"
+"/home/vsm2/bafsdata/MOLIERE_2016.bel"
+"/home/vsm2/bafsdata/uk-2007-05.bel"
+"/home/vsm2/bafsdata/sk-2005.bel"
+)
+declare -a GraphFileOffset=(
+"$((1024*1024*1024*0))"
+"$((1024*1024*1024*64))"
+"$((1024*1024*1024*160))"
+"$((1024*1024*1024*224))"
+"$((1024*1024*1024*320))"
+"$((1024*1024*1024*384))"
+)
+
+
+declare -a GraphRootNode=(
+"58720242"
+"58720256"
+"28703654"
+"13229860"
+"46329738"
+"37977096"
+)
+
+
+
+
+CTRL=$1
+MEMTYPE=6  #BAFS_DIRECT
+GPU=$2
+TB=128
+
+for ((gfid=0; gfid<NUMDATASET; gfid++))
 do
-    echo "++++++++++++++++++ $C Controllers ++++++++++++++++++"
-    for T in 1024 2048 4096 8192 16384 32768 65536 131072 262144
+    echo "++++++++++++++++++ ${GraphFileArray[gfid]} located at offset ${GraphFileOffset[gfid]} ++++++++++++++++++"
+    for IMPLTYPE in 4 #9 #3 4    ##baseline, coalesced, frontier, frontier coaslesced.
     do
-        echo "------------------ $T Threads ------------------"
-        ../../build/bin/nvm-cuda-bench --threads=$T --blk_size=$B --reqs=$R --pages=$T --queue_depth=1024 --num_queues=128 --page_size=$P --n_ctrls=$C --gpu=$G | grep "IO"
+        echo "++++++++++++++++++ $IMPLTYPE Type ++++++++++++++++++"
+        for ((C=1; C<=$CTRL; C++))
+        do
+            echo "++++++++++++++++++ $C Controller ++++++++++++++++++"
+            for P in 131072
+            do
+                echo "++++++++++++++++++ $P Page size ++++++++++++++++++"
+                ./bin/nvm-bfs-bench -f ${GraphFileArray[gfid]} -l ${GraphFileOffset[gfid]} --impl_type $IMPLTYPE --memalloc $MEMTYPE --src ${GraphRootNode[gfid]} --n_ctrls $C -p $P --gpu $GPU --threads $TB
+            done
+        done
     done
-
 done
