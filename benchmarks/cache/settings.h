@@ -55,8 +55,8 @@ struct Settings
     size_t numQueues;
     size_t pageSize;
     uint64_t numElems;
-    bool random;
-    bool trueRandom;
+    uint32_t random;
+    uint64_t stride;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -367,7 +367,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'c', OptionPtr(new Option<uint64_t>(controllerId, "fdid", "ctrl", "NVM controller device identifier"))},
         {'f', OptionPtr(new Option<uint64_t>(cudaDeviceId, "fdid", "fdid", "CUDA device FDID"))},
         {'a', OptionPtr(new Option<uint32_t>(adapter, "number", "adapter", "DIS adapter number", "0"))},
-        {'S', OptionPtr(new Option<uint32_t>(segmentId, "offset", "segment", "DIS segment identifier offset", "0"))},
+        //{'S', OptionPtr(new Option<uint32_t>(segmentId, "offset", "segment", "DIS segment identifier offset", "0"))},
 #else
         //{'c', OptionPtr(new Option<const char*>(controllerPath, "path", "ctrl", "NVM controller device path"))},
 #endif
@@ -384,11 +384,11 @@ void Settings::parseArguments(int argc, char** argv)
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth per queue", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
-        {'r', OptionPtr(new Option<bool>(random, "bool", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "true"))},
+        {'r', OptionPtr(new Option<uint32_t>(random, "uint32_t", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "1"))},
+        {'S', OptionPtr(new Option<uint64_t>(stride, "number", "STRIDE", "Hashing stride factor for cc. It is calculated as P = stride. Assumes power of 2", "1"))},
 
         {'G', OptionPtr(new Option<uint32_t>(gran, "choice", "gran", "specify granularity: 0->WARP; 1->BLK", "0"))},
         {'T', OptionPtr(new Option<uint32_t>(type, "choice", "type", "specify type: 0->ORIG; 1->COAL", "0"))},
-        {'R', OptionPtr(new Option<bool>(trueRandom, "bool", "true random", "if true the random assignment is per elem", "false"))},
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
@@ -484,10 +484,10 @@ Settings::Settings()
     numQueues = 1;
     pageSize = 4096;
     numElems = 2147483648;
-    random = true;
+    random = 1;
+    stride = 1;
     gran = WARP;
     type = ORIG;
-    trueRandom = false;
 }
 
 

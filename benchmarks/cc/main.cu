@@ -53,8 +53,8 @@
 using error = std::runtime_error;
 using std::string;
 //const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro1", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
-//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
+//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
 //const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
 //const char* const ctrls_paths[] = {"/dev/libnvmpro1"};
 
@@ -326,6 +326,80 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *nex
         }
     }
 }
+
+/*
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
+        bam_ptr<uint64_t> ptr(da);
+        const uint64_t start = vertexList[warpIdx];
+        const uint64_t end = vertexList[warpIdx+1];
+
+        for(uint64_t i = start ; i < end; i += WARP_SIZE) {
+                EdgeT next = ptr[i];
+                cc_compute(warpIdx, comp, next, next_visit, changed);
+        }
+    }
+}
+
+
+//TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
+//TODO: make it templated. 
+__global__ __launch_bounds__(128,16)
+void kernel_optimal_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t clsize){
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+
+    const uint64_t clstart = warpIdx*clsize/sizeof(uint64_t); 
+    const uint64_t clend   = (warpIdx+1)*clsize/sizeof(uint64_t); 
+    //start vertex
+    uint64_t cur_vertexid = first_vertex[warpIdx]; 
+
+    //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
+    uint64_t start = clstart; 
+    uint64_t end   = vertexList[cur_vertexid+1];
+    bool stop      = false;
+    bam_ptr<uint64_t> ptr(da);
+
+    while(!stop){
+        if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+            //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
+            if(end >= clend){
+                end  = clend;
+                stop = true;
+            }
+
+            for(uint64_t i = start; i < end; i += WARP_SIZE){
+                EdgeT next = ptr[i];
+                cc_compute(cur_vertexid, comp, next , next_visit, changed); 
+            }
+            
+            //this implies there are more vertices to compute in the cacheline. So repeat the loop.
+            if(end < clend){
+                cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                if(cur_vertexid < vertex_count){
+                    start        = vertexList[cur_vertexid]; 
+                    end          = vertexList[cur_vertexid+1]; 
+                }
+                else {
+                    stop = true; 
+                }
+            }
+        }
+    }
+}
+
+*/
+
+
+
+
+
+
 
 __global__ __launch_bounds__(128,16)
 void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
@@ -1083,7 +1157,7 @@ int main(int argc, char *argv[]) {
             fflush(stdout);
         }
 
-        for(int titr=0; titr<1; titr+=1){
+        for(int titr=0; titr<2; titr+=1){
             iter = 0;
             cuda_err_chk(cudaEventRecord(start, 0));
             // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
