@@ -1214,8 +1214,8 @@ struct array_d_t {
         auto r_ = d_ranges+r;
         if (lane == leader) {
             page_cache_d_t* pc = &(r_->cache);
-            //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-            queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+            ctrl = 0;//pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+            queue = get_smid() % (pc->d_ctrls[0]->n_qps);
         }
 
         ctrl = 0; //__shfl_sync(mask, ctrl, leader);
@@ -1329,8 +1329,8 @@ struct array_d_t {
             uint64_t subindex = r_->get_subindex(i);
             uint64_t gaddr = r_->get_global_address(page);
             page_cache_d_t* pc = &(r_->cache);
-            //uint32_t ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-            uint32_t queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+            uint32_t ctrl = 0;//pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+            uint32_t queue = get_smid() % (pc->d_ctrls[0]->n_qps);
             uint64_t base_master = r_->acquire_page(page, 1, false, ctrl, queue);
             //coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
 
