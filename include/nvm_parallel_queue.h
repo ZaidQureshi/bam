@@ -230,8 +230,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
     while(cont) {
         cont = sq->tail_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
-//             bool new_cont = sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
-//             if(!new_cont) {
+             bool new_cont = sq->tail_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
+             if(!new_cont) {
                 uint32_t cur_tail = sq->tail.load(simt::memory_order_acquire);
 
                 uint32_t tail_move_count = move_tail(sq, cur_tail);
@@ -246,8 +246,8 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     sq->tail.store(new_tail, simt::memory_order_release);
                     //cont = false;
                 }
-//                sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
-//            }
+                sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
+            }
         }
     }
 
@@ -265,8 +265,8 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
     while (cont) {
         cont = sq->head_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
-//            bool new_cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
-//            if (!new_cont){
+            bool new_cont = sq->head_lock.exchange(LOCKED, simt::memory_order_acq_rel) == LOCKED;
+            if (!new_cont){
                 uint32_t cur_head = sq->head.load(simt::memory_order_acquire);;
 
                 uint32_t head_move_count = move_head_sq(sq, cur_head);
@@ -285,8 +285,8 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 /*     //printf("sq new_head: %llu\n", (unsigned long long) new_head); */
                 /*     sq->head.store(new_head, simt::memory_order_release); */
                 /* } */
- //               sq->head_lock.store(UNLOCKED, simt::memory_order_release);
- //           }
+                sq->head_lock.store(UNLOCKED, simt::memory_order_release);
+            }
         }
     }
 
@@ -345,8 +345,8 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
     while (cont) {
         cont = cq->head_mark[pos].val.load(simt::memory_order_acquire) == LOCKED;
         if (cont) {
-//            bool new_cont = cq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
-//            if (!new_cont) {
+            bool new_cont = cq->head_lock.fetch_or(LOCKED, simt::memory_order_acq_rel) == LOCKED;
+            if (!new_cont) {
                 uint32_t cur_head = cq->head.load(simt::memory_order_acquire);;
 
                 uint32_t head_move_count = move_head_cq(cq, cur_head, sq);
@@ -363,8 +363,8 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
                     cq->head.store(new_head, simt::memory_order_release);
                     //cont = false;
                 }
-//                cq->head_lock.store(UNLOCKED, simt::memory_order_release);
-//            }
+                cq->head_lock.store(UNLOCKED, simt::memory_order_release);
+            }
         }
     }
 	uint64_t j = 0;
