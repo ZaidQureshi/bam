@@ -253,9 +253,13 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                 }
                 sq->tail_lock.store(UNLOCKED, simt::memory_order_release);
              }
-             if (ns < 256) {
-                 ns *= 2;
-             }
+
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+        __nanosleep(ns);
+        if (ns < 256) {
+            ns *= 2;
+        }
+#endif
         }
     }
 
@@ -296,9 +300,12 @@ void sq_dequeue(nvm_queue_t* sq, uint16_t pos) {
                 /* } */
                 sq->head_lock.store(UNLOCKED, simt::memory_order_release);
             }
-            if (ns < 256) {
-                ns *= 2;
-            }
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+        __nanosleep(ns);
+        if (ns < 256) {
+            ns *= 2;
+        }
+#endif
         }
 
     }
@@ -379,9 +386,12 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
                 }
                 cq->head_lock.store(UNLOCKED, simt::memory_order_release);
             }
-            if (ns < 256) {
-                ns *= 2;
-            }
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+        __nanosleep(ns);
+        if (ns < 256) {
+            ns *= 2;
+        }
+#endif
         }
     }
 	uint64_t j = 0;
@@ -410,9 +420,12 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
 	}*/
         j++;
         new_head = cq->head.load(simt::memory_order_acquire);
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+        __nanosleep(ns);
         if (ns < 256) {
             ns *= 2;
         }
+#endif
     } while(true);
 
 
