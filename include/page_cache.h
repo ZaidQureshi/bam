@@ -998,6 +998,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     //access_cnt.fetch_add(count, simt::memory_order_relaxed);
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
     bool fail = true;
+    unsigned int ns = 8;
     //bool miss = false;
     //T ret;
     do {
@@ -1094,6 +1095,14 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                 //    new_state = USE;
                 //}
                 break;
+        }
+        if (fail) {
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+            __nanosleep(ns);
+            if (ns < 256) {
+                ns *= 2;
+            }
+#endif
         }
 
     } while (fail);
@@ -1662,6 +1671,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
     uint64_t count = 0;
     uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
     uint32_t page = 0;
+    unsigned int ns = 8;
     do {
 
 //	if (++count %100000 == 0)
@@ -1793,7 +1803,15 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
         }
 
         count++;
+//         if (fail) {
+// #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+//             __nanosleep(ns);
+//             if (ns < 256) {
+//                 ns *= 2;
+//             }
+// #endif
 
+//         }
 
     } while(fail);
     return page;
