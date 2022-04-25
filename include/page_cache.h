@@ -1024,6 +1024,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     unsigned int ns = 8;
     //bool miss = false;
     //T ret;
+    uint64_t j = 0;
     uint32_t read_state,st,st_new;
 
     do {
@@ -1035,7 +1036,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         //invalid
         case NV_NB:
             st_new = pages[index].state.fetch_or(BUSY, simt::memory_order_acquire) >> (CNT_SHIFT+1);
-            if (st == st_new) {
+            if ((st_new & BUSY) == 0) {
                 uint32_t page_trans = cache.find_slot(index, range_id, queue);
                 //fill in
                 //uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1098,6 +1099,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
          
         }
         if (fail) {
+            if ((++j % 100000000) == 0)
+                printf("failed to acquire_page: j: %llu\tpage: %llu\tread_state: %llx\tst: %llx\tnew_st: %llx\n", (unsigned long long)j, (unsigned long long) index, (unsigned long long)read_state, (unsigned long long)st, (unsigned long long)new_st);
 #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
             __nanosleep(ns);
             if (ns < 256) {
