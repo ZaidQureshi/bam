@@ -63,6 +63,7 @@ enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 #define VALID_MASK 0x7
 #define BUSY_MASK 0xb
 #define DISABLE_BUSY_ENABLE_VALID 0xc0000000U
+#define DISABLE_BUSY_MASK 0xbfffffffU
 #define NV_NB 0x00U
 #define NV_B 0x01U
 #define V_NB 0x02U
