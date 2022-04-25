@@ -54,19 +54,19 @@ enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 #define VALID_DIRTY (1ULL << 31)
 #define USE_DIRTY (VALID_DIRTY | USE)
 
-#define INVALID 0x0000000000000000ULL
-#define VALID 0x8000000000000000ULL
-#define BUSY 0x4000000000000000ULL
-#define DIRTY 0x2000000000000000ULL
-#define CNT_SHIFT (61ULL)
-#define CNT_MASK 0x1fffffffffffffffULL
+#define INVALID 0x00000000U
+#define VALID   0x80000000U
+#define BUSY    0x40000000U
+#define DIRTY   0x20000000U
+#define CNT_SHIFT (29ULL)
+#define CNT_MASK 0x1fffffffU
 #define VALID_MASK 0x7
 #define BUSY_MASK 0xb
-#define DISABLE_BUSY_MASK 0xbfffffffffffffffULL
-#define NV_NB 0x00ULL
-#define NV_B 0x01ULL
-#define V_NB 0x02ULL
-#define V_B 0x03ULL
+#define DISABLE_BUSY_ENABLE_VALID 0xc0000000U
+#define NV_NB 0x00U
+#define NV_B 0x01U
+#define V_NB 0x02U
+#define V_B 0x03U
 
 
 struct page_cache_t;
@@ -93,10 +93,10 @@ struct range_d_t;
   };
 */
 typedef struct __align__(32) {
-    simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
+    simt::atomic<uint32_t, simt::thread_scope_device>  state; //state
                                                               //
     uint32_t offset;
-    uint8_t pad[32-8-4];
+    //uint8_t pad[32-4-4];
 
 } __attribute__((aligned (32))) data_page_t;
 
@@ -1068,7 +1068,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                     pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
                 //new_state |= DIRTY;
                 //pages[index].state.fetch_or(new_state, simt::memory_order_relaxed);
-                pages[index].state.fetch_xor(0xc000000000000000ULL, simt::memory_order_release);
+                pages[index].state.fetch_xor(DISABLE_BUSY_ENABLE_VALID, simt::memory_order_release);
                 return page_trans;
 
                 fail = false;
