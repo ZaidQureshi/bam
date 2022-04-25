@@ -1077,7 +1077,6 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
 
             break;
             //valid
-        case V_B:
         case V_NB:
             if (write && ((read_state & DIRTY) == 0))
                 pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
@@ -1094,7 +1093,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
 
             break;
         case NV_B:
-//        case V_B:
+        case V_B:
         default:
             break;
 
