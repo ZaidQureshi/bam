@@ -86,11 +86,11 @@ template <typename T>
 struct range_d_t;
 
 /*struct data_page_t {
-    simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
-                                                              //
-    uint32_t offset;
+  simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
+  //
+  uint32_t offset;
 
-};
+  };
 */
 typedef struct __align__(32) {
     simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
@@ -178,7 +178,7 @@ struct tlb_entry {
 //		    if (global_id == 515920192)
 //			printf("--(2)st: %llx\tcount: %llu\n", (unsigned long long) state.load(simt::memory_order_relaxed), (unsigned long long) count);
 
- state.fetch_sub(count, simt::memory_order_release); }
+        state.fetch_sub(count, simt::memory_order_release); }
 
     __forceinline__
     __device__
@@ -186,7 +186,7 @@ struct tlb_entry {
 //		    if (global_id == 515920192)
 //			printf("--(1)st: %llx\tcount: %llu\n", (unsigned long long) state.load(simt::memory_order_relaxed), (unsigned long long) 1);
 
-page->state.fetch_sub(1, simt::memory_order_release); }}
+            page->state.fetch_sub(1, simt::memory_order_release); }}
 
 
 
@@ -204,16 +204,16 @@ struct tlb {
     __host__ __device__
     tlb() {}
 /*
-    __forceinline__
-    __device__
-    tlb(array_d_t<T>* a) { init(a); }
+  __forceinline__
+  __device__
+  tlb(array_d_t<T>* a) { init(a); }
 */
     __forceinline__
     __device__
     void init(array_d_t<T>* a) {
         //SYNC;
 //	__syncthreads();
-      if (n) {
+        if (n) {
             size_t tid = TID;
             if (tid == 0)
                 array = a;
@@ -229,7 +229,7 @@ struct tlb {
     __forceinline__
     __device__
     void fini() {
-  //      SYNC;
+        //      SYNC;
 //	__syncthreads();
 
         if (n) {
@@ -261,7 +261,7 @@ struct tlb {
         uint32_t count = __popc(eq_mask);
         uint64_t base_master, base;
         if (lane == master) {
-	    uint64_t c = 0;
+            uint64_t c = 0;
             bool cont = false;
             uint32_t st;
             do {
@@ -472,17 +472,17 @@ struct bam_ptr {
 
 typedef struct __align__(32) {
     simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock; //state
-                                                              //
+    //
     uint32_t page_translation;
     uint8_t pad[32-8];
 
 } __attribute__((aligned (32))) cache_page_t;
 /*
-struct cache_page_t {
-    simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock;
-    uint32_t  page_translation;
-    uint8_t   range_id;
-};
+  struct cache_page_t {
+  simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock;
+  uint32_t  page_translation;
+  uint8_t   range_id;
+  };
 */
 struct page_cache_d_t {
     uint8_t* base_addr;
@@ -719,14 +719,14 @@ struct page_cache_t {
                 }
             }
             /*
-            for (size_t i = 0; i < this->pages_dma.get()->n_ioaddrs; i+=how_many_in_one) {
-                temp1[i/how_many_in_one] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]);
-                temp2[i/how_many_in_one] = ((uint64_t)this->prp_list_dma.get()->ioaddrs[i]);
-                for (size_t j = 0; j < (how_many_in_one-1); j++) {
+              for (size_t i = 0; i < this->pages_dma.get()->n_ioaddrs; i+=how_many_in_one) {
+              temp1[i/how_many_in_one] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]);
+              temp2[i/how_many_in_one] = ((uint64_t)this->prp_list_dma.get()->ioaddrs[i]);
+              for (size_t j = 0; j < (how_many_in_one-1); j++) {
 
-                    temp3[(i/how_many_in_one)*uints_per_page + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i+1+j]);
-                }
-            }
+              temp3[(i/how_many_in_one)*uints_per_page + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i+1+j]);
+              }
+              }
             */
 
             std::cout << "Done creating PRP\n";
@@ -1033,7 +1033,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         st = (read_state >> (CNT_SHIFT+1)) & 0x03;
 
         switch (st) {
-        //invalid
+            //invalid
         case NV_NB:
             st_new = pages[index].state.fetch_or(BUSY, simt::memory_order_acquire);
             if ((st_new & BUSY) == 0) {
@@ -1065,8 +1065,8 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                 miss_cnt.fetch_add(count, simt::memory_order_relaxed);
                 new_state = VALID;
                 if (write)
-		    pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
-                    //new_state |= DIRTY;
+                    pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
+                //new_state |= DIRTY;
                 //pages[index].state.fetch_or(new_state, simt::memory_order_relaxed);
                 pages[index].state.fetch_xor(0xc000000000000000ULL, simt::memory_order_release);
                 return page_trans;
@@ -1075,7 +1075,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
             }
 
             break;
-        //valid
+            //valid
         case V_B:
         case V_NB:
             if (write && ((read_state & DIRTY) == 0))
@@ -1584,7 +1584,7 @@ struct array_d_t {
             if (master == lane) {
                 base = r_->acquire_page(page, count, true, ctrl, queue);
                 base_master = base;
-            //    //printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
+                //    //printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
             }
             base_master = __shfl_sync(eq_mask,  base_master, master);
 
@@ -1681,8 +1681,8 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
     uint32_t page = 0;
     unsigned int ns = 8;
 	uint64_t j = 0;
-   uint64_t expected_state = VALID;
-                uint64_t new_expected_state = 0;
+    uint64_t expected_state = VALID;
+    uint64_t new_expected_state = 0;
 
     do {
 
@@ -1732,11 +1732,11 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
                 expected_state = this->ranges[previous_range][previous_address].state.load(simt::memory_order_relaxed);
 
                 uint32_t cnt = expected_state & CNT_MASK;
-		uint32_t b = expected_state & BUSY;
+                uint32_t b = expected_state & BUSY;
                 if ((cnt == 0) && (b == 0) ) {
                     new_expected_state = this->ranges[previous_range][previous_address].state.fetch_or(BUSY, simt::memory_order_acquire);
                     if (((new_expected_state & BUSY ) == 0) ) {
-			//while ((new_expected_state & CNT_MASK ) != 0) new_expected_state = this->ranges[previous_range][previous_address].state.load(simt::memory_order_acquire);
+                        //while ((new_expected_state & CNT_MASK ) != 0) new_expected_state = this->ranges[previous_range][previous_address].state.load(simt::memory_order_acquire);
                         if (((new_expected_state & CNT_MASK ) == 0) ) {
                             if ((new_expected_state & DIRTY)) {
                                 uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
@@ -1772,7 +1772,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 //if ((j % 1000000) == 0) {
 //                printf("failed to find slot j: %llu\taddr: %llx\tpage: %llx\texpected_state: %llx\tnew_expected_date: %llx\n", (unsigned long long) j, (unsigned long long) address, (unsigned long long)page, (unsigned long long) expected_state, (unsigned long long) new_expected_state);
 //}
-}
+                        }
                     }
                 }
 
@@ -1793,25 +1793,25 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 
         count++;
 /*if (fail) {
-            if ((++j % 1000000) == 0) {
-                printf("failed to find slot j: %llu\n", (unsigned long long) j);
-            }
-        }*/
-         if (fail) {
- #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+  if ((++j % 1000000) == 0) {
+  printf("failed to find slot j: %llu\n", (unsigned long long) j);
+  }
+  }*/
+        if (fail) {
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
 //             __nanosleep(ns);
 //             if (ns < 256) {
 //                 ns *= 2;
 //             }
- #endif
-          //   if ((j % 10000000) == 0) {
-           //     printf("failed to find slot j: %llu\taddr: %llx\tpage: %llx\texpected_state: %llx\tnew_expected_date: %llx\n", (unsigned long long) j, (unsigned long long) address, (unsigned long long)page, (unsigned long long) expected_state, (unsigned long long) new_expected_state);
+#endif
+            //   if ((j % 10000000) == 0) {
+            //     printf("failed to find slot j: %llu\taddr: %llx\tpage: %llx\texpected_state: %llx\tnew_expected_date: %llx\n", (unsigned long long) j, (unsigned long long) address, (unsigned long long)page, (unsigned long long) expected_state, (unsigned long long) new_expected_state);
 //            }
 //	   expected_state = 0;
 //	   new_expected_state = 0;
 
 
-         }
+        }
 
     } while(fail);
     return page;
