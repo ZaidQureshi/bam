@@ -63,10 +63,10 @@ enum data_dist_t {REPLICATE = 0, STRIPE = 1};
 #define VALID_MASK 0x7
 #define BUSY_MASK 0xb
 #define DISABLE_BUSY_MASK 0xbfffffff
-#define NV_NB 0x0
-#define NV_B 0x1
-#define V_NB 0x2
-#define V_B 0x3
+#define NV_NB 0x00
+#define NV_B 0x01
+#define V_NB 0x02
+#define V_B 0x03
 
 
 struct page_cache_t;
@@ -1726,34 +1726,38 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 
                 if (cnt == 0) {
                     new_expected_state = this->ranges[previous_range][previous_address].state.fetch_or(BUSY, simt::memory_order_acquire);
-                    if (((new_expected_state & BUSY) == 0) && ((new_expected_state & CNT_MASK) == 0)) {
-                        if ((new_expected_state & DIRTY)) {
-                            uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
-                            //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-                            uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-                            // //printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
-                            //        (unsigned long long) previous_range, (unsigned long long)previous_address,
-                            //        (unsigned long long) ctrl, (unsigned long long) index);
-                            if (ctrl == ALL_CTRLS) {
-                                for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
+                    if ((new_expected_state & (BUSY ) == 0) ) {
+                        if ((new_expected_state & (CNT_MASK ) == 0) ) {
+                            if ((new_expected_state & DIRTY)) {
+                                uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
+                                //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+                                uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
+                                // //printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                                //        (unsigned long long) previous_range, (unsigned long long)previous_address,
+                                //        (unsigned long long) ctrl, (unsigned long long) index);
+                                if (ctrl == ALL_CTRLS) {
+                                    for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
+                                        Controller* c = this->d_ctrls[ctrl];
+                                        uint32_t queue = queue_ % (c->n_qps);
+                                        write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
+                                    }
+                                }
+                                else {
+
                                     Controller* c = this->d_ctrls[ctrl];
                                     uint32_t queue = queue_ % (c->n_qps);
+
+                                    //index = ranges_page_starts[previous_range] + previous_address;
+
+
                                     write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
                                 }
                             }
-                            else {
-
-                                Controller* c = this->d_ctrls[ctrl];
-                                uint32_t queue = queue_ % (c->n_qps);
-
-                                //index = ranges_page_starts[previous_range] + previous_address;
-
-
-                                write_data(this, (c->d_qps)+queue, (index*this->n_blocks_per_page), this->n_blocks_per_page, page);
-                            }
+                            fail = false;
+                            this->ranges[previous_range][previous_address].state.fetch_and(CNT_MASK, simt::memory_order_release);
                         }
-                        fail = false;
-                        this->ranges[previous_range][previous_address].state.fetch_and(CNT_MASK, simt::memory_order_release);
+                        else
+                            this->ranges[previous_range][previous_address].state.fetch_and(DISABLE_BUSY_MASK, simt::memory_order_relaxed);
                     }
                 }
 
