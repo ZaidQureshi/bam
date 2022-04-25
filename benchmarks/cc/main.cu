@@ -1499,10 +1499,10 @@ int main(int argc, char *argv[]) {
 	            //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
-                if(mem == BAFS_DIRECT) {
-                         h_array->print_reset_stats();
-		         printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
-                }
+                //if(mem == BAFS_DIRECT) {
+                //         h_array->print_reset_stats();
+		        // printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
+                //}
 
                 if(type == BASELINE){
                     //cuda_err_chk(cudaMemcpy(vertexVisitCount_h.data(), vertexVisitCount_d, vertex_count*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
