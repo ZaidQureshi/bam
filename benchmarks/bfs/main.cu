@@ -58,8 +58,8 @@
 
 using error = std::runtime_error;
 using std::string;
-const char* const ctrls_paths[] = {"/dev/libnvm0","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
-//const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
+//const char* const ctrls_paths[] = {"/dev/libnvm0","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 #define MYINFINITY 0xFFFFFFFF
@@ -714,7 +714,7 @@ int main(int argc, char *argv[]) {
                  src = 0;
          }
          else {
-                 total_run = 1; 
+                 total_run = 2; 
                  src = settings.src; 
          }
 
@@ -1123,9 +1123,10 @@ int main(int argc, char *argv[]) {
                  avg_milliseconds += 0;
 			 }
             
-             src += vertex_count / total_run;
+             if(settings.src == 0)
+                   src += vertex_count / total_run;
+             printf("\nBFS-%d Graph:%s \t Impl: %d \t SSD: %d \t Stride: %llu \t CL: %d \t AvgTime %f ms\n", i, filename.c_str(), type, settings.n_ctrls, settings.stride, settings.pageSize, avg_milliseconds / num_run);
          }
-         printf("\nBFS Graph:%s \t Impl: %d \t SSD: %d \t Stride: %llu \t CL: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.stride, settings.pageSize, avg_milliseconds / num_run);
          
          free(vertexList_h);
          if((type==BASELINE_PC)||(type == COALESCE_PC)||(type == COALESCE_PTR_PC)||(type==COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)||(type==FRONTIER_COALESCE_PTR_PC)){

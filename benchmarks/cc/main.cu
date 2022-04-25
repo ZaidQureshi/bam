@@ -50,6 +50,9 @@
 
 #include <iterator> 
 #include <functional>
+
+#define UINT64MAX 0xFFFFFFFFFFFFFFFF
+
 using error = std::runtime_error;
 using std::string;
 //const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro1", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
@@ -101,6 +104,8 @@ typedef enum {
     COALESCE_HASH_HALF_PTR_PC = 23, 
     COALESCE_HASH_PTR_PRELOAD = 24, //preload kernel requires to be implemented with the sharedmem on the memref. Without this it wont work. 
     COALESCE_HASH_PTR_PRELOAD_PC = 25,
+    OPTIMIZED=26,
+    OPTIMIZED_PC=27,
 } impl_type;
 
 typedef enum {
@@ -327,35 +332,37 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *nex
     }
 }
 
-/*
 __global__ __launch_bounds__(128,16)
-void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+//void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
+void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
     const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     if (warpIdx < vertex_count && curr_visit[warpIdx] == true) {
         bam_ptr<uint64_t> ptr(da);
         const uint64_t start = vertexList[warpIdx];
         const uint64_t end = vertexList[warpIdx+1];
 
-        for(uint64_t i = start ; i < end; i += WARP_SIZE) {
+        for(uint64_t i = start +laneIdx; i < end; i += WARP_SIZE) {
                 EdgeT next = ptr[i];
                 cc_compute(warpIdx, comp, next, next_visit, changed);
         }
     }
 }
 
-
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimal_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t clsize){
-    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t num_elems_in_cl){
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
     const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
 
-    const uint64_t clstart = warpIdx*clsize/sizeof(uint64_t); 
-    const uint64_t clend   = (warpIdx+1)*clsize/sizeof(uint64_t); 
+    const uint64_t clstart = warpIdx*num_elems_in_cl; 
+    const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
     //start vertex
     uint64_t cur_vertexid = first_vertex[warpIdx]; 
 
@@ -363,19 +370,21 @@ void kernel_optimal_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next
     uint64_t start = clstart; 
     uint64_t end   = vertexList[cur_vertexid+1];
     bool stop      = false;
-    bam_ptr<uint64_t> ptr(da);
 
     while(!stop){
-        if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+        //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+        if (cur_vertexid < vertex_count) {
             //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
             if(end >= clend){
                 end  = clend;
                 stop = true;
             }
 
-            for(uint64_t i = start; i < end; i += WARP_SIZE){
-                EdgeT next = ptr[i];
-                cc_compute(cur_vertexid, comp, next , next_visit, changed); 
+            if(curr_visit[cur_vertexid] == true){
+               for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+                   EdgeT next = edgeList[i];
+                   cc_compute(cur_vertexid, comp, next , next_visit, changed); 
+               }
             }
             
             //this implies there are more vertices to compute in the cacheline. So repeat the loop.
@@ -389,16 +398,180 @@ void kernel_optimal_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next
                     stop = true; 
                 }
             }
+        } else {
+            stop = true; 
         }
     }
 }
 
+//TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
+//TODO: make it templated. 
+__global__ __launch_bounds__(128,16)
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t num_elems_in_cl){
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+
+    const uint64_t clstart = warpIdx*num_elems_in_cl; 
+    const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
+    //start vertex
+    uint64_t cur_vertexid = first_vertex[warpIdx]; 
+
+    //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
+    uint64_t start = clstart; 
+    uint64_t end   = vertexList[cur_vertexid+1];
+    bool stop      = false;
+    bam_ptr<uint64_t> ptr(da);
+
+    while(!stop){
+        //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+        if (cur_vertexid < vertex_count) {
+            //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
+            if(end >= clend){
+                end  = clend;
+                stop = true;
+            }
+
+            if(curr_visit[cur_vertexid] == true){
+               for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+                   EdgeT next = ptr[i];
+                   cc_compute(cur_vertexid, comp, next , next_visit, changed); 
+               }
+            }
+            
+            //this implies there are more vertices to compute in the cacheline. So repeat the loop.
+            if(end < clend){
+                cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                if(cur_vertexid < vertex_count){
+                    start        = vertexList[cur_vertexid]; 
+                    end          = vertexList[cur_vertexid+1]; 
+                }
+                else {
+                    stop = true; 
+                }
+            }
+        } else {
+            stop = true; 
+        }
+    }
+}
+
+//TODO: Templatize
+//TODO: winnerList is initialized to UINT64MAX
+// launch params - number of vertices and each thread does a scatter operation. 
+__global__ __launch_bounds__(128,16)
+void kernel_first_vertex_step1(uint64_t vertex_count, uint64_t *vertexList, uint32_t num_elems_in_cl, unsigned long long int *winnerList){
+   const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+
+   if(tid < vertex_count){
+       unsigned long long int clid = (unsigned long long int) vertexList[tid]/(unsigned long long int)num_elems_in_cl;
+
+       atomicMin(&(winnerList[clid]), tid);
+   }
+}
+
+
+
+//TODO: Templatize the kernel for clstart and clend.
+//TODO: launch param: number of CL lines in the data. 
+__global__ __launch_bounds__(128,16)
+void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsigned long long int *winnerList, uint32_t num_elems_in_cl, uint64_t *firstVertexList){
+
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+    
+    //const uint64_t clstart = tid*num_elems_in_cl; 
+    //const uint64_t clend   = (tid+1)*num_elems_in_cl; 
+
+    //check if the cacheline is filled by backtracking. If the winner array has value of RANDMAX, then it should be filled by the backtracking.
+    if(tid < n_cachelines){
+        uint64_t wid = winnerList[tid]; 
+        if(wid!=UINT64MAX){
+
+            uint64_t winVertval = vertexList[wid];
+
+            if((winVertval % num_elems_in_cl) == 0){
+                firstVertexList[tid] = wid; 
+            } else {
+                wid                  = wid - 1; 
+                uint64_t currVertval = vertexList[wid]; 
+                uint64_t nsize       = winVertval - currVertval; 
+
+                uint64_t backtrackItr = (nsize + num_elems_in_cl)/num_elems_in_cl; 
+                for(uint64_t i = 0; i < backtrackItr ; i++){
+                    firstVertexList[tid-i] = wid; //TODO: does this required to be atomicMin?  
+                }
+            }
+        }
+    }
+}
+
+__global__ __launch_bounds__(128,16)
+void kernel_verify(uint64_t count, unsigned long long int *list, uint64_t condval, uint8_t type){
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+    
+    if(tid < count){
+        switch(type){
+            case 1: {
+                    if(list[tid] != condval){
+                        printf("index %llu is incorrect and has value :%llu \n",(unsigned long long int) tid, list[tid]);
+                    }
+                    break;
+            }
+            case 2: {
+                    if(list[tid] == condval){
+                        printf("index %llu is incorrect and has value :%llu \n",(unsigned long long int) tid, list[tid]);
+                    }
+                    break;
+            }
+        }
+    }
+}
+
+
+
+/*
+
+
+
+//TODO: Templatize the kernel for clstart and clend.
+__global__ __launch_bounds__(128,16)
+void kernel_genfirst_vertex(uint64_t vertex_count, uint64_t *vertexList, uint64_t *firstvertexList, uint32_t clsize){
+   const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+
+    const uint64_t clstart = tid*clsize/sizeof(uint64_t); 
+    const uint64_t clend   = (tid+1)*clsize/sizeof(uint64_t); 
+
+    uint64_t curIdx = tid; 
+    bool stop       = false; 
+
+    uint64_t curVertVal  = vertexList[curIdx];
+    //uint64_t prevVertVal = curVertVal; 
+
+    // we can get each vertex list which cacheline it belongs to by dividing the vertexlist by cacheline size and perhaps use that to reduce the search overhead. 
+    // also have to think about what happens if your curIdx init is not right. 
+    while(!stop){
+
+        if(curVertVal == clstart){
+            stop = true; 
+            firstvertexList[tid] = curIdx; 
+        }
+        else if(curVertVal < clstart){
+            stop = false;
+            curIdx = curIdx + 1; 
+            curVertVal = vertexList[curIdx];
+        }
+        //curVertVal > clstart
+        else {
+            
+//dont know how to stop 
+
+
+        }
+    }
+}
 */
-
-
-
-
-
 
 
 __global__ __launch_bounds__(128,16)
@@ -1044,6 +1217,8 @@ int main(int argc, char *argv[]) {
             }
 
         file.close();
+        
+        uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
 
         // Allocate memory for GPU
         comp_h = (unsigned long long*)malloc(vertex_count * sizeof(unsigned long long));
@@ -1117,17 +1292,28 @@ int main(int argc, char *argv[]) {
             case COALESCE_CHUNK_HASH_PC:
                 numblocks = ((vertex_count * (WARP_SIZE / CHUNK_SIZE) + numthreads) / numthreads);
                 break;
+            case OPTIMIZED:
+            case OPTIMIZED_PC:
+                numblocks = (n_pages*WARP_SIZE+numthreads)/numthreads;
+                break; 
             default:
                 fprintf(stderr, "Invalid type\n");
                 exit(1);
                 break;
         }
         
-        //TODO : FIX THIS. 
+        //dim3 blockDim; 
+        //if(type == OPTIMIZED_PC)
+        //    blockDim.x = numblocks; 
+        //else{
+        //    blockDim.y = BLOCK_NUM; 
+        //    blockDim.x = (numblocks+BLOCK_NUM)/BLOCK_NUM; 
+
+        //}
         dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
         //dim3 blockDim(16, 80); //(numblocks+BLOCK_NUM)/BLOCK_NUM);
 
-        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
         }
         std::vector<Controller*> ctrls(settings.n_ctrls);
@@ -1144,10 +1330,9 @@ int main(int argc, char *argv[]) {
         range_t<uint64_t>* h_range;
         std::vector<range_t<uint64_t>*> vec_range(1);
         array_t<uint64_t>* h_array;
-        uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
 
 
-        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
@@ -1157,7 +1342,58 @@ int main(int argc, char *argv[]) {
             fflush(stdout);
         }
 
-        for(int titr=0; titr<2; titr+=1){
+
+        uint64_t *firstVertexList_d;
+        unsigned long long  int *winnerList_d; 
+        uint32_t num_elems_in_cl = (uint32_t) pc_page_size / (sizeof(uint64_t));
+        //preprocessing for the optimized implementation.
+        if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
+            
+            cuda_err_chk(cudaMalloc((void**)&winnerList_d, vertex_count * sizeof(unsigned long long int)));
+            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, vertex_count * sizeof(unsigned long long int)));
+            //printf("UNIT64MAX is: %llu\n", UINT64MAX);
+            //uint64_t nblocks = (vertex_count+numthreads)/numthreads;
+            //dim3 verifyBlockDim(nblocks); 
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(vertex_count,winnerList_d, UINT64MAX, 1);
+
+            cuda_err_chk(cudaDeviceSynchronize());
+            
+            printf("Allocating %f MB for FirstVertexList\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)));
+            cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_pages * sizeof(uint64_t)));
+
+            printf("Launching step1 in generation of FirstVertexList\n");
+            uint64_t nblocks_step1 = (vertex_count+numthreads)/numthreads; 
+            uint64_t nblocks_step2 = (n_pages+numthreads)/numthreads; 
+            dim3 step1blockdim(nblocks_step1);
+            dim3 step2blockdim(nblocks_step2);
+            kernel_first_vertex_step1<<<step1blockdim,numthreads>>>(vertex_count, vertexList_d, num_elems_in_cl, winnerList_d);
+            //uint64_t *winnerList_h; 
+            //uint64_t copysize = vertex_count * sizeof(unsigned long long int);
+            //winnerList_h = (uint64_t*)malloc(copysize);
+            //cuda_err_chk(cudaMemcpy((void**)winnerList_h, (void**)winnerList_d, copysize, cudaMemcpyDeviceToHost));
+            //printf("First few values\n");
+            //for(uint64_t i=0; i< 25; i++){
+            //    printf("%llu\n", winnerList_h[i]);
+            //}
+            //printf("\n");
+            kernel_first_vertex_step2<<<step2blockdim,numthreads>>>(n_pages, vertexList_d, winnerList_d, num_elems_in_cl, firstVertexList_d);
+            
+            //uint64_t *firstVertexList_h; 
+            //uint64_t copysize2 = n_pages * sizeof(unsigned long long int);
+            //firstVertexList_h = (uint64_t*) malloc(copysize2); 
+            //cuda_err_chk(cudaMemcpy((void**)firstVertexList_h, (void**)firstVertexList_d, copysize2, cudaMemcpyDeviceToHost));
+            //printf("First few values\n");
+            //for(uint64_t i=0; i< 25; i++){
+            //    printf("%llu\n", firstVertexList_h[i]);
+            //}
+            //uint64_t nblocks = (n_pages+numthreads)/numthreads;
+            //dim3 verifyBlockDim(nblocks); 
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages, (unsigned long long int*) firstVertexList_d, UINT64MAX, 2);
+
+            cuda_err_chk(cudaDeviceSynchronize());
+        }
+
+        for(int titr=0; titr<1; titr+=1){
             iter = 0;
             cuda_err_chk(cudaEventRecord(start, 0));
             // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
@@ -1237,6 +1473,15 @@ int main(int argc, char *argv[]) {
                     case COALESCE_HASH_PTR_PRELOAD_PC:
                         preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         break;
+                    case OPTIMIZED:
+                        printf("Launching optimized kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                        break;
+                    case OPTIMIZED_PC:
+                        printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                        break;
+
                     default:
                         fprintf(stderr, "Invalid type\n");
                         exit(1);
@@ -1254,10 +1499,10 @@ int main(int argc, char *argv[]) {
 	            //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
-                //if(mem == BAFS_DIRECT) {
-                //         h_array->print_reset_stats();
-		        // printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
-                //}
+                if(mem == BAFS_DIRECT) {
+                         h_array->print_reset_stats();
+		         printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
+                }
 
                 if(type == BASELINE){
                     //cuda_err_chk(cudaMemcpy(vertexVisitCount_h.data(), vertexVisitCount_d, vertex_count*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
@@ -1388,7 +1633,7 @@ int main(int argc, char *argv[]) {
 
         free(vertexList_h);
 
-        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC )){
+        if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
             delete h_pc;
             delete h_range;
             delete h_array;
