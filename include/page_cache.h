@@ -1100,7 +1100,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         }
         if (fail) {
             if ((++j % 100000000) == 0)
-                printf("failed to acquire_page: j: %llu\tpage: %llu\tread_state: %llx\tst: %llx\tnew_st: %llx\n", (unsigned long long)j, (unsigned long long) index, (unsigned long long)read_state, (unsigned long long)st, (unsigned long long)new_st);
+                printf("failed to acquire_page: j: %llu\tpage: %llu\tread_state: %llx\tst: %llx\tst_new: %llx\n", (unsigned long long)j, (unsigned long long) index, (unsigned long long)read_state, (unsigned long long)st, (unsigned long long)st_new);
 #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
             __nanosleep(ns);
             if (ns < 256) {
