@@ -1455,16 +1455,16 @@ int main(int argc, char *argv[]) {
                              kernel_coalesce_hash_half_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.stride);
                              break;
                          }
-                    case OPTIMIZED: 
-                         {
-                             kernel_optimized<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, firstVertexList_d, num_elems_in_cl);
-                             break;
-                         }
-                     case OPTIMIZED_PC:    
-                         {
-                             kernel_optimized_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, firstVertexList_d, num_elems_in_cl);
-                             break;
-                         }
+                    // case OPTIMIZED: 
+                    //      {
+                    //          kernel_optimized<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                    //          break;
+                    //      }
+                    //  case OPTIMIZED_PC:    
+                    //      {
+                    //          kernel_optimized_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                    //          break;
+                    //      }
 
                      case FRONTIER_BASELINE:
                           // kernel_frontier_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count,
