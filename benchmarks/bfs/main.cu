@@ -748,7 +748,7 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const
 
 
 __global__ __launch_bounds__(128,16)
-void kernel_coalesce_hash_coarse(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, , uint64_t coarse, uint64_t stride) {
+void kernel_coalesce_hash_coarse(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed,uint64_t coarse, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
     const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
@@ -788,7 +788,7 @@ void kernel_coalesce_hash_coarse(uint32_t *label, const uint32_t level, const ui
 
 
 __global__ __launch_bounds__(128,16)
-void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, , uint64_t coarse, uint64_t stride) {
+void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t coarse, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
     const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
