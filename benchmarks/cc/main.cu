@@ -491,12 +491,13 @@ void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsi
 
             uint64_t winVertval = vertexList[wid];
 
-            if((winVertval % num_elems_in_cl) == 0){
+            uint64_t fringes = winVertval % num_elems_in_cl;
+            if(fringes == 0){
                 firstVertexList[tid] = wid; 
             } else {
                 wid                  = wid - 1; 
                 uint64_t currVertval = vertexList[wid]; 
-                uint64_t nsize       = winVertval - currVertval; 
+                uint64_t nsize       = winVertval - currVertval - fringes; 
 
                 uint64_t backtrackItr = (nsize + num_elems_in_cl)/num_elems_in_cl; 
                 for(uint64_t i = 0; i < backtrackItr ; i++){
