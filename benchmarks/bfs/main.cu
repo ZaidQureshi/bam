@@ -643,7 +643,7 @@ void kernel_coalesce_coarse_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, con
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     bam_ptr<uint64_t> ptr(da);
 
-    for(uint64_t j = 0; j < coarse; j++){}
+    for(uint64_t j = 0; j < coarse; j++){
         uint64_t cwarpIdx = warpIdx * coarse + j;
         if(cwarpIdx < vertex_count && label[cwarpIdx] == level) {
             const uint64_t start = vertexList[cwarpIdx];
