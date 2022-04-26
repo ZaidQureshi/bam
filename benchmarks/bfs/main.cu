@@ -1418,7 +1418,7 @@ int main(int argc, char *argv[]) {
                             //      fflush(stdout);
                             //      stride = 768; 
                             //  }
-                             kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, stride);
+                             kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.stride);
                              break;
                          }
                     case COALESCE_CHUNK_PC:
