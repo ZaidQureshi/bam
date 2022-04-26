@@ -61,6 +61,7 @@ using std::string;
 //const char* const ctrls_paths[] = {"/dev/libnvm0","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0"};
+#define UINT64MAX 0xFFFFFFFFFFFFFFFF
 
 #define MYINFINITY 0xFFFFFFFF
 
@@ -605,7 +606,7 @@ void kernel_coalesce_coarse(uint32_t *label, const uint32_t level, const uint64_
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     
-    for(uint64_t j = 0; j < coarse; j++){}
+    for(uint64_t j = 0; j < coarse; j++){
         uint64_t cwarpIdx = warpIdx * coarse + j;
         if(cwarpIdx < vertex_count && label[cwarpIdx] == level) {
             const uint64_t start = vertexList[cwarpIdx];
