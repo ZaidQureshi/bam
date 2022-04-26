@@ -1195,6 +1195,9 @@ int main(int argc, char *argv[]) {
                  //    throttle_memory<<<1,1>>>(pad);
                  //}
                  break;
+              default: 
+                 printf("ERROR: Invalid Mem type specified\n");
+                 break;
          }
      
      
