@@ -69,7 +69,7 @@ struct page_cache_d_t;
 
 template <typename T>
 struct range_t;
-#define N_SECTORS_PER_PAGE 256
+#define N_SECTORS_PER_PAGE 8
 #define N_SECTORS_PER_STATE 8
 #define N_SECTOR_STATES ((N_SECTORS_PER_PAGE+8-1) / 8)
 //template <size_t n_sectors_per_page = N_SECTORS_PER_PAGE>
@@ -708,7 +708,7 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue_)
 {
     //printf("n_sectors_per_page: %llu\n", (unsigned long long)cache->n_sectors_per_page);
     //printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
@@ -745,14 +745,19 @@ __forceinline__
                if (pass) {
                     //printf("tid %llu\t original_state%16x\t new_state%16x\t in SECTOR_INVALID passed\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)original_state, (unsigned long long)new_state);
                     uint64_t ctrl = get_backing_ctrl(page_index);
-                    if (ctrl == ALL_CTRLS)
-                        ctrl = ctrl_;
+                    uint32_t queue = 0;
+                    if (ctrl == ALL_CTRLS) {
+                        //printf("here");
+                        ctrl = get_smid() % (cache->n_ctrls);//cache->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache->n_ctrls);
+                        queue = get_smid() % (cache->d_ctrls[ctrl]->n_qps);
+                    }
+                        //ctrl = ctrl_;
                     uint64_t b_page = get_backing_page(page_index);
                     Controller *c = cache->d_ctrls[ctrl];
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    read_data(cache, (c->d_qps) + queue, ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, sector_trans);
+                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, sector_trans);
                     //uint64_t cache_sector_addr = get_cache_page_addr(page_addresses[page_index]) + (sector*512);
                     //hexdump((void*)cache_sector_addr, 512);
                     //remove loop and replace with fetch_and
@@ -989,12 +994,12 @@ struct array_d_t
         if (lane == leader)
         {
             page_cache_d_t *pc = d_ranges[r].cache;
-            ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-            queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+            //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+            //queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
         }
 
-        ctrl = __shfl_sync(mask, ctrl, leader);
-        queue = __shfl_sync(mask, queue, leader);
+        ctrl = 0;//__shfl_sync(mask, ctrl, leader);
+        queue = 0;//__shfl_sync(mask, queue, leader);
 
         uint32_t active_cnt = __popc(mask);
         eq_mask = __match_any_sync(mask, gaddr);
@@ -1175,12 +1180,12 @@ struct array_d_t
             if (lane == leader)
             {
                 page_cache_d_t *pc = d_ranges[r].cache;
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
+                //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
+                //queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
             }
 
-            ctrl = __shfl_sync(mask, ctrl, leader);
-            queue = __shfl_sync(mask, queue, leader);
+            ctrl = 0;// __shfl_sync(mask, ctrl, leader);
+            queue = 0;//__shfl_sync(mask, queue, leader);
 
             eq_mask = __match_any_sync(mask, gaddr);
             //eq_mask &= __match_any_sync(mask, (uint64_t)this);

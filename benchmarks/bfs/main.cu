@@ -58,7 +58,7 @@
 
 using error = std::runtime_error;
 using std::string;
-const char* const ctrls_paths[] = {"/dev/libnvm0","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+const char* const ctrls_paths[] = {"/dev/libnvm3","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm0", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 #define MYINFINITY 0xFFFFFFFF
@@ -998,8 +998,10 @@ int main(int argc, char *argv[]) {
          if (edgeList_d)
              cuda_err_chk(cudaFree(edgeList_d));
          
-         for (size_t i = 0 ; i < settings.n_ctrls; i++)
+         for (size_t i = 0 ; i < settings.n_ctrls; i++) {
+             ctrls[i]->print_reset_stats();
              delete ctrls[i];
+            }
     }
     catch (const error& e){
         fprintf(stderr, "Unexpected error: %s\n", e.what());

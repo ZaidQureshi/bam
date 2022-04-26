@@ -186,7 +186,7 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
         //printf("started creating qp\n");
         h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
         //printf("finished creating qp\n");
-        cuda_err_chk(cudaMemcpy(d_qps+i, h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(&(d_qps[i]), h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
     }
     //printf("finished creating all qps\n");
 

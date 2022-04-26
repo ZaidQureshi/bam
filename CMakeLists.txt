@@ -331,6 +331,7 @@ if (CUDA_FOUND AND NOT no_cuda)
   add_subdirectory ("${benchmarks_root}/sectorcachevalidation")
   add_subdirectory ("${benchmarks_root}/cache")
   add_subdirectory ("${benchmarks_root}/sector_cache_test")
+  add_subdirectory ("${benchmarks_root}/cacheseq")
   add_custom_target (benchmarks DEPENDS ${benchmark_targets})
 endif ()
 
