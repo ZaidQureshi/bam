@@ -92,6 +92,14 @@ typedef enum {
     FRONTIER_COALESCE_PTR_PC = 14,
     COALESCE_HASH = 15,
     COALESCE_HASH_PTR_PC = 16,
+    COALESCE_COARSE = 18, 
+    COALESCE_HASH_COARSE = 19, 
+    COALESCE_COARSE_PTR_PC = 20, 
+    COALESCE_HASH_COARSE_PTR_PC = 21, 
+    COALESCE_HASH_HALF = 22, 
+    COALESCE_HASH_HALF_PTR_PC = 23, 
+    OPTIMIZED=26,
+    OPTIMIZED_PC=27,
 } impl_type;
 
 typedef enum {
@@ -103,6 +111,85 @@ typedef enum {
     DRAGON_MAP = 5,
     BAFS_DIRECT = 6,
 } mem_type;
+
+
+
+
+//TODO: Templatize
+//TODO: winnerList is initialized to UINT64MAX
+// launch params - number of vertices and each thread does a scatter operation. 
+__global__ __launch_bounds__(128,16)
+void kernel_first_vertex_step1(uint64_t vertex_count, uint64_t *vertexList, uint32_t num_elems_in_cl, unsigned long long int *winnerList){
+   const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+
+   if(tid < vertex_count){
+       unsigned long long int clid = (unsigned long long int) vertexList[tid]/(unsigned long long int)num_elems_in_cl;
+
+       atomicMin(&(winnerList[clid]), tid);
+   }
+}
+
+
+
+//TODO: Templatize the kernel for clstart and clend.
+//TODO: launch param: number of CL lines in the data. 
+__global__ __launch_bounds__(128,16)
+void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsigned long long int *winnerList, uint32_t num_elems_in_cl, uint64_t *firstVertexList){
+
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+    
+    //const uint64_t clstart = tid*num_elems_in_cl; 
+    //const uint64_t clend   = (tid+1)*num_elems_in_cl; 
+
+    //check if the cacheline is filled by backtracking. If the winner array has value of RANDMAX, then it should be filled by the backtracking.
+    if(tid < n_cachelines){
+        uint64_t wid = winnerList[tid]; 
+        if(wid!=UINT64MAX){
+
+            uint64_t winVertval = vertexList[wid];
+
+            if((winVertval % num_elems_in_cl) == 0){
+                firstVertexList[tid] = wid; 
+            } else {
+                wid                  = wid - 1; 
+                uint64_t currVertval = vertexList[wid]; 
+                uint64_t nsize       = winVertval - currVertval; 
+
+                uint64_t backtrackItr = (nsize + num_elems_in_cl)/num_elems_in_cl; 
+                for(uint64_t i = 0; i < backtrackItr ; i++){
+                    firstVertexList[tid-i] = wid; //TODO: does this required to be atomicMin?  
+                }
+            }
+        }
+    }
+}
+
+__global__ __launch_bounds__(128,16)
+void kernel_verify(uint64_t count, unsigned long long int *list, uint64_t condval, uint8_t type){
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
+    
+    if(tid < count){
+        switch(type){
+            case 1: {
+                    if(list[tid] != condval){
+                        printf("index %llu is incorrect and has value :%llu \n",(unsigned long long int) tid, list[tid]);
+                    }
+                    break;
+            }
+            case 2: {
+                    if(list[tid] == condval){
+                        printf("index %llu is incorrect and has value :%llu \n",(unsigned long long int) tid, list[tid]);
+                    }
+                    break;
+            }
+        }
+    }
+}
+
+
+
+
+
 
 __global__ __launch_bounds__(128,16)
 void kernel_frontier_baseline(unsigned int *label, const unsigned int level, const uint64_t vertex_count,
@@ -448,38 +535,6 @@ __global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uin
     }
 }
 
-__global__ void kernel_coalesce_hash(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t stride) {
-    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-    const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
-    const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
-    uint64_t STRIDE = stride; 
-    
-    const uint64_t nep = (vertex_count+(STRIDE))/(STRIDE); 
-    uint64_t warpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
-    
-    if(warpIdx < vertex_count && label[warpIdx] == level) {
-        const uint64_t start = vertexList[warpIdx];
-        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
-        const uint64_t end = vertexList[warpIdx+1];
-
-        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
-//        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
-
-            if (i >= start) {
-                const EdgeT next = edgeList[i];
-  //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
-
-                if(label[next] == MYINFINITY) {
-
-                //    if(level ==0)
-                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
-                    label[next] = level + 1;
-                    *changed = true;
-                }
-            }
-        }
-    }
-}
 
 
 
@@ -543,6 +598,116 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint
 }
 
 
+
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_coarse(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t coarse) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    
+    for(uint64_t j = 0; j < coarse; j++){}
+        uint64_t cwarpIdx = warpIdx * coarse + j;
+        if(cwarpIdx < vertex_count && label[cwarpIdx] == level) {
+            const uint64_t start = vertexList[cwarpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[cwarpIdx+1];
+
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+    //        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
+
+                if (i >= start) {
+                    const EdgeT next = edgeList[i];
+    //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+
+                    if(label[next] == MYINFINITY) {
+
+                    //    if(level ==0)
+                    //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                        label[next] = level + 1;
+                        *changed = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+__global__ __launch_bounds__(128,16)
+void kernel_coalesce_coarse_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t coarse) {
+    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    bam_ptr<uint64_t> ptr(da);
+
+    for(uint64_t j = 0; j < coarse; j++){}
+        uint64_t cwarpIdx = warpIdx * coarse + j;
+        if(cwarpIdx < vertex_count && label[cwarpIdx] == level) {
+            const uint64_t start = vertexList[cwarpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[cwarpIdx+1];
+
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+    //        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
+
+                if (i >= start) {
+                    // const EdgeT next = edgeList[i];
+                    EdgeT next = ptr[i];
+    //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+                    if(label[next] == MYINFINITY) {
+                    //    if(level ==0)
+                    //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                        label[next] = level + 1;
+                        *changed = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+__global__ void kernel_coalesce_hash(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t stride) {
+    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
+    const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = stride; 
+    
+    const uint64_t nep = (vertex_count+(STRIDE))/(STRIDE); 
+    uint64_t warpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+    
+    if(warpIdx < vertex_count && label[warpIdx] == level) {
+        const uint64_t start = vertexList[warpIdx];
+        const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+        const uint64_t end = vertexList[warpIdx+1];
+
+        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+//        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
+
+            if (i >= start) {
+                const EdgeT next = edgeList[i];
+  //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+
+                if(label[next] == MYINFINITY) {
+
+                //    if(level ==0)
+                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                    label[next] = level + 1;
+                    *changed = true;
+                }
+            }
+        }
+    }
+}
+
+
+
 __global__ __launch_bounds__(128,16)
 void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -576,6 +741,91 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const
         }
     }
 }
+
+
+
+
+__global__ void kernel_coalesce_hash_coarse(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, , uint64_t coarse, uint64_t stride) {
+    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
+    const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = stride; 
+    
+    const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
+    uint64_t cwarpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+    
+    for(uint64_t j=0; j<coarse; j++){
+        uint64_t warpIdx = cwarpIdx*coarse+j;
+        if(warpIdx < vertex_count && label[warpIdx] == level) {
+            const uint64_t start = vertexList[warpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[warpIdx+1];
+
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+    //        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
+
+                if (i >= start) {
+                    const EdgeT next = edgeList[i];
+    //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+
+                    if(label[next] == MYINFINITY) {
+
+                    //    if(level ==0)
+                    //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                        label[next] = level + 1;
+                        *changed = true;
+                    }
+                }
+            }
+        } 
+    }
+}
+
+
+
+
+__global__ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, , uint64_t coarse, uint64_t stride) {
+    const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
+    const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
+    uint64_t STRIDE = stride; 
+    bam_ptr<uint64_t> ptr(da);
+    
+    const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
+    uint64_t cwarpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
+    
+    for(uint64_t j=0; j<coarse; j++){
+        uint64_t warpIdx = cwarpIdx*coarse+j;
+        if(warpIdx < vertex_count && label[warpIdx] == level) {
+            const uint64_t start = vertexList[warpIdx];
+            const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
+            const uint64_t end = vertexList[warpIdx+1];
+
+            for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
+    //        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
+
+                if (i >= start) {
+                    // const EdgeT next = edgeList[i];
+                    EdgeT next = ptr[i];
+                    //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
+
+                    if(label[next] == MYINFINITY) {
+
+                    //    if(level ==0)
+                    //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                        label[next] = level + 1;
+                        *changed = true;
+                    }
+                }
+            }
+        } 
+    }
+}
+ 
+
+
+
+
 
 __global__ void kernel_coalesce_chunk(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -874,6 +1124,7 @@ int main(int argc, char *argv[]) {
      
          printf("Allocation finished\n");
          fflush(stdout);
+         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size);
 
          // Initialize values
          cuda_err_chk(cudaMemcpy(vertexList_d, vertexList_h, vertex_size, cudaMemcpyHostToDevice));
@@ -899,12 +1150,28 @@ int main(int argc, char *argv[]) {
              case COALESCE_CHUNK_PC:
                  numblocks = ((vertex_count * (WARP_SIZE / CHUNK_SIZE) + numthreads) / numthreads);
                  break;
+             case COALESCE_COARSE:
+             case COALESCE_HASH_COARSE:
+             case COALESCE_COARSE_PTR_PC:
+             case COALESCE_HASH_COARSE_PTR_PC:
+                   numblocks = ((vertex_count * (WARP_SIZE / settings.coarse) + numthreads) / numthreads);
+                   break;
+             case COALESCE_HASH_HALF:
+             case COALESCE_HASH_HALF_PTR_PC:
+                   numblocks = ((vertex_count * (WARP_SIZE / 2) + numthreads) / numthreads);
+                   break;
+
              case FRONTIER_BASELINE:
              case FRONTIER_COALESCE:
              case FRONTIER_BASELINE_PC:
              case FRONTIER_COALESCE_PC:
              case FRONTIER_COALESCE_PTR_PC:
                  break;
+            
+             case OPTIMIZED:
+             case OPTIMIZED_PC:
+                  numblocks = (n_pages*WARP_SIZE+numthreads)/numthreads;
+                  break; 
              default:
                  fprintf(stderr, "Invalid type\n");
                  exit(1);
@@ -917,10 +1184,11 @@ int main(int argc, char *argv[]) {
          avg_milliseconds = 0.0f;
 
 
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC) || (type== FRONTIER_COALESCE_PTR_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC) || (type== FRONTIER_COALESCE_PTR_PC) || (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
                 fflush(stdout);
          }
+
 
          std::vector<Controller*> ctrls(settings.n_ctrls);
          if(mem == BAFS_DIRECT){
@@ -940,11 +1208,10 @@ int main(int argc, char *argv[]) {
          range_t<uint64_t>* h_range;
          std::vector<range_t<uint64_t>*> vec_range(1);
          array_t<uint64_t>* h_array; 
-         uint64_t n_pages = ceil(((float)edge_size)/pc_page_size);
          uint32_t* curr_frontier_d;
          uint32_t* next_frontier_d;
          
-         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_PTR_PC)||(type==COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)||(type==FRONTIER_COALESCE_PTR_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC) || (type== FRONTIER_COALESCE_PTR_PC) || (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
@@ -958,6 +1225,61 @@ int main(int argc, char *argv[]) {
              cuda_err_chk(cudaMalloc((void**)&next_frontier_d,  vertex_count * sizeof(uint32_t)));
          }
          uint32_t* tmp_front;
+
+
+
+
+        uint64_t *firstVertexList_d;
+        unsigned long long  int *winnerList_d; 
+        uint32_t num_elems_in_cl = (uint32_t) pc_page_size / (sizeof(uint64_t));
+        //preprocessing for the optimized implementation.
+        if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
+            
+            cuda_err_chk(cudaMalloc((void**)&winnerList_d, vertex_count * sizeof(unsigned long long int)));
+            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, vertex_count * sizeof(unsigned long long int)));
+            //printf("UNIT64MAX is: %llu\n", UINT64MAX);
+            //uint64_t nblocks = (vertex_count+numthreads)/numthreads;
+            //dim3 verifyBlockDim(nblocks); 
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(vertex_count,winnerList_d, UINT64MAX, 1);
+
+            // cuda_err_chk(cudaDeviceSynchronize());
+            
+            printf("Allocating %f MB for FirstVertexList\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)));
+            cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_pages * sizeof(uint64_t)));
+
+            printf("Launching step1 in generation of FirstVertexList\n");
+            uint64_t nblocks_step1 = (vertex_count+numthreads)/numthreads; 
+            uint64_t nblocks_step2 = (n_pages+numthreads)/numthreads; 
+            dim3 step1blockdim(nblocks_step1);
+            dim3 step2blockdim(nblocks_step2);
+            kernel_first_vertex_step1<<<step1blockdim,numthreads>>>(vertex_count, vertexList_d, num_elems_in_cl, winnerList_d);
+            //uint64_t *winnerList_h; 
+            //uint64_t copysize = vertex_count * sizeof(unsigned long long int);
+            //winnerList_h = (uint64_t*)malloc(copysize);
+            //cuda_err_chk(cudaMemcpy((void**)winnerList_h, (void**)winnerList_d, copysize, cudaMemcpyDeviceToHost));
+            //printf("First few values\n");
+            //for(uint64_t i=0; i< 25; i++){
+            //    printf("%llu\n", winnerList_h[i]);
+            //}
+            //printf("\n");
+            kernel_first_vertex_step2<<<step2blockdim,numthreads>>>(n_pages, vertexList_d, winnerList_d, num_elems_in_cl, firstVertexList_d);
+            
+            //uint64_t *firstVertexList_h; 
+            //uint64_t copysize2 = n_pages * sizeof(unsigned long long int);
+            //firstVertexList_h = (uint64_t*) malloc(copysize2); 
+            //cuda_err_chk(cudaMemcpy((void**)firstVertexList_h, (void**)firstVertexList_d, copysize2, cudaMemcpyDeviceToHost));
+            //printf("First few values\n");
+            //for(uint64_t i=0; i< 25; i++){
+            //    printf("%llu\n", firstVertexList_h[i]);
+            //}
+            //uint64_t nblocks = (n_pages+numthreads)/numthreads;
+            //dim3 verifyBlockDim(nblocks); 
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages, (unsigned long long int*) firstVertexList_d, UINT64MAX, 2);
+
+            cuda_err_chk(cudaDeviceSynchronize());
+        }
+
+ 
          // Set root
          for (int i = 0; i < total_run; i++) {
              zero = 0;
@@ -1012,14 +1334,14 @@ int main(int argc, char *argv[]) {
                          break;
                      case COALESCE_HASH_PTR_PC:
                          {
-                             //TODO: fix the stride
-                             //printf("Calling transposed kernel\n");
-                             uint64_t stride = settings.stride; 
-                             if(iter == 6){
-                                 printf("changing stride\n");
-                                 fflush(stdout);
-                                 stride = 768; 
-                             }
+                            //  //TODO: fix the stride
+                            //  //printf("Calling transposed kernel\n");
+                            //  uint64_t stride = settings.stride; 
+                            //  if(iter == 6){
+                            //      printf("changing stride\n");
+                            //      fflush(stdout);
+                            //      stride = 768; 
+                            //  }
                              kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, stride);
                              break;
                          }
@@ -1027,6 +1349,48 @@ int main(int argc, char *argv[]) {
                          //printf("Calling Page cache enabled coalesce chunk kernel\n");
                          kernel_coalesce_chunk_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d);
                          break;
+
+                    case COALESCE_COARSE:
+                         {
+                             kernel_coalesce_coarse<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.coarse);
+                             break;
+                         }
+                    case COALESCE_HASH_COARSE:
+                         {
+                            kernel_coalesce_hash_coarse<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.coarse, settings.stride);
+                             break;
+                         }
+                    case COALESCE_COARSE_PTR_PC:
+                         {
+                             kernel_coalesce_coarse_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.coarse);
+                             break;
+                         }
+                    case COALESCE_HASH_COARSE_PTR_PC:
+                         {
+                             kernel_coalesce_hash_coarse_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.coarse, settings.stride);
+                             break;
+                         }
+                    case COALESCE_HASH_HALF:
+                         {
+                             kernel_coalesce_hash_half<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.stride);
+                             break;
+                         }
+                    case COALESCE_HASH_HALF_PTR_PC:
+                         {
+                             kernel_coalesce_hash_half_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, settings.stride);
+                             break;
+                         }
+                    case OPTIMIZED: 
+                         {
+                             kernel_optimized<<<blockDim, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                             break;
+                         }
+                     case OPTIMIZED_PC:    
+                         {
+                             kernel_optimized_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                             break;
+                         }
+
                      case FRONTIER_BASELINE:
                           // kernel_frontier_baseline(uint32_t *label, const uint32_t level, const uint64_t vertex_count,
                           //       const uint64_t *vertexList, const EdgeT *edgeList, const uint64_t curr_frontier_size, unsigned long long *changed,
@@ -1129,7 +1493,7 @@ int main(int argc, char *argv[]) {
          }
          
          free(vertexList_h);
-         if((type==BASELINE_PC)||(type == COALESCE_PC)||(type == COALESCE_PTR_PC)||(type==COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)||(type==FRONTIER_COALESCE_PTR_PC)){
+         if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC) || (type== FRONTIER_COALESCE_PTR_PC) || (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
             delete h_pc; 
             delete h_range; 
             delete h_array;

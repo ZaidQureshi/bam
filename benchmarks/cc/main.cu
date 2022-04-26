@@ -603,11 +603,11 @@ void kernel_coalesce_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bo
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
-    
+    bam_ptr<uint64_t> ptr(da);
+
     for(uint64_t j = 0; j < coarse; j++){
         uint64_t cwarpIdx = warpIdx*coarse+j; 
         if (cwarpIdx < vertex_count && curr_visit[cwarpIdx] == true) {
-            bam_ptr<uint64_t> ptr(da);
             const uint64_t start = vertexList[cwarpIdx];
             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
             const uint64_t end = vertexList[cwarpIdx+1];
@@ -845,6 +845,7 @@ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visi
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
     const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
     uint64_t STRIDE = stride;//sm_count * MAXWARP;
+    bam_ptr<uint64_t> ptr(da);
     
     const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
     uint64_t cwarpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
@@ -854,7 +855,6 @@ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visi
         if (warpIdx < vertex_count){ 
            
            if(curr_visit[warpIdx] == true) {
-                bam_ptr<uint64_t> ptr(da);
                 const uint64_t start = vertexList[warpIdx];
                 const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
                 const uint64_t end = vertexList[warpIdx+1];
@@ -1356,7 +1356,7 @@ int main(int argc, char *argv[]) {
             //dim3 verifyBlockDim(nblocks); 
             //kernel_verify<<<verifyBlockDim,numthreads>>>(vertex_count,winnerList_d, UINT64MAX, 1);
 
-            cuda_err_chk(cudaDeviceSynchronize());
+            // cuda_err_chk(cudaDeviceSynchronize());
             
             printf("Allocating %f MB for FirstVertexList\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)));
             cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_pages * sizeof(uint64_t)));
@@ -1464,7 +1464,7 @@ int main(int argc, char *argv[]) {
                     //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                     //    break;
                     case COALESCE_HASH_HALF:
-                        kernel_coalesce_hash_half<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.stride);
+                        kernel_coalesce_hash_half<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.stride);                        
                         break;
                     case COALESCE_HASH_HALF_PTR_PC:
                         //printf("blockDim: %d %d numthreads: %d\n", blockDim.x,blockDim.y, numthreads);
