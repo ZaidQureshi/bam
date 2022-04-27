@@ -390,6 +390,7 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
             //this implies there are more vertices to compute in the cacheline. So repeat the loop.
             if(end < clend){
                 cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
                 if(cur_vertexid < vertex_count){
                     start        = vertexList[cur_vertexid]; 
                     end          = vertexList[cur_vertexid+1]; 
