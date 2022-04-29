@@ -355,7 +355,7 @@ void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, b
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -372,7 +372,7 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
     uint64_t end   = vertexList[cur_vertexid+1];
     bool stop      = false;
 
-    uint64_t itr = 0;
+    // uint64_t itr = 0;
     if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
        //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
         while(!stop){
@@ -392,7 +392,7 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
                }
             }
-            itr++; 
+            // itr++; 
             
             //this implies there are more vertices to compute in the cacheline. So repeat the loop.
             if(end < clend){
@@ -409,11 +409,14 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
         }
     }
 }
+ 
+
 
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t num_elems_in_cl, uint64_t n_pages){
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, 
+                                uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -431,21 +434,27 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
     bool stop      = false;
     bam_ptr<uint64_t> ptr(da);
 
-    if ((cur_vertexid < vertex_count) && (warpIdx < n_pages)){
+    // uint64_t itr = 0;
+    if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
+       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
         while(!stop){
         //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
             //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
             if(end >= clend){
                 end  = clend;
                 stop = true;
+     //           printf("called end >=clend and end is:%llu\n", end);
             }
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+                   uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+       //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = ptr[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
                }
             }
+            // itr++; 
             
             //this implies there are more vertices to compute in the cacheline. So repeat the loop.
             if(end < clend){
