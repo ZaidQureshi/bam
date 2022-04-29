@@ -996,39 +996,10 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const ui
 
 
 
-__global__ void kernel_coalesce(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed) {
-    const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-    const uint64_t warpIdx = tid >> WARP_SHIFT;
-    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
-    
-    if(warpIdx < vertex_count && label[warpIdx] == level) {
-        const uint64_t start = vertexList[warpIdx];
-        // const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
-        const uint64_t end = vertexList[warpIdx+1];
-
-        for(uint64_t i = start+ laneIdx; i < end; i += WARP_SIZE) {
-//        printf("Inside kernel %llu %llu %llu\n", (unsigned long long) i, (unsigned long long)start, (unsigned long long) (end-start));
-
-            // if (i >= start) {
-                const EdgeT next = edgeList[i];
-  //printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
-
-                if(label[next] == MYINFINITY) {
-
-                //    if(level ==0)
-                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
-                    label[next] = level + 1;
-                    *changed = true;
-                }
-            // }
-        }
-    }
-}
-
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_coalesce (uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
+void kernel_optimized(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -1087,8 +1058,6 @@ void kernel_coalesce (uint32_t *label, const uint32_t level, const uint64_t vert
         }
     }
 }
- 
-
 
 
 
@@ -1646,13 +1615,12 @@ int main(int argc, char *argv[]) {
                          curr_frontier_d = next_frontier_d;
                          next_frontier_d = tmp_front;
                          break;
-                     
                      case OPTIMIZED: 
-                            kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,, firstVertexList_d, num_elems_in_cl, n_pages);
+                            kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages);
                             break;
-                     case OPTIMIZED_PC: 
-                            kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,, firstVertexList_d, num_elems_in_cl, n_pages);
-                            break;
+                     //case OPTIMIZED_PC: 
+                     //       kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,, firstVertexList_d, num_elems_in_cl, n_pages);
+                     //       break;
                      default:
                          fprintf(stderr, "Invalid type\n");
                          exit(1);
