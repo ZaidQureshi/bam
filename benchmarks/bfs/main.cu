@@ -963,6 +963,8 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const ui
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
     const uint64_t chunkIdx = warpIdx * CHUNK_SIZE;
     uint64_t chunk_size = CHUNK_SIZE;
+    bam_ptr<uint64_t> ptr(da);
+
     //array_d_t<uint64_t> d_array = *da;
     if((chunkIdx + CHUNK_SIZE) > vertex_count) {
         if ( vertex_count > chunkIdx )
@@ -981,7 +983,7 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const ui
                 if (j >= start) {
                     // const EdgeT next = edgeList[j];
                     //EdgeT next = da->seq_read(j);
-                    EdgeT next = da->seq_read(j);
+                    EdgeT next = ptr[j];
                     // printf("tid: %llu, idx: %llu next: %llu\n", (unsigned long long) tid, (unsigned long long) i, (unsigned long long) next);
 
                     if(label[next] == MYINFINITY) {
@@ -1033,6 +1035,72 @@ void kernel_optimized(uint32_t *label, const uint32_t level, const uint64_t vert
                 //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
                 //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = edgeList[i];
+                   if(label[next] == MYINFINITY) {
+                //    if(level ==0)
+                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                        label[next] = level + 1;
+                        *changed = true;
+                    }
+               }
+            }
+            // itr++; 
+            
+            //this implies there are more vertices to compute in the cacheline. So repeat the loop.
+            if(end < clend){
+                cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
+                if(cur_vertexid < vertex_count){
+                    start        = vertexList[cur_vertexid]; 
+                    end          = vertexList[cur_vertexid+1]; 
+                }
+                else {
+                    stop = true; 
+                }
+            }
+        }
+    }
+}
+
+
+
+//TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
+//TODO: make it templated. 
+__global__ __launch_bounds__(128,16)
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
+    //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+
+    const uint64_t clstart = warpIdx*num_elems_in_cl; 
+    const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
+    //start vertex
+    uint64_t cur_vertexid = first_vertex[warpIdx]; 
+
+    //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
+    uint64_t start = clstart; 
+    uint64_t end   = vertexList[cur_vertexid+1];
+    bool stop      = false;
+    bam_ptr<uint64_t> ptr(da);
+
+    // uint64_t itr = 0;
+    if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
+       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+        while(!stop){
+        //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+            //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
+            if(end >= clend){
+                end  = clend;
+                stop = true;
+                //           printf("called end >=clend and end is:%llu\n", end);
+            }
+
+            if(label[cur_vertexid] == level){
+               for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+                //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+                //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
+                   EdgeT next = ptr[i];
                    if(label[next] == MYINFINITY) {
                 //    if(level ==0)
                 //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
