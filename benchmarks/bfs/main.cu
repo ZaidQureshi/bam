@@ -1686,9 +1686,9 @@ int main(int argc, char *argv[]) {
                      case OPTIMIZED: 
                             kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages);
                             break;
-                     //case OPTIMIZED_PC: 
-                     //       kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,, firstVertexList_d, num_elems_in_cl, n_pages);
-                     //       break;
+                     case OPTIMIZED_PC: 
+                           kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,, firstVertexList_d, num_elems_in_cl, n_pages);
+                           break;
                      default:
                          fprintf(stderr, "Invalid type\n");
                          exit(1);
