@@ -564,49 +564,7 @@ void kernel_verify(uint64_t count, unsigned long long int *list, uint64_t condva
     }
 }
 
-
-
-/*
-
-
-
-//TODO: Templatize the kernel for clstart and clend.
-__global__ __launch_bounds__(128,16)
-void kernel_genfirst_vertex(uint64_t vertex_count, uint64_t *vertexList, uint64_t *firstvertexList, uint32_t clsize){
-   const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
-
-    const uint64_t clstart = tid*clsize/sizeof(uint64_t); 
-    const uint64_t clend   = (tid+1)*clsize/sizeof(uint64_t); 
-
-    uint64_t curIdx = tid; 
-    bool stop       = false; 
-
-    uint64_t curVertVal  = vertexList[curIdx];
-    //uint64_t prevVertVal = curVertVal; 
-
-    // we can get each vertex list which cacheline it belongs to by dividing the vertexlist by cacheline size and perhaps use that to reduce the search overhead. 
-    // also have to think about what happens if your curIdx init is not right. 
-    while(!stop){
-
-        if(curVertVal == clstart){
-            stop = true; 
-            firstvertexList[tid] = curIdx; 
-        }
-        else if(curVertVal < clstart){
-            stop = false;
-            curIdx = curIdx + 1; 
-            curVertVal = vertexList[curIdx];
-        }
-        //curVertVal > clstart
-        else {
-            
-//dont know how to stop 
-
-
-        }
-    }
-}
-*/
+ 
 
 
 __global__ __launch_bounds__(128,16)
@@ -1716,7 +1674,11 @@ int main(int argc, char *argv[]) {
         cuda_err_chk(cudaFree(vertexVisitCount_d));
         if(mem!=BAFS_DIRECT)
             cuda_err_chk(cudaFree(edgeList_d));
-
+        if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
+            cuda_err_chk(cudaFree(firstVertexList_d));
+            // free(firstVertexList_h);
+        }
+            
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
              delete ctrls[i];
 
