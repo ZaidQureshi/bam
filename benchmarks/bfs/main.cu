@@ -1695,7 +1695,7 @@ int main(int argc, char *argv[]) {
             
              if(settings.src == 0)
                    src += vertex_count / total_run;
-             printf("\nBFS-%d Graph:%s \t Impl: %d \t SSD: %d \t Stride: %llu \t CL: %d \t AvgTime %f ms\n", i, filename.c_str(), type, settings.n_ctrls, settings.stride, settings.pageSize, avg_milliseconds / num_run);
+             printf("\nBFS-%d Graph:%s \t Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %llu \t Coarse: %d \t AvgTime %f ms\n", i, filename.c_str(), type, settings.n_ctrls, settings.pageSize, settings.maxPageCacheSize, settings.stride, settings.coarse, milliseconds);
          }
          
          free(vertexList_h);
