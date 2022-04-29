@@ -275,7 +275,7 @@ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
 
        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
            if (i >= start) {
-               atomicAdd(&(totalcount_d[0]), 1);
+               //atomicAdd(&(totalcount_d[0]), 1);
                const EdgeT next = edgeList[i];
                cc_compute(warpIdx, comp, next, next_visit, changed);
 
@@ -386,7 +386,7 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
-                   uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+       //              uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
        //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = edgeList[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
@@ -415,8 +415,7 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, 
-                                uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -1537,7 +1536,7 @@ int main(int argc, char *argv[]) {
                         break;
                     case OPTIMIZED_PC:
                         printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
-                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
+                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
                         break;
 
                     default:
