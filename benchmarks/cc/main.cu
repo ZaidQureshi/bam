@@ -263,7 +263,8 @@ void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 }
 
 __global__ 
-void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, unsigned long long int* totalcount_d) {
+//void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, unsigned long long int* totalcount_d) {
+void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
@@ -355,7 +356,8 @@ void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, b
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+//void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -415,7 +417,8 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+//void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -447,7 +450,7 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
-                   uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+       //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
        //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = ptr[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
@@ -1445,7 +1448,7 @@ int main(int argc, char *argv[]) {
             //free(winnerList_h);
         }
 
-        for(int titr=0; titr<1; titr+=1){
+        for(int titr=0; titr<2; titr+=1){
             iter = 0;
             cuda_err_chk(cudaEventRecord(start, 0));
             // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
@@ -1454,10 +1457,10 @@ int main(int argc, char *argv[]) {
            printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
             // Run CC
             do {
-                unsigned long long int totalcount_h=0; 
-                unsigned long long int *totalcount_d;
-                cuda_err_chk(cudaMalloc((void**)&totalcount_d, sizeof(unsigned long long int)));
-                cuda_err_chk(cudaMemcpy(totalcount_d, &totalcount_h, sizeof(unsigned long long int), cudaMemcpyHostToDevice));
+                //unsigned long long int totalcount_h=0; 
+                //unsigned long long int *totalcount_d;
+                //cuda_err_chk(cudaMalloc((void**)&totalcount_d, sizeof(unsigned long long int)));
+                //cuda_err_chk(cudaMemcpy(totalcount_d, &totalcount_h, sizeof(unsigned long long int), cudaMemcpyHostToDevice));
                 
                 changed_h = false;
                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
@@ -1468,7 +1471,8 @@ int main(int argc, char *argv[]) {
                         kernel_baseline<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, vertexVisitCount_d, largebin, binelems, neigBin);
                         break;
                     case COALESCE:
-                        kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, totalcount_d);
+                        //kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, totalcount_d);
+                        kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
                         break;
                     case COALESCE_CHUNK:
                         kernel_coalesce_chunk<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
@@ -1531,12 +1535,14 @@ int main(int argc, char *argv[]) {
                         preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         break;
                     case OPTIMIZED:
-                        printf("Launching optimized kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
-                        kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
+                        //printf("Launching optimized kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        //kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
+                        kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
                         break;
                     case OPTIMIZED_PC:
-                        printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
-                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
+                        //printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        //kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
+                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
                         break;
 
                     default:
@@ -1544,15 +1550,13 @@ int main(int argc, char *argv[]) {
                         exit(1);
                         break;
                 }
-                cuda_err_chk(cudaMemcpy(&totalcount_h, totalcount_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
-                printf("totalcount: %llu\n", totalcount_h);
+                //cuda_err_chk(cudaMemcpy(&totalcount_h, totalcount_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
+                //printf("totalcount: %llu\n", totalcount_h);
 
                 cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
                 bool *temp = curr_visit_d;
                 curr_visit_d = next_visit_d;
                 next_visit_d = temp;
-                
-            //    exit(1);
 
                 iter++;
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
