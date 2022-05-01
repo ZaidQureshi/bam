@@ -1001,60 +1001,65 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, uint32_t *label, const ui
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
+void kernel_optimized(uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages, uint64_t stride){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
-
-    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t cwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
 
-    const uint64_t clstart = warpIdx*num_elems_in_cl; 
-    const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
-    //start vertex
-    uint64_t cur_vertexid = first_vertex[warpIdx]; 
 
-    //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
-    uint64_t start = clstart; 
-    uint64_t end   = vertexList[cur_vertexid+1];
-    bool stop      = false;
+    uint64_t nep = (n_pages+stride)/stride; 
+    uint64_t warpIdx = (cwarpIdx/nep) + ((cwarpIdx % nep)*stride);
 
-    // uint64_t itr = 0;
-    if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
-       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
-        while(!stop){
-        //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
-            //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
-            if(end >= clend){
-                end  = clend;
-                stop = true;
-                //           printf("called end >=clend and end is:%llu\n", end);
-            }
+    if(warpIdx < n_pages){
+        const uint64_t clstart = warpIdx*num_elems_in_cl; 
+        const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
+        //start vertex
+        uint64_t cur_vertexid = first_vertex[warpIdx]; 
 
-            if(label[cur_vertexid] == level){
-               for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
-                //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
-                //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
-                   EdgeT next = edgeList[i];
-                   if(label[next] == MYINFINITY) {
-                //    if(level ==0)
-                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
-                        label[next] = level + 1;
-                        *changed = true;
-                    }
-               }
-            }
-            // itr++; 
-            
-            //this implies there are more vertices to compute in the cacheline. So repeat the loop.
-            if(end < clend){
-                cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
-                for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
-                if(cur_vertexid < vertex_count){
-                    start        = vertexList[cur_vertexid]; 
-                    end          = vertexList[cur_vertexid+1]; 
+        //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
+        uint64_t start = clstart; 
+        uint64_t end   = vertexList[cur_vertexid+1];
+        bool stop      = false;
+
+        // uint64_t itr = 0;
+        if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
+           //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+            while(!stop){
+            //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+                //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
+                if(end >= clend){
+                    end  = clend;
+                    stop = true;
+                    //           printf("called end >=clend and end is:%llu\n", end);
                 }
-                else {
-                    stop = true; 
+
+                if(label[cur_vertexid] == level){
+                   for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+                    //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+                    //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
+                       EdgeT next = edgeList[i];
+                       if(label[next] == MYINFINITY) {
+                    //    if(level ==0)
+                    //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                            label[next] = level + 1;
+                            *changed = true;
+                        }
+                   }
+                }
+                // itr++; 
+                
+                //this implies there are more vertices to compute in the cacheline. So repeat the loop.
+                if(end < clend){
+                    cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                    for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
+                    if(cur_vertexid < vertex_count){
+                        start        = vertexList[cur_vertexid]; 
+                        end          = vertexList[cur_vertexid+1]; 
+                    }
+                    else {
+                        stop = true; 
+                    }
                 }
             }
         }
@@ -1066,64 +1071,69 @@ void kernel_optimized(uint32_t *label, const uint32_t level, const uint64_t vert
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
 __global__ __launch_bounds__(128,16)
-void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uint32_t level, const uint64_t vertex_count, const uint64_t *vertexList, const EdgeT *edgeList, uint64_t *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages, uint64_t stride, uint64_t iter){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
-    const uint64_t warpIdx = tid >> WARP_SHIFT;
+    const uint64_t cwarpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
+    
+    uint64_t nep = (n_pages+stride)/stride; 
+    uint64_t warpIdx = (cwarpIdx/nep) + ((cwarpIdx % nep)*stride);
 
-    const uint64_t clstart = warpIdx*num_elems_in_cl; 
-    const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
-    //start vertex
-    uint64_t cur_vertexid = first_vertex[warpIdx]; 
+    if(warpIdx < n_pages){
+         const uint64_t clstart = warpIdx*num_elems_in_cl; 
+         const uint64_t clend   = (warpIdx+1)*num_elems_in_cl; 
+         //start vertex
+         uint64_t cur_vertexid = first_vertex[warpIdx]; 
 
-    //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
-    uint64_t start = clstart; 
-    uint64_t end   = vertexList[cur_vertexid+1];
-    bool stop      = false;
-    bam_ptr<uint64_t> ptr(da);
+         //for the first vertex iterator start is the clstart point while the end is either the clend or the cur_vertexid neighborlist end
+         uint64_t start = clstart; 
+         uint64_t end   = vertexList[cur_vertexid+1];
+         bool stop      = false;
+         bam_ptr<uint64_t> ptr(da);
 
-    // uint64_t itr = 0;
-    if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
-       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
-        while(!stop){
-        //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
-            //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
-            if(end >= clend){
-                end  = clend;
-                stop = true;
-                //           printf("called end >=clend and end is:%llu\n", end);
-            }
+         //uint64_t itr = 0;
+         if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
+            //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+             while(!stop){
+             //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
+                 //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
+                 if(end >= clend){
+                     end  = clend;
+                     stop = true;
+                     //           printf("called end >=clend and end is:%llu\n", end);
+                 }
 
-            if(label[cur_vertexid] == level){
-               for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
-                //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
-                //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
-                   EdgeT next = ptr[i];
-                   if(label[next] == MYINFINITY) {
-                //    if(level ==0)
-                //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
-                        label[next] = level + 1;
-                        *changed = true;
+                 if(label[cur_vertexid] == level){
+                    for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+                     //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+                            //printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, 0);
+                        EdgeT next = ptr[i];
+                        if(label[next] == MYINFINITY) {
+                     //    if(level ==0)
+                     //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
+                             label[next] = level + 1;
+                             *changed = true;
+                         }
                     }
-               }
-            }
-            // itr++; 
-            
-            //this implies there are more vertices to compute in the cacheline. So repeat the loop.
-            if(end < clend){
-                cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
-                for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
-                if(cur_vertexid < vertex_count){
-                    start        = vertexList[cur_vertexid]; 
-                    end          = vertexList[cur_vertexid+1]; 
-                }
-                else {
-                    stop = true; 
-                }
-            }
-        }
+                 }
+                 //itr++; 
+                 
+                 //this implies there are more vertices to compute in the cacheline. So repeat the loop.
+                 if(end < clend){
+                     cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                     for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
+                     if(cur_vertexid < vertex_count){
+                         start        = vertexList[cur_vertexid]; 
+                         end          = vertexList[cur_vertexid+1]; 
+                     }
+                     else {
+                         stop = true; 
+                     }
+                 }
+             }
+         }
     }
 }
 
@@ -1192,7 +1202,7 @@ int main(int argc, char *argv[]) {
                  src = 0;
          }
          else {
-                 total_run = 2; 
+                 total_run = 1; 
                  src = settings.src; 
          }
 
@@ -1684,10 +1694,10 @@ int main(int argc, char *argv[]) {
                          next_frontier_d = tmp_front;
                          break;
                      case OPTIMIZED: 
-                            kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages);
+                            kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages,settings.stride);
                             break;
                      case OPTIMIZED_PC: 
-                           kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages);
+                           kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages, settings.stride, iter);
                            break;
                      default:
                          fprintf(stderr, "Invalid type\n");
@@ -1700,7 +1710,7 @@ int main(int argc, char *argv[]) {
 
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(uint64_t), cudaMemcpyDeviceToHost));
                  //auto end = std::chrono::system_clock::now();
-                 // if(mem == BAFS_DIRECT) {
+                 //if(mem == BAFS_DIRECT) {
                  //     h_array->print_reset_stats();
 
                  // }
