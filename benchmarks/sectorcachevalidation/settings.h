@@ -57,6 +57,7 @@ struct Settings
     bool random;
     uint64_t accessType;
     uint64_t ratio;
+    uint64_t sectorSize;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -393,6 +394,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
         {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write", "0"))},
         {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
+        {'S', OptionPtr(new Range(sectorSize, 512, 8192, "sector_size", "sector size for sector cache", "512"))},
     };
 
     string optionString;
@@ -491,6 +493,7 @@ Settings::Settings()
     random = true;
     accessType = READ;
     ratio = 100;
+    sectorSize = 512;
 }
 
 

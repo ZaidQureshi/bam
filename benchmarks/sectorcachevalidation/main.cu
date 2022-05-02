@@ -37,7 +37,7 @@ using error = std::runtime_error;
 using std::string;
 
  //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6"};
-const char* const ctrls_paths[] = {"/dev/libnvm1"};
+const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 __global__
 void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t n_pages, uint64_t page_size, int* counter) {
@@ -149,19 +149,21 @@ int main(int argc, char** argv) {
 
         uint64_t b_size = settings.blkSize;//64;
         uint64_t g_size = (settings.numThreads + b_size - 1)/b_size;//80*16;
-        uint64_t n_threads = b_size * g_size;
+        uint64_t n_threads = settings.numThreads;//b_size * g_size;
+        std::cout << n_threads <<std::endl;
 
         uint64_t page_size = settings.pageSize;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
         uint64_t n_blocks = settings.numBlks;
+        uint32_t sector_size = settings.sectorSize;
 
         /*if(total_cache_size > (sb_in.st_size - settings.ifileoffset)){
                 n_pages = ceil((sb_in.st_size - settings.ifileoffset)/(1.0*settings.pageSize));
                 total_cache_size = n_pages*page_size; 
         }*/
 
-        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+        page_cache_t h_pc(page_size, n_pages, sector_size, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
         std::cout << "finished creating cache\n Total Cache size (MBs):" << ((float)total_cache_size/(1024*1024)) <<std::endl;
         fflush(stderr);
         fflush(stdout);
