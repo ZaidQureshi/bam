@@ -1210,8 +1210,14 @@ int main(int argc, char *argv[]) {
          type = (impl_type) settings.type; 
          mem = (mem_type) settings.memalloc; 
 
-         uint64_t tile_size = settings.tsize; 
          pc_page_size = settings.pageSize; 
+
+         uint64_t tile_size = 4096;
+         if(settings.tsize == 0)
+             tile_size = pc_page_size; 
+         else
+             tile_size = settings.tsize; 
+
          pc_pages = ceil((float)settings.maxPageCacheSize/pc_page_size);
 
          numthreads = settings.numThreads;

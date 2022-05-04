@@ -488,7 +488,7 @@ Settings::Settings()
     src = 0;
     stride = 1;
     coarse = 1;
-    tsize = pageSize; 
+    tsize = 0; 
     maxPageCacheSize = 8589934592;
 }
 
