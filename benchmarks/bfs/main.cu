@@ -1110,6 +1110,7 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, uint32_t *label, const uin
                      //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
                             //printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, 0);
                         EdgeT next = ptr[i];
+                        //EdgeT next = da->seq_read(i); //[i];
                         if(label[next] == MYINFINITY) {
                      //    if(level ==0)
                      //            printf("tid:%llu, level:%llu, next: %llu start:%llu end:%llu\n", tid, (unsigned long long)level, (unsigned long long)next, (unsigned long long)start, (unsigned long long)end);
@@ -1202,13 +1203,14 @@ int main(int argc, char *argv[]) {
                  src = 0;
          }
          else {
-                 total_run = 1; 
+                 total_run = 2; 
                  src = settings.src; 
          }
 
          type = (impl_type) settings.type; 
          mem = (mem_type) settings.memalloc; 
 
+         uint64_t tile_size = settings.tsize; 
          pc_page_size = settings.pageSize; 
          pc_pages = ceil((float)settings.maxPageCacheSize/pc_page_size);
 
@@ -1382,7 +1384,7 @@ int main(int argc, char *argv[]) {
          printf("Allocation finished\n");
          fflush(stdout);
          uint64_t n_pages = ceil(((float)edge_size)/pc_page_size);
-
+         uint64_t n_tiles = ceil(((float)edge_size)/tile_size);
          // Initialize values
          cuda_err_chk(cudaMemcpy(vertexList_d, vertexList_h, vertex_size, cudaMemcpyHostToDevice));
 
@@ -1427,7 +1429,7 @@ int main(int argc, char *argv[]) {
             
              case OPTIMIZED:
              case OPTIMIZED_PC:
-                  numblocks = (n_pages*WARP_SIZE+numthreads)/numthreads;
+                  numblocks = (n_tiles*WARP_SIZE+numthreads)/numthreads;
                   break; 
              default:
                  fprintf(stderr, "Invalid type\n");
@@ -1442,7 +1444,7 @@ int main(int argc, char *argv[]) {
 
 
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC) || (type== FRONTIER_COALESCE_PTR_PC) ||(type == COALESCE_COARSE_PTR_PC) ||(type == COALESCE_HASH_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
-                printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+                printf("page size: %d, pc_entries: %llu tile_size:%llu\n", pc_page_size, pc_pages, tile_size);
                 fflush(stdout);
          }
 
@@ -1487,50 +1489,55 @@ int main(int argc, char *argv[]) {
 
         uint64_t *firstVertexList_d;
         unsigned long long  int *winnerList_d; 
-        uint64_t num_elems_in_cl = (uint32_t) pc_page_size / (sizeof(uint64_t));
+        uint64_t num_elems_in_cl = (uint32_t) tile_size / (sizeof(uint64_t));
         //preprocessing for the optimized implementation.
+
+
         if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
-            n_pages = (edge_count+num_elems_in_cl) / num_elems_in_cl;
-            cuda_err_chk(cudaMalloc((void**)&winnerList_d,   (n_pages)* sizeof(unsigned long long int)));
-            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, (n_pages)* sizeof(unsigned long long int)));
+            
+            printf("n_tiles: %llu num_elems_in_tile:%llu \n", n_tiles, num_elems_in_cl);
+            n_tiles = (edge_count+num_elems_in_cl) / num_elems_in_cl;
+            printf("n_tiles: %llu num_elems_in_tile:%llu \n", n_tiles, num_elems_in_cl);
+            cuda_err_chk(cudaMalloc((void**)&winnerList_d,   (n_tiles)* sizeof(unsigned long long int)));
+            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, (n_tiles)* sizeof(unsigned long long int)));
             //printf("UNIT64MAX is: %llu\n", UINT64MAX);
-            //uint64_t nblocks = (n_pages+numthreads)/numthreads;
+            //uint64_t nblocks = (n_tiles+numthreads)/numthreads;
             //dim3 verifyBlockDim(nblocks); 
-            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages,winnerList_d, UINT64MAX, 1);
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_tiles,winnerList_d, UINT64MAX, 1);
 
             // cuda_err_chk(cudaDeviceSynchronize());
             //num_elems_in_cl  = 6;
-            printf("Allocating %f MB for FirstVertexList with n_pages: %llu numelemspercl: %llu\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)), n_pages, num_elems_in_cl);
-            cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_pages * sizeof(uint64_t)));
+            printf("Allocating %f MB for FirstVertexList with n_tiles: %llu numelemspercl: %llu\n", ((double)n_tiles*sizeof(uint64_t)/(1024*1024)), n_tiles, num_elems_in_cl);
+            cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_tiles * sizeof(uint64_t)));
 
             uint64_t nblocks_step1 = (vertex_count+1+numthreads)/numthreads; 
-            uint64_t nblocks_step2 = (n_pages+numthreads)/numthreads; 
+            uint64_t nblocks_step2 = (n_tiles+numthreads)/numthreads; 
             printf("Launching step1 in generation of FirstVertexList: numblocks: %llu numthreads: %llu\n", nblocks_step1, numthreads);
             dim3 step1blockdim(nblocks_step1);
             dim3 step2blockdim(nblocks_step2);
             kernel_first_vertex_step1<<<step1blockdim,numthreads>>>(vertex_count+1, vertexList_d, num_elems_in_cl, winnerList_d);
             //uint64_t *winnerList_h; 
-            //uint64_t copysize = (n_pages) * sizeof(unsigned long long int);
+            //uint64_t copysize = (n_tiles) * sizeof(unsigned long long int);
             //winnerList_h = (uint64_t*)malloc(copysize);
             //cuda_err_chk(cudaMemcpy((void**)winnerList_h, (void**)winnerList_d, copysize, cudaMemcpyDeviceToHost));
             //printf("winnerlist values: \n");
-            //for(uint64_t i=0; i< n_pages; i++){
+            //for(uint64_t i=0; i< n_tiles; i++){
             //      printf("i: %llu, winner: %llu\n",i, winnerList_h[i]);
             //}
             //printf("\n");
-            kernel_first_vertex_step2<<<step2blockdim,numthreads>>>(n_pages, vertexList_d, winnerList_d, num_elems_in_cl, firstVertexList_d);
+            kernel_first_vertex_step2<<<step2blockdim,numthreads>>>(n_tiles, vertexList_d, winnerList_d, num_elems_in_cl, firstVertexList_d);
             
             //uint64_t *firstVertexList_h; 
-            //uint64_t copysize2 = n_pages * sizeof(unsigned long long int);
+            //uint64_t copysize2 = n_tiles * sizeof(unsigned long long int);
             //firstVertexList_h = (uint64_t*) malloc(copysize2); 
             //cuda_err_chk(cudaMemcpy((void**)firstVertexList_h, (void**)firstVertexList_d, copysize2, cudaMemcpyDeviceToHost));
             //printf("Firstvertex values\n");
-            //for(uint64_t i=0; i< n_pages; i++){
+            //for(uint64_t i=0; i< n_tiles; i++){
             //    printf("%llu\n", firstVertexList_h[i]);
             //}
-            uint64_t nblocks = (n_pages+numthreads)/numthreads;
+            uint64_t nblocks = (n_tiles+numthreads)/numthreads;
             //dim3 verifyBlockDim(nblocks); 
-            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages, (unsigned long long int*) firstVertexList_d, UINT64MAX, 2);
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_tiles, (unsigned long long int*) firstVertexList_d, UINT64MAX, 2);
             
             cuda_err_chk(cudaDeviceSynchronize());
             cuda_err_chk(cudaFree(winnerList_d));
@@ -1694,10 +1701,10 @@ int main(int argc, char *argv[]) {
                          next_frontier_d = tmp_front;
                          break;
                      case OPTIMIZED: 
-                            kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages,settings.stride);
+                            kernel_optimized<<<numblocks, numthreads>>>(label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_tiles,settings.stride);
                             break;
                      case OPTIMIZED_PC: 
-                           kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_pages, settings.stride, iter);
+                           kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, label_d, level, vertex_count, vertexList_d, edgeList_d, changed_d,firstVertexList_d, num_elems_in_cl, n_tiles, settings.stride, iter);
                            break;
                      default:
                          fprintf(stderr, "Invalid type\n");

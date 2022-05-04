@@ -47,6 +47,7 @@ struct Settings
     uint32_t        devfn;
     uint64_t stride;
     uint64_t coarse;
+    uint64_t tsize;
     uint32_t n_ctrls;
     size_t blkSize;
     size_t queueDepth;
@@ -385,6 +386,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
         {'P', OptionPtr(new Option<uint64_t>(stride, "number", "STRIDE", "Hashing stride factor for bfs coal. It is calculated as P = stride. Assumes power of 2", "1"))},
         {'C', OptionPtr(new Option<uint64_t>(coarse, "number", "COARSE", "Thread coarsening factor", "1"))},
+        {'T', OptionPtr(new Option<uint64_t>(tsize, "number", "TileSize", "CLAware tile size", "4096"))},
 //        {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
     };
 
@@ -486,6 +488,7 @@ Settings::Settings()
     src = 0;
     stride = 1;
     coarse = 1;
+    tsize = pageSize; 
     maxPageCacheSize = 8589934592;
 }
 

@@ -86,23 +86,27 @@ typedef enum {
 } mem_type;
 
 
-__global__ __launch_bounds__(64,32)
-void kernel_baseline(uint64_t n_elems, unsigned long long int *A, unsigned long long int *B, unsigned long long int *sum){
+__global__ //__launch_bounds__(64,32)
+void kernel_baseline(uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long long int *sum){
     uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-
-    uint64_t val = A[tid] + B[tid];  
-    atomicAdd(&sum[0], val);
+    if(tid<n_elems){
+       uint64_t val = A[tid] + B[tid];  
+       atomicAdd(&sum[0], val);
+       printf("A:%llu B:%llu \n", A[tid], B[tid]);
+    }
 }
 
 __global__ __launch_bounds__(64,32)
-void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, uint64_t n_elems, unsigned long long int *A, unsigned long long int *B, unsigned long long int *sum){
+void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long long int *sum){
     uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
     bam_ptr<uint64_t> Aptr(da);
     bam_ptr<uint64_t> Bptr(da);
 
-    uint64_t val = Aptr[tid] + Bptr[tid];  
-    atomicAdd(&sum[0], val);
+    if(tid<n_elems){
+       uint64_t val = Aptr[tid] + Bptr[tid];  
+       atomicAdd(&sum[0], val);
+    }
 }
 
 
@@ -186,7 +190,8 @@ int main(int argc, char *argv[]) {
 
         file.read((char*)(&tmp), 16);
         a_h = (uint64_t*)malloc(n_elems_size);
-        file.read((char*)a_h, n_elems_size);
+        if(mem != UVM_DIRECT)
+             file.read((char*)a_h, n_elems_size);
         file.close();
 
         // Read files
@@ -198,43 +203,87 @@ int main(int argc, char *argv[]) {
 
         file.read((char*)(&tmp), 16);
         b_h = (uint64_t*)malloc(n_elems_size);
-        file.read((char*)b_h, n_elems_size);
+        if(mem != UVM_DIRECT)
+            file.read((char*)b_h, n_elems_size);
         file.close();
 
         switch (mem) {
             case GPUMEM:
+                {  
                 cuda_err_chk(cudaMalloc((void**)&a_d, n_elems_size));
                 cuda_err_chk(cudaMalloc((void**)&b_d, n_elems_size));
                 cuda_err_chk(cudaMemcpy(a_d, a_h, n_elems_size, cudaMemcpyHostToDevice));
                 cuda_err_chk(cudaMemcpy(b_d, b_h, n_elems_size, cudaMemcpyHostToDevice));
                 //TODO:
                 break;
+                }
             case UVM_READONLY:
+                {
                 cuda_err_chk(cudaMallocManaged((void**)&a_d, n_elems_size));
                 cuda_err_chk(cudaMallocManaged((void**)&b_d, n_elems_size));
                 cuda_err_chk(cudaMemcpy(a_d, a_h, n_elems_size, cudaMemcpyHostToDevice));
                 cuda_err_chk(cudaMemcpy(b_d, b_h, n_elems_size, cudaMemcpyHostToDevice));
                 //TODO: we can move that read op here.
                 //file.read((char*)edgeList_d, edge_size);
-                cuda_err_chk(cudaMemAdvise(edgeList_d, edge_size, cudaMemAdviseSetReadMostly, settings.cudaDevice));
+                cuda_err_chk(cudaMemAdvise(a_d, n_elems_size, cudaMemAdviseSetReadMostly, settings.cudaDevice));
+                cuda_err_chk(cudaMemAdvise(b_d, n_elems_size, cudaMemAdviseSetReadMostly, settings.cudaDevice));
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 break;
+                }
             case UVM_DIRECT:
+                {
+                file.close(); 
+                int fda = open(a_file_bin.c_str(), O_RDONLY | O_DIRECT); 
+                int fdb = open(b_file_bin.c_str(), O_RDONLY | O_DIRECT); 
+                FILE *fa_tmp= fdopen(fda, "rb");
+                if ((fa_tmp == NULL) || (fda == -1)) {
+                    printf("A file fd open failed\n");
+                    exit(1);
+                }   
+                FILE *fb_tmp= fdopen(fdb, "rb");
+                if ((fb_tmp == NULL) || (fdb == -1)) {
+                    printf("A file fd open failed\n");
+                    exit(1);
+                }   
+                uint64_t count_4k_aligned = ((n_elems + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
+                uint64_t size_4k_aligned = count_4k_aligned * sizeof(uint64_t);
+
+                cuda_err_chk(cudaMallocManaged((void**)&a_d, size_4k_aligned));
+                cuda_err_chk(cudaMallocManaged((void**)&b_d, size_4k_aligned));
+                cuda_err_chk(cudaMemAdvise(a_d, size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+                cuda_err_chk(cudaMemAdvise(b_d, size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
                 high_resolution_clock::time_point ft1 = high_resolution_clock::now();
-                cuda_err_chk(cudaMallocManaged((void**)&a_d, n_elems_size));
-                cuda_err_chk(cudaMallocManaged((void**)&b_d, n_elems_size));
-                file.read((char*)a_d, n_elems_size);
-                file.read((char*)a_d, n_elems_size);
-                cuda_err_chk(cudaMemAdvise(a_d, n_elems_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
-                cuda_err_chk(cudaMemAdvise(b_d, n_elems_size, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
+
+                if (fread(a_d, sizeof(uint64_t), count_4k_aligned, fa_tmp) != n_elems + 2) {
+                    printf("A file fread failed\n");
+                    exit(1);
+                }   
+                fclose(fa_tmp);                                                                                                              
+                close(fda);
+
+                if (fread(b_d, sizeof(uint64_t), count_4k_aligned, fb_tmp) != n_elems + 2) {
+                    printf("B file fread failed\n");
+                    exit(1);
+                }   
+                fclose(fb_tmp);                                                                                                              
+                close(fdb);
+
                 high_resolution_clock::time_point ft2 = high_resolution_clock::now();
                 duration<double> time_span = duration_cast<duration<double>>(ft2 -ft1);
                 std::cout<< "file read time: "<< time_span.count() <<std::endl;
+                
+                file.open(a_file_bin.c_str(), std::ios::in | std::ios::binary);
+                if (!file.is_open()) {
+                    printf("A file open failed\n");
+                    exit(1);
+                }
                 break;
-
+                }
             case BAFS_DIRECT: 
+                {
                 break;
-            }
+                }
+        }
 
         file.close();
         
@@ -302,7 +351,6 @@ int main(int argc, char *argv[]) {
 
 
         for(int titr=0; titr<2; titr+=1){
-            iter = 0;
             cuda_err_chk(cudaEventRecord(start, 0));
                 
             auto itrstart = std::chrono::system_clock::now();
@@ -310,10 +358,12 @@ int main(int argc, char *argv[]) {
 
             switch (type) {
                 case BASELINE:
-                    kernel_baseline<<<blockDim, numthreads>>>(n_elems, a_d, b_d, sum);
+                    printf("launching baseline: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+                    kernel_baseline<<<blockDim, numthreads>>>(n_elems, a_d, b_d, sum_d);
+                    //kernel_baseline<<<blockDim, numthreads>>>(n_elems,  sum_d);
                     break;
                 case BASELINE_PC:
-                    kernel_baseline_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, a_d, b_d, sum);
+                    kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, a_d, b_d, sum_d);
                     break;
 
                 default:
