@@ -58,7 +58,7 @@
 
 using error = std::runtime_error;
 using std::string;
-const char* const ctrls_paths[] = {"/dev/libnvm3","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm0", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
+const char* const ctrls_paths[] = {"/dev/libnvm0","/dev/libnvm1",   "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0"};
 
 #define MYINFINITY 0xFFFFFFFF
@@ -826,7 +826,7 @@ int main(int argc, char *argv[]) {
          uint32_t* next_frontier_d;
          
          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC)){
-            h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+            h_pc =new page_cache_t(pc_page_size, pc_pages, (uint32_t)settings.sectorSize, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_range = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)edge_count, (uint64_t) (ceil(settings.ofileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); //, (uint8_t*)edgeList_d);
             vec_range[0] = h_range; 
             h_array = new array_t<uint64_t>(edge_count, settings.ofileoffset, vec_range, settings.cudaDevice);

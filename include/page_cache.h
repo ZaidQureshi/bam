@@ -95,7 +95,7 @@ typedef struct __align__(32) {
 
 typedef data_page_t *page_states_t;
 typedef simt::atomic<uint32_t, simt::thread_scope_device> sector_state_t;
-typedef sector_state_t* sector_states_t;
+typedef sector_state_t *sector_states_t;
 
 template <typename T>
 struct returned_cache_page_t
@@ -148,7 +148,7 @@ struct page_cache_d_t
     uint64_t ctrl_page_size;
     uint64_t range_cap;
     page_states_t *ranges;
-    page_states_t *h_ranges;
+    //page_states_t *h_ranges;
     sector_states_t *s_ranges;
     uint64_t n_ranges;
     uint64_t n_ranges_bits;
@@ -209,6 +209,7 @@ struct page_cache_t
     BufferPtr prp2_buf;
     BufferPtr cache_pages_buf;
     BufferPtr ranges_buf;
+    BufferPtr s_ranges_buf;
     BufferPtr pc_buff;
     BufferPtr d_ctrls_buff;
     BufferPtr ranges_page_starts_buf;
@@ -272,6 +273,8 @@ struct page_cache_t
         pdt.page_size_log = std::log2(ps);
         ranges_buf = createBuffer(max_range * sizeof(page_states_t), cudaDevice);
         pdt.ranges = (page_states_t *)ranges_buf.get();
+        s_ranges_buf = createBuffer(max_range * sizeof(sector_states_t), cudaDevice);
+        pdt.s_ranges = (sector_states_t *)s_ranges_buf.get();
         h_ranges = new page_states_t[max_range];
         s_ranges = new sector_states_t[max_range];
 
@@ -334,7 +337,7 @@ struct page_cache_t
 
             for (size_t i = 0; (i < np*pdt.how_many_in_one); i++)
             {
-                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
+                //std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 temp[i] = (uint64_t)this->pages_dma.get()->ioaddrs[i];
                 /*for (size_t j = 0; (j < how_many_in_one); j++)
                 {
@@ -754,7 +757,7 @@ __forceinline__
         //original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
         original_state = sector_states[page_index*(cache->n_sector_states) + sector_index].load(simt::memory_order_acquire);
         expected_state = (original_state & mask) >> (shift_val);
-        printf("tid %llu\toriginal state %16x\tpage_index %llu\tsector_index %llu\tsector_number %llu\texpected_state %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long) original_state,(unsigned long long)page_index, (unsigned long long)sector_index, (unsigned long long)sector_number, (unsigned long long)expected_state);
+        //printf("tid %llu\toriginal state %16x\tpage_index %llu\tsector_index %llu\tsector_number %llu\texpected_state %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long) original_state,(unsigned long long)page_index, (unsigned long long)sector_index, (unsigned long long)sector_number, (unsigned long long)expected_state);
         switch(expected_state){
             case SECTOR_BUSY:
                //do nothing
@@ -1615,7 +1618,7 @@ struct bam_ptr {
             //printf("tid %llu\ti %llu updating sector\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
             update_sector(i);
         }
-        printf("tid %llu\ti %llu\taddr %16x\tvalue %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i, &addr[i-sector_start], addr[i-sector_start]);
+        //printf("tid %llu\ti %llu\taddr %16x\tvalue %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i, &addr[i-sector_start], addr[i-sector_start]);
         return addr[i-sector_start];
     }
 };
@@ -1744,6 +1747,7 @@ __forceinline__
                     if (pass)
                     {
                         for (int i = 0; i< n_sector_states; i++) {
+                            //printf("tid: %llu\t in find slot %llx with offset %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)&(s_ranges[previous_range][previous_address*n_sector_states+i]), (unsigned long long)(previous_address*n_sector_states+i));
                             this->s_ranges[previous_range][previous_address*n_sector_states+i].store(ALL_SECTORS_INVALID, simt::memory_order_release);
                         }
                         this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
@@ -1764,7 +1768,7 @@ __forceinline__
                     break;
                 case VALID_DIRTY:
                     //printf("tid: %llu\t in find slot lock is UNLOCKED and VALID_DIRTY\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
-                    pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
+                    /*pass = this->ranges[previous_range][previous_address].state.compare_exchange_weak(expected_state, BUSY, simt::memory_order_acquire, simt::memory_order_relaxed);
                     if (pass)
                     {
                         uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
@@ -1787,11 +1791,6 @@ __forceinline__
                                             write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, (page<<(this->n_sectors_per_page_log))+sector);
                                         }
                                     }
-                                    //for debugging
-                                    /*if (sect_states != VALID) {
-                                        int sector = (i*N_SECTORS_PER_STATE);
-                                        write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector * N_SECTORS_PER_STATE, (page<<(this->n_sectors_per_page_log))+sector);
-                                    }*/
                                     
 
                                 }
@@ -1811,11 +1810,6 @@ __forceinline__
                                         write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, (page<<(this->n_sectors_per_page_log))+sector);
                                     }
                                 }
-                                //for debugging
-                                /*    if (sect_states != VALID) {
-                                        int sector = (i*N_SECTORS_PER_STATE);
-                                        write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector * N_SECTORS_PER_STATE, (page<<(this->n_sectors_per_page_log))+sector);
-                                    }*/
                             }
 
                             //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page<<(this->n_sectors_per_page_log));
@@ -1825,7 +1819,7 @@ __forceinline__
                         }
                         this->ranges[previous_range][previous_address].state.store(INVALID, simt::memory_order_release);
                         fail = false;
-                    }
+                    }*/
                     break;
                 default:
                     //printf("here\n");
@@ -2034,7 +2028,7 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint64_t prp1 = pc->prp1[prp_entry];
     //printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
     prp1 = (prp1) + ((sector&(pc->n_sectors_per_block-1))<<pc->sector_size_log);
-    printf("++read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
+    //printf("++read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);
     //prp1 = pc->prp1[0];
     uint64_t prp2 = 0; //TODO: multiple prp1 lists
     //printf("read_data tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
