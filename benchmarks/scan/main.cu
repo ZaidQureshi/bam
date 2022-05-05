@@ -142,22 +142,49 @@ void kernel_scan_baseline(EdgeT *input, EdgeT *output, EdgeT *intermediate,  uin
 }
 
 
+__global__ 
+void kernel_scan_baseline_ptr_pc(array_d_t<EdgeT>*da, EdgeT *input, EdgeT *output, EdgeT *intermediate,  uint64_t len){
 
-__global__ __launch_bounds__(128,16)
-void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long long int *sum){
-    uint64_t  tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-///    uint64_t stride = 4096; 
-///    uint64_t nep = (n_elems+stride)/stride; 
-///    uint64_t tid = (otid/nep) + ((otid  % nep)*stride);
-    
-    bam_ptr<uint64_t> Aptr(da);
-    bam_ptr<uint64_t> Bptr(da);
+    bam_ptr<EdgeT> ptr(da);
+    uint64_t BLOCKSIZE = blockDim.x; 
+    extern __shared__ EdgeT sharedMem[]; 
 
-    if(tid<n_elems){
-       uint64_t val = Aptr[tid] + Bptr[tid];  
-       atomicAdd(&sum[0], val);
-       // *sum = val; 
+    uint64_t idx = 2*blockIdx.x * BLOCKSIZE + threadIdx.x; 
+
+    if(idx < len) 
+        sharedMem[threadIdx.x] = ptr[idx];
+    else 
+        sharedMem[threadIdx.x] = 0;
+
+    if((idx + BLOCKSIZE) < len)
+        sharedMem[threadIdx.x + BLOCKSIZE] = ptr[idx + BLOCKSIZE]; 
+    else 
+        sharedMem[threadIdx.x + BLOCKSIZE] = 0; 
+
+    __syncthreads();
+
+    //first pass
+    for(uint64_t stride = 1; stride <= BLOCKSIZE; stride*=2){
+        uint64_t index = (threadIdx.x+1)*2*stride -1; 
+        if(index <2 * BLOCKSIZE)
+            sharedMem[index] += sharedMem[index-stride];
+        __syncthreads(); 
     }
+
+    //second pass
+    for(uint64_t stride = BLOCKSIZE/2; stride>0; stride/=2){
+        uint64_t index = (threadIdx.x+1)*stride*2 - 1; 
+        if(index + stride < (2*BLOCKSIZE))
+            sharedMem[index+stride] += sharedMem[index];
+        __syncthreads();
+    }
+
+    if(idx<len) output[idx] = sharedMem[threadIdx.x]; 
+    if(idx+BLOCKSIZE < len) output[idx+BLOCKSIZE] = sharedMem[threadIdx.x + BLOCKSIZE]; 
+
+    //if its first kernel add data to intermediate stage
+    if(intermediate !=NULL && threadIdx.x == 0)
+        intermediate[blockIdx.x] = sharedMem[2*BLOCKSIZE-1];
 }
 
 
@@ -372,7 +399,10 @@ int main(int argc, char *argv[]) {
                     finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
                 case BASELINE_PC:
-                    //kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, a_d, b_d, sum_d);
+                    printf("launching PC: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+                    kernel_scan_baseline_ptr_pc<<<blockDim, numthreads, 2*numthreads*sizeof(EdgeT)>>>(h_Aarray->d_array_ptr, a_d, (&result_d[1]), int_d, n_elems);
+                    kernel_scan_baseline<<<dim3(1,1,1), numthreads, 2*numthreads*sizeof(EdgeT)>>>(int_d, dev2out_d, NULL, numthreads*2); 
+                    finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
 
                 default:
@@ -396,7 +426,7 @@ int main(int argc, char *argv[]) {
             uint64_t total = 0;
             for(uint64_t count=0; count<n_elems; count++)
                 total+=a_h[count];
-            printf("total in cpu: %llu \t gpu: %llu", total, result_h[n_elems]);
+            printf("total in cpu: %llu \t gpu: %llu\n", total, result_h[n_elems]);
 
             auto itrend = std::chrono::system_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
