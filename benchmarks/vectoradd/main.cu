@@ -91,21 +91,26 @@ void kernel_baseline(uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long l
     uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     if(tid<n_elems){
        uint64_t val = A[tid] + B[tid];  
-       atomicAdd(&sum[0], val);
-       printf("A:%llu B:%llu \n", A[tid], B[tid]);
+       //atomicAdd(&sum[0], val);
+        *sum = val; 
+     //  printf("A:%llu B:%llu \n", A[tid], B[tid]);
     }
 }
 
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(128,16)
 void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long long int *sum){
-    uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-
+    uint64_t  tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+///    uint64_t stride = 4096; 
+///    uint64_t nep = (n_elems+stride)/stride; 
+///    uint64_t tid = (otid/nep) + ((otid  % nep)*stride);
+    
     bam_ptr<uint64_t> Aptr(da);
     bam_ptr<uint64_t> Bptr(da);
 
     if(tid<n_elems){
        uint64_t val = Aptr[tid] + Bptr[tid];  
-       atomicAdd(&sum[0], val);
+       //atomicAdd(&sum[0], val);
+        *sum = val; 
     }
 }
 
@@ -189,8 +194,9 @@ int main(int argc, char *argv[]) {
         };
 
         file.read((char*)(&tmp), 16);
-        a_h = (uint64_t*)malloc(n_elems_size);
-        if(mem != UVM_DIRECT)
+        //if(mem != BAFS_DIRECT)
+            a_h = (uint64_t*)malloc(n_elems_size);
+        if((mem!=BAFS_DIRECT) || (mem != UVM_DIRECT))
              file.read((char*)a_h, n_elems_size);
         file.close();
 
@@ -202,8 +208,9 @@ int main(int argc, char *argv[]) {
         };
 
         file.read((char*)(&tmp), 16);
-        b_h = (uint64_t*)malloc(n_elems_size);
-        if(mem != UVM_DIRECT)
+        //if(mem != BAFS_DIRECT)
+            b_h = (uint64_t*)malloc(n_elems_size);
+        if((mem!=BAFS_DIRECT) || (mem != UVM_DIRECT))
             file.read((char*)b_h, n_elems_size);
         file.close();
 
@@ -245,6 +252,7 @@ int main(int argc, char *argv[]) {
                     printf("A file fd open failed\n");
                     exit(1);
                 }   
+                
                 uint64_t count_4k_aligned = ((n_elems + 2 + 4096 / sizeof(uint64_t)) / (4096 / sizeof(uint64_t))) * (4096 / sizeof(uint64_t));
                 uint64_t size_4k_aligned = count_4k_aligned * sizeof(uint64_t);
 
@@ -254,14 +262,14 @@ int main(int argc, char *argv[]) {
                 cuda_err_chk(cudaMemAdvise(b_d, size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
                 high_resolution_clock::time_point ft1 = high_resolution_clock::now();
 
-                if (fread(a_d, sizeof(uint64_t), count_4k_aligned, fa_tmp) != n_elems + 2) {
-                    printf("A file fread failed\n");
+                if (fread(a_d, sizeof(uint64_t), count_4k_aligned, fa_tmp) <0) {
+                    printf("A file fread failed: %llu \t %llu\n", count_4k_aligned, n_elems+2);
                     exit(1);
                 }   
                 fclose(fa_tmp);                                                                                                              
                 close(fda);
 
-                if (fread(b_d, sizeof(uint64_t), count_4k_aligned, fb_tmp) != n_elems + 2) {
+                if (fread(b_d, sizeof(uint64_t), count_4k_aligned, fb_tmp) <0) {
                     printf("B file fread failed\n");
                     exit(1);
                 }   
@@ -397,8 +405,10 @@ int main(int argc, char *argv[]) {
             fflush(stdout);
         }
 
-        free(a_h);
-        free(b_h);
+//        if(mem!=BAFS_DIRECT){
+           free(a_h);
+           free(b_h);
+  //      }
 
         if((type == BASELINE_PC)) {
             //TODO: Fix this
@@ -410,9 +420,10 @@ int main(int argc, char *argv[]) {
         }
 
         cuda_err_chk(cudaFree(sum_d));
-        if(mem!=BAFS_DIRECT)
+        if(mem!=BAFS_DIRECT){
             cuda_err_chk(cudaFree(a_d));
             cuda_err_chk(cudaFree(b_d));
+        }
             
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
              delete ctrls[i];
