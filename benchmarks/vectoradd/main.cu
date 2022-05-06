@@ -400,6 +400,10 @@ int main(int argc, char *argv[]) {
                     exit(1);
                     break;
             }
+            cuda_err_chk(cudaEventRecord(end, 0));
+            cuda_err_chk(cudaEventSynchronize(end));
+            cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
+            
             cuda_err_chk(cudaMemcpy(&sum_h, sum_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
             printf("sum: %llu\n", sum_h);
 
@@ -413,9 +417,6 @@ int main(int argc, char *argv[]) {
             //}
 
 
-            cuda_err_chk(cudaEventRecord(end, 0));
-            cuda_err_chk(cudaEventSynchronize(end));
-            cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
 
             if(mem == BAFS_DIRECT) {
                  h_Aarray->print_reset_stats();

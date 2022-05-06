@@ -241,9 +241,12 @@ int main(int argc, char *argv[]) {
         
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         
-        cudaEvent_t start, end;
+        cudaEvent_t start, end, tstart, tend;
         cuda_err_chk(cudaEventCreate(&start));
         cuda_err_chk(cudaEventCreate(&end));
+        cuda_err_chk(cudaEventCreate(&tstart));
+        cuda_err_chk(cudaEventCreate(&tend));
+
 
         a_file_bin = a_file + ".dst";
 
@@ -401,7 +404,7 @@ int main(int argc, char *argv[]) {
                     cub::DeviceScan::InclusiveSum(d_tmp, tmp_size, int_d, dev2out_d, numblocks);
                     finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
-                              }
+                }
                 case BASELINE_PC:{
 
                     printf("launching PC: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
@@ -411,13 +414,17 @@ int main(int argc, char *argv[]) {
                     cub::DeviceScan::InclusiveSum(d_tmp, tmp_size, int_d, dev2out_d, numblocks);
                     finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
-                    }
+                }
 
                 default:
                     fprintf(stderr, "Invalid type\n");
                     exit(1);
                     break;
             }
+            cuda_err_chk(cudaEventRecord(end, 0));
+            cuda_err_chk(cudaEventSynchronize(end));
+            cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
+            
             cuda_err_chk(cudaMemcpy(result_h, (result_d), (n_elems+1)*sizeof(EdgeT), cudaMemcpyDeviceToHost));
             //printf("\n******\n");
             //fflush(stdout);
@@ -449,9 +456,6 @@ int main(int argc, char *argv[]) {
             //}
 
 
-            cuda_err_chk(cudaEventRecord(end, 0));
-            cuda_err_chk(cudaEventSynchronize(end));
-            cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
 
             if(mem == BAFS_DIRECT) {
                  h_Aarray->print_reset_stats();
