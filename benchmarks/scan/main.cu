@@ -419,17 +419,17 @@ int main(int argc, char *argv[]) {
                     break;
             }
             cuda_err_chk(cudaMemcpy(result_h, (result_d), (n_elems+1)*sizeof(EdgeT), cudaMemcpyDeviceToHost));
-            printf("\n******\n");
-            fflush(stdout);
-            if(mem != BAFS_DIRECT){
-               printf("Input list::");
-               for (uint64_t i=n_elems-100; i< n_elems; i++)
-                   printf("%llu\t", a_h[i]);
-            }
-            printf("\n\nScan result:");
-            for (uint64_t i=n_elems-100; i< n_elems; i++)
-                printf("%llu\t", result_h[i]);
-            printf("\n******\n");
+            //printf("\n******\n");
+            //fflush(stdout);
+            //if(mem != BAFS_DIRECT){
+            //   printf("Input list::");
+            //   for (uint64_t i=n_elems-100; i< n_elems; i++)
+            //       printf("%llu\t", a_h[i]);
+            //}
+            //printf("\n\nScan result:");
+            //for (uint64_t i=n_elems-100; i< n_elems; i++)
+            //    printf("%llu\t", result_h[i]);
+            //printf("\n******\n");
            
             //std::vector<uint64_t> a_h_vec (a_h, a_h+n_elems);
             //uint64_t total = std::accumulate(a_h_vec.begin(), a_h_vec.begin()+n_elems, 0, std::plus<uint64_t>());
