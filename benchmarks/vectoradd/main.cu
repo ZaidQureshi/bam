@@ -91,8 +91,8 @@ void kernel_baseline(uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long l
     uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     if(tid<n_elems){
        uint64_t val = A[tid] + B[tid];  
-       atomicAdd(&sum[0], val);
-       // *sum = val; 
+       //atomicAdd(&sum[0], val);
+     sum[tid] = val; 
      //  printf("A:%llu B:%llu \n", A[tid], B[tid]);
     }
 }
@@ -109,8 +109,8 @@ void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, ui
 
     if(tid<n_elems){
        uint64_t val = Aptr[tid] + Bptr[tid];  
-       atomicAdd(&sum[0], val);
-       // *sum = val; 
+       //atomicAdd(&sum[0], val);
+    sum[tid] = val; 
     }
 }
 
@@ -197,8 +197,8 @@ int main(int argc, char *argv[]) {
         if(mem != BAFS_DIRECT)
             a_h = (uint64_t*)malloc(n_elems_size);
         if((mem!=BAFS_DIRECT) &&  (mem != UVM_DIRECT)){
-             printf("before mem switch\n");
-             fflush(stdout); 
+             //printf("before mem switch\n");
+             //fflush(stdout); 
              filea.read((char*)a_h, n_elems_size);
              filea.close();
         }
@@ -320,9 +320,10 @@ int main(int argc, char *argv[]) {
 
         // Allocate memory for GPU
         unsigned long long int *sum_d;
-        unsigned long long int sum_h;
+        unsigned long long int *sum_h;
+        sum_h = (unsigned long long int*) malloc(n_elems*sizeof(unsigned long long int));
     
-        cuda_err_chk(cudaMalloc((void**)&sum_d, sizeof(unsigned long long int)));
+        cuda_err_chk(cudaMalloc((void**)&sum_d, n_elems*sizeof(unsigned long long int)));
 
 		printf("Allocation finished\n");
         fflush(stdout);
@@ -383,7 +384,7 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaEventRecord(start, 0));
                 
             auto itrstart = std::chrono::system_clock::now();
-            cuda_err_chk(cudaMemset(sum_d, 0, sizeof(unsigned long long int)));
+            cuda_err_chk(cudaMemset(sum_d, 0, n_elems*sizeof(unsigned long long int)));
 
             switch (type) {
                 case BASELINE:
@@ -404,8 +405,8 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaEventSynchronize(end));
             cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
             
-            cuda_err_chk(cudaMemcpy(&sum_h, sum_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
-            printf("sum: %llu\n", sum_h);
+            cuda_err_chk(cudaMemcpy(sum_h, sum_d, n_elems*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
+            printf("sum: %llu\n", sum_h[0]);
 
             auto itrend = std::chrono::system_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
