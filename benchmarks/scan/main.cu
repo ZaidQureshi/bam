@@ -51,6 +51,8 @@
 #include <iterator> 
 #include <numeric> 
 #include <functional>
+#include <cub/cub.cuh>
+
 
 #define UINT64MAX 0xFFFFFFFFFFFFFFFF
 
@@ -100,7 +102,7 @@ void finalsum (EdgeT *input, EdgeT* output, uint64_t len){
 __global__ 
 void kernel_scan_baseline(EdgeT *input, EdgeT *output, EdgeT *intermediate,  uint64_t len){
 
-   uint64_t BLOCKSIZE = blockDim.x; 
+    uint64_t BLOCKSIZE = blockDim.x; 
     extern __shared__ EdgeT sharedMem[]; 
 
     uint64_t idx = 2*blockIdx.x * BLOCKSIZE + threadIdx.x; 
@@ -324,23 +326,6 @@ int main(int argc, char *argv[]) {
         
         uint64_t n_pages = ceil(((float)n_elems_size)/pc_page_size); 
 
-        // Allocate memory for GPU
-        EdgeT *result_h;
-        EdgeT *result_d;
-        EdgeT *dev2out_d; 
-        EdgeT *int_d; 
-
-        cuda_err_chk(cudaMalloc((void**)&result_d, (n_elems+1)*sizeof(EdgeT)));
-        cuda_err_chk(cudaMalloc((void**)&int_d, (numthreads*2)*sizeof(EdgeT)));
-        cuda_err_chk(cudaMalloc((void**)&dev2out_d, (numthreads*2)*sizeof(EdgeT)));
-        result_h = (EdgeT*) malloc(n_elems* sizeof(EdgeT)); 
-        cuda_err_chk(cudaMemset(result_d, 0, (n_elems+1)*sizeof(EdgeT)));
-
-		printf("Allocation finished\n");
-        fflush(stdout);
-
-
-
         switch (type) {
             case BASELINE:
             case BASELINE_PC:
@@ -354,10 +339,25 @@ int main(int argc, char *argv[]) {
         
         //dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
         dim3 blockDim((numblocks));
-
         if((type == BASELINE_PC)) {
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
         }
+        
+        // Allocate memory for GPU
+        EdgeT *result_h;
+        EdgeT *result_d;
+        EdgeT *dev2out_d; 
+        EdgeT *int_d; 
+
+        cuda_err_chk(cudaMalloc((void**)&int_d, (numblocks)*sizeof(EdgeT)));
+        cuda_err_chk(cudaMalloc((void**)&dev2out_d, (numblocks)*sizeof(EdgeT)));
+        cuda_err_chk(cudaMalloc((void**)&result_d, (n_elems+1)*sizeof(EdgeT)));
+        result_h = (EdgeT*) malloc(n_elems* sizeof(EdgeT)); 
+        cuda_err_chk(cudaMemset(result_d, 0, (n_elems+1)*sizeof(EdgeT)));
+
+		printf("Allocation finished\n");
+        fflush(stdout);
+
         std::vector<Controller*> ctrls(settings.n_ctrls);
         if(mem == BAFS_DIRECT){
             cuda_err_chk(cudaSetDevice(settings.cudaDevice));
@@ -385,6 +385,8 @@ int main(int argc, char *argv[]) {
             fflush(stdout);
         }
 
+        void *d_tmp = NULL;
+        size_t tmp_size =0; 
 
         for(int titr=0; titr<2; titr+=1){
             cuda_err_chk(cudaEventRecord(start, 0));
@@ -392,19 +394,24 @@ int main(int argc, char *argv[]) {
             auto itrstart = std::chrono::system_clock::now();
 
             switch (type) {
-                case BASELINE:
-                    printf("launching baseline: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+                case BASELINE:{
                     kernel_scan_baseline<<<blockDim, numthreads, 2*numthreads*sizeof(EdgeT)>>>(a_d, (&result_d[1]), int_d, n_elems);
-                    kernel_scan_baseline<<<dim3(1,1,1), numthreads, 2*numthreads*sizeof(EdgeT)>>>(int_d, dev2out_d, NULL, numthreads*2); 
+                    cub::DeviceScan::InclusiveSum(d_tmp, tmp_size, int_d, dev2out_d, numblocks);
+                    cuda_err_chk(cudaMalloc(&d_tmp, tmp_size));
+                    cub::DeviceScan::InclusiveSum(d_tmp, tmp_size, int_d, dev2out_d, numblocks);
                     finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
-                case BASELINE_PC:
+                              }
+                case BASELINE_PC:{
+
                     printf("launching PC: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
                     kernel_scan_baseline_ptr_pc<<<blockDim, numthreads, 2*numthreads*sizeof(EdgeT)>>>(h_Aarray->d_array_ptr, a_d, (&result_d[1]), int_d, n_elems);
-                    cuda_err_chk(cudaDeviceSynchronize());
-                    kernel_scan_baseline<<<dim3(1,1,1), numthreads, 2*numthreads*sizeof(EdgeT)>>>(int_d, dev2out_d, NULL, numthreads*2); 
+                    cub::DeviceScan::InclusiveSum(d_tmp, tmp_size, int_d, dev2out_d, numblocks);
+                    cuda_err_chk(cudaMalloc(&d_tmp, tmp_size));
+                    cub::DeviceScan::InclusiveSum(d_tmp, tmp_size, int_d, dev2out_d, numblocks);
                     finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
+                    }
 
                 default:
                     fprintf(stderr, "Invalid type\n");
