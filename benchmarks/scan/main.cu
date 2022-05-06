@@ -401,6 +401,7 @@ int main(int argc, char *argv[]) {
                 case BASELINE_PC:
                     printf("launching PC: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
                     kernel_scan_baseline_ptr_pc<<<blockDim, numthreads, 2*numthreads*sizeof(EdgeT)>>>(h_Aarray->d_array_ptr, a_d, (&result_d[1]), int_d, n_elems);
+                    cuda_err_chk(cudaDeviceSynchronize());
                     kernel_scan_baseline<<<dim3(1,1,1), numthreads, 2*numthreads*sizeof(EdgeT)>>>(int_d, dev2out_d, NULL, numthreads*2); 
                     finalsum<<<blockDim, numthreads>>>(dev2out_d, (&result_d[1]), n_elems);
                     break;
@@ -413,9 +414,11 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaMemcpy(result_h, (result_d), (n_elems+1)*sizeof(EdgeT), cudaMemcpyDeviceToHost));
             printf("\n******\n");
             fflush(stdout);
-            printf("Input list::");
-            for (uint64_t i=n_elems-100; i< n_elems; i++)
-                printf("%llu\t", a_h[i]);
+            if(mem != BAFS_DIRECT){
+               printf("Input list::");
+               for (uint64_t i=n_elems-100; i< n_elems; i++)
+                   printf("%llu\t", a_h[i]);
+            }
             printf("\n\nScan result:");
             for (uint64_t i=n_elems-100; i< n_elems; i++)
                 printf("%llu\t", result_h[i]);
@@ -423,11 +426,13 @@ int main(int argc, char *argv[]) {
            
             //std::vector<uint64_t> a_h_vec (a_h, a_h+n_elems);
             //uint64_t total = std::accumulate(a_h_vec.begin(), a_h_vec.begin()+n_elems, 0, std::plus<uint64_t>());
-            uint64_t total = 0;
-            for(uint64_t count=0; count<n_elems; count++)
-                total+=a_h[count];
-            printf("total in cpu: %llu \t gpu: %llu\n", total, result_h[n_elems]);
-
+            if(mem != BAFS_DIRECT){
+                uint64_t total = 0;
+                for(uint64_t count=0; count<n_elems; count++)
+                    total+=a_h[count];
+                printf("total in cpu: %llu \n", total);
+            }
+            printf("total in gpu: %llu \n ", result_h[n_elems]);
             auto itrend = std::chrono::system_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
