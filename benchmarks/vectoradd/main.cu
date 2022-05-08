@@ -172,9 +172,11 @@ int main(int argc, char *argv[]) {
         
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         
-        cudaEvent_t start, end;
+        cudaEvent_t start, end, tstart, tend;
         cuda_err_chk(cudaEventCreate(&start));
         cuda_err_chk(cudaEventCreate(&end));
+        cuda_err_chk(cudaEventCreate(&tstart));
+        cuda_err_chk(cudaEventCreate(&tend));
 
         a_file_bin = a_file + ".dst";
         b_file_bin = b_file + ".dst";
@@ -224,9 +226,12 @@ int main(int argc, char *argv[]) {
                 {  
                 cuda_err_chk(cudaMalloc((void**)&a_d, n_elems_size));
                 cuda_err_chk(cudaMalloc((void**)&b_d, n_elems_size));
+                high_resolution_clock::time_point mc1 = high_resolution_clock::now();
                 cuda_err_chk(cudaMemcpy(a_d, a_h, n_elems_size, cudaMemcpyHostToDevice));
                 cuda_err_chk(cudaMemcpy(b_d, b_h, n_elems_size, cudaMemcpyHostToDevice));
-                //TODO:
+                high_resolution_clock::time_point mc2 = high_resolution_clock::now();
+                duration<double> mc_time_span = duration_cast<duration<double>>(mc2 -mc1);
+                std::cout<< "Memcpy time for loading the inputs: "<< mc_time_span.count() <<std::endl;
                 break;
                 }
             case UVM_READONLY:

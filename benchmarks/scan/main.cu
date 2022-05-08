@@ -276,7 +276,11 @@ int main(int argc, char *argv[]) {
             case GPUMEM:
                 {  
                 cuda_err_chk(cudaMalloc((void**)&a_d, n_elems_size));
+                high_resolution_clock::time_point mc1 = high_resolution_clock::now();
                 cuda_err_chk(cudaMemcpy(a_d, a_h, n_elems_size, cudaMemcpyHostToDevice));
+                high_resolution_clock::time_point mc2 = high_resolution_clock::now();
+                duration<double> mc_time_span = duration_cast<duration<double>>(mc2 -mc1);
+                std::cout<< "Memcpy time for loading the inputs: "<< mc_time_span.count() <<std::endl;
                 break;
                 }
             case UVM_READONLY:
