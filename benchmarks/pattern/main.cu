@@ -79,16 +79,16 @@ typedef uint64_t EdgeT;
 
 typedef enum {
     SEQUENTIAL         = 0,
-    SEQUENTIAL_WARP    = 1,
-    SEQUENTIAL_PC      = 2,
+    SEQUENTIAL_PC      = 1,
+    SEQUENTIAL_WARP    = 2,
     SEQUENTIAL_WARP_PC = 3,
     RANDOM             = 4,
-    RANDOM_WARP        = 5,
-    RANDOM_PC          = 6,
+    RANDOM_PC          = 5,
+    RANDOM_WARP        = 6,
     RANDOM_WARP_PC     = 7,
     STRIDE             = 8, 
-    STRIDE_WARP        = 9, 
-    STRIDE_PC          = 10, 
+    STRIDE_PC          = 9, 
+    STRIDE_WARP        = 10, 
     STRIDE_WARP_PC     = 11, 
     POWERLAW_WARP      = 13, 
     POWERLAW_WARP_PC   = 15, 
@@ -113,6 +113,7 @@ void kernel_sequential(T *input, uint64_t num_elems, unsigned long long int* out
     }
 
     if(threadIdx.x ==0)
+        //atomicAdd(&(output[0]), val);
         output[0] = val;
 }
 
@@ -128,6 +129,7 @@ void kernel_sequential_pc(array_d_t<T>* dr, T *input, uint64_t num_elems, unsign
     }
 
     if(threadIdx.x ==0)
+        //atomicAdd(&(output[0]), val);
         output[0] = val;
 }
 
@@ -188,43 +190,47 @@ void kernel_stride(T *input, uint64_t num_elems, unsigned long long int* output)
 
 template<typename T>
 __global__ __launch_bounds__(64,32)
-void kernel_sequential_warp(T *input, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
+void kernel_sequential_warp(T *input, uint64_t n_elems,  uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     T v = 0;
-    
+    uint64_t idx=0; 
+
     if (warp_id < n_warps) {
         size_t start_page = n_pages_per_warp * warp_id;;
-        //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
+        //if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
         for (size_t i = 0; i < n_pages_per_warp; i++) {
             size_t cur_page = start_page + i;
-            //	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
+            //printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
             size_t start_idx = cur_page * n_elems_per_page + lane;
 
             for (size_t j = 0; j < n_elems_per_page; j += WARPSIZE) {
-            //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
-                    v += input[start_idx + j];
+                    //printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
+                    idx = start_idx + j; 
+                    if(idx < n_elems)
+                        v += input[idx];
             }
 
         }
-        *sum = v;
+          sum[0] = v;
+        //atomicAdd(&sum[0], v);
     }
 
 }
 
 template<typename T>
 __global__ __launch_bounds__(64,32)
-void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
+void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     T v = 0;
-    
+    uint64_t idx =0;
     if (warp_id < n_warps) {
 		bam_ptr<T> ptr(dr);
         size_t start_page = n_pages_per_warp * warp_id;;
@@ -236,10 +242,13 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_pages_per_
 
             for (size_t j = 0; j < n_elems_per_page; j += WARPSIZE) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
-                    v += ptr[start_idx + j];
+                    idx = start_idx + j; 
+                    if(idx < n_elems)
+                        v += ptr[idx];
             }
         }
-        *sum = v;
+        //atomicAdd(&sum[0], v);
+        sum[0] = v;
     }
 }
 
@@ -471,7 +480,8 @@ int main(int argc, char *argv[]) {
 			{
                  numblocks = (n_elems + numthreads - 1)/numthreads;//80*16;
                  uint64_t n_threads = numthreads * numblocks;
-                 n_warps = n_threads/32;
+                 n_warps = (n_elems + 31)/32;
+                 printf("n_warps: %llu\n", n_warps);
                 break;
 			}
             default:
@@ -489,7 +499,7 @@ int main(int argc, char *argv[]) {
         // Allocate memory for GPU
         unsigned long long int *output_h;
         output_h = (unsigned long long int*) malloc(sizeof(unsigned long long int)); 
-
+		output_h[0] = 0;
         uint64_t* assignment_h; 
         uint64_t* assignment_d; 
 
@@ -497,7 +507,7 @@ int main(int argc, char *argv[]) {
         if((type == RANDOM) || (type == RANDOM_PC)){
             assignment_h = (uint64_t*) malloc (n_elems*sizeof(uint64_t));
             for(uint64_t i=0; i< n_elems; i++){
-                uint64_t page = rand(); 
+                uint64_t page = rand() % n_elems; 
                 assignment_h[i] = page; 
             }
             cuda_err_chk(cudaMalloc(&assignment_d, n_elems*sizeof(uint64_t)));
@@ -564,18 +574,18 @@ int main(int argc, char *argv[]) {
 	
 		unsigned long long int* output_d;
         cuda_err_chk(cudaMalloc(&output_d, sizeof(unsigned long long)));
-        cuda_err_chk(cudaMemset(output_d, 0, sizeof(unsigned long long)));
 	    	
 
 
         for(int titr=0; titr<2; titr+=1){
             cuda_err_chk(cudaEventRecord(start, 0));
+        	cuda_err_chk(cudaMemset(output_d, 0, sizeof(unsigned long long)));
                 
             auto itrstart = std::chrono::system_clock::now();
 
             switch (type) {
                 case SEQUENTIAL:{
-                    kernel_sequential<uint64_t><<<blockDim, numthreads>>>(a_d, n_elems, output_d);
+					kernel_sequential<uint64_t><<<blockDim, numthreads>>>(a_d, n_elems, output_d);
                     break;
                 }
                 case SEQUENTIAL_PC:{
@@ -583,11 +593,12 @@ int main(int argc, char *argv[]) {
                     break;
                 }
                 case SEQUENTIAL_WARP:{
-                    kernel_sequential_warp<uint64_t><<<blockDim, numthreads>>>(a_d,n_pages_per_warp, output_d, n_warps, pc_page_size);
+                    printf("blockDim.x is %llu \t numthreads: %llu\n", blockDim.x, numthreads );
+                    kernel_sequential_warp<uint64_t><<<blockDim, numthreads>>>(a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size);
                     break;
                 }
                 case SEQUENTIAL_WARP_PC:{
-                    kernel_sequential_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d,n_pages_per_warp, output_d, n_warps, pc_page_size);
+                    kernel_sequential_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size);
                     break;
                 }
 
@@ -641,7 +652,7 @@ int main(int argc, char *argv[]) {
             //        total+=a_h[count];
             //    printf("total in cpu: %llu \n", total);
             //}
-            //printf("total in gpu: %llu \n ", output_h[n_elems]);
+            printf("val in gpu: %llu \n ", output_h[0]);
             auto itrend = std::chrono::system_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
