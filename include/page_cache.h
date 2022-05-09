@@ -1842,7 +1842,7 @@ inline __device__ void poll_async(QueuePair* qp, uint16_t cid, uint16_t sq_pos) 
 
 
 
-    put_cid(&qp->sq, cid);
+    //put_cid(&qp->sq, cid);
 }
 
 inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode, uint16_t * cid, uint16_t* sq_pos) {
@@ -1896,7 +1896,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
 
 
 
-    put_cid(&qp->sq, cid);
+    //put_cid(&qp->sq, cid);
 
 
 }
@@ -1934,7 +1934,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
 
 
 
-    put_cid(&qp->sq, cid);
+    //put_cid(&qp->sq, cid);
 
 
 }
@@ -1970,7 +1970,7 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
 
 
 
-    put_cid(&qp->sq, cid);
+    //put_cid(&qp->sq, cid);
 
 
 }

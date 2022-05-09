@@ -40,10 +40,10 @@ uint16_t get_cid(nvm_queue_t* sq) {
     do {
         id = sq->cid_ticket.fetch_add(1, simt::memory_order_relaxed) & (65535);
         //printf("in thread: %p\n", (void*) ((sq->cid)+id));
-        uint64_t old = sq->cid[id].val.exchange(LOCKED, simt::memory_order_acquire);
+        uint64_t old = sq->cid[id].val.fetch_or(LOCKED, simt::memory_order_acquire);
         not_found = old == LOCKED;
-        if (not_found)
-               printf("still looking\n");
+        //if (not_found)
+        //       printf("still looking\n");
     } while (not_found);
 
 
@@ -85,16 +85,27 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
     bool pass = true;
     //uint32_t old_head;
     while (pass) {
-        uint64_t loc = (cur_head+count++)&q->qs_minus_1;
+        uint32_t loc = (cur_head+count++)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED;
 	//uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3];
         //uint32_t cid = (cpl_entry & 0x0000ffff);
         //put_cid(sq, cid);
-
+        if (pass) {
+            uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3];
+            uint32_t cid = (cpl_entry & 0x0000ffff);
+            q->clean_cid[count-1] = cid;
+        }
 
     }
     return (count-1);
 
+}
+
+inline __device__
+void clean_cids(nvm_queue_t* cq, nvm_queue_t* sq, uint32_t count) {
+    for (size_t i  = 0; i < count; i++) {
+        put_cid(sq, cq->clean_cid[i]);
+    }
 }
 
 inline __device__
@@ -406,6 +417,8 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
                     //cq->head_copy.store(new_head, simt::memory_order_release);
 //                    printf("wrote CQ_db: %llu\tcur_head: %llu\tmove_count: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_relaxed);
+
+                    clean_cids(cq, sq, head_move_count);
                     //cont = false;
                 }
                 cq->head_lock.store(UNLOCKED, simt::memory_order_release);
@@ -420,6 +433,8 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
 #endif
             }
     }
+
+    /*
 	uint64_t j = 0;
     uint32_t new_head = cq->head.load(simt::memory_order_relaxed);
     ns = 8;
@@ -440,10 +455,6 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
                 break;
         }
 
-/*	else {
-    if (j%1000000 == 0)
-    printf("Stuck here:j:%llu \t pos:%llu \t pos_head: %llu \t c: %llu \t n: %llu\n",(unsigned long long int) j,(unsigned long long int)pos, (unsigned long long) loc_, (unsigned long long int)cur_head_, (unsigned long long           int)new_head);
-	}*/
         j++;
         new_head = cq->head.load(simt::memory_order_relaxed);
 #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
@@ -454,7 +465,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
 #endif
     } while(true);
 
-
+*/
 
 }
 
