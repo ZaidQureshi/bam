@@ -40,13 +40,14 @@ struct QueuePair
     DmaPtr              cq_mem;
     DmaPtr              prp_mem;
     BufferPtr           sq_tickets;
-    BufferPtr           sq_head_mark;
+    //BufferPtr           sq_head_mark;
     BufferPtr           sq_tail_mark;
     BufferPtr           sq_cid;
     BufferPtr           cq_tickets;
     BufferPtr           cq_head_mark;
     //BufferPtr           cq_tail_mark;
-    BufferPtr           cq_clean_cid;
+
+    //BufferPtr           cq_clean_cid;
 
 
 
@@ -56,11 +57,11 @@ struct QueuePair
 
     inline void init_gpu_specific_struct( const uint32_t cudaDevice) {
         this->sq_tickets = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
-        this->sq_head_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
+        //this->sq_head_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
         this->sq_tail_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
         this->sq_cid = createBuffer(65536 * sizeof(padded_struct), cudaDevice);
         this->sq.tickets = (padded_struct*) this->sq_tickets.get();
-        this->sq.head_mark = (padded_struct*) this->sq_head_mark.get();
+        //this->sq.head_mark = (padded_struct*) this->sq_head_mark.get();
         this->sq.tail_mark = (padded_struct*) this->sq_tail_mark.get();
         this->sq.cid = (padded_struct*) this->sq_cid.get();
     //    std::cout << "init_gpu_specific: " << std::hex << this->sq.cid <<  std::endl;
@@ -77,8 +78,8 @@ struct QueuePair
         this->cq.qs_minus_1 = this->cq.qs - 1;
         this->cq.qs_log2 = (uint32_t) std::log2(this->cq.qs);
 
-        this->cq_clean_cid = createBuffer(this->cq.qs * sizeof(uint16_t), cudaDevice);
-        this->cq.clean_cid = (uint16_t*) this->cq_clean_cid.get();
+        //this->cq_clean_cid = createBuffer(this->cq.qs * sizeof(uint16_t), cudaDevice);
+       // this->cq.clean_cid = (uint16_t*) this->cq_clean_cid.get();
     }
 
 
