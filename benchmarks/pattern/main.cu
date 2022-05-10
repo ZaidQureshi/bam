@@ -168,7 +168,7 @@ void kernel_random_pc(array_d_t<T>* dr, T *input, uint64_t* assignment, uint64_t
 
 template<typename T>
 __global__ __launch_bounds__(64,32)
-//launch 2*threads as numthreads - more of scan pattern. 
+//launch 2*threads as blocksize- more of scan pattern. 
 void kernel_stride(T *input, uint64_t num_elems, unsigned long long int* output){
 
     uint64_t stride = blockDim.x; 
@@ -316,7 +316,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
             for (size_t j = 0; j < n_elems_per_page; j += 32) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                     idx = start_idx + j; 
-                    if(idx < n_elems)
+                    //if(idx < n_elems)
                         v += ptr[idx];
             }
         }
@@ -467,8 +467,12 @@ int main(int argc, char *argv[]) {
         }
 
         
-        uint64_t n_pages = ceil(((float)n_elems_size)/pc_page_size); 
+        uint64_t n_pc_pages = ceil(((float)n_elems_size)/pc_page_size); 
+        uint64_t blocksize = 64; 
         uint64_t n_warps =0;
+        
+    
+
         switch (type) {
             case SEQUENTIAL:
             case RANDOM:
@@ -476,7 +480,7 @@ int main(int argc, char *argv[]) {
             case RANDOM_PC:
             //case POWERLAW:
             {    
-				numblocks = ((n_elems+numthreads)/numthreads);
+				numblocks = ((n_elems+blocksize)/blocksize);
                 break;
             }
 			case SEQUENTIAL_WARP:
@@ -486,8 +490,12 @@ int main(int argc, char *argv[]) {
             case RANDOM_WARP_PC:
             case POWERLAW_WARP_PC:
 			{
-                 n_warps = n_pages; 
-                 numblocks = n_warps*WARPSIZE;//(n_elems*WARPSIZE + numthreads - 1)/numthreads;//80*16;
+                 n_warps = numthreads*sizeof(uint64_t)/pc_page_size;
+                 if(n_warps > n_pc_pages){
+                     printf("Error: Cannot have n_warps greater than n_elems.\n");
+                     exit(1); 
+                 }
+                 numblocks = n_warps*WARPSIZE;//(n_elems*WARPSIZE + blocksize - 1)/blocksize;//80*16;
                  printf("n_warps: %llu \t numblocks:%llu \n", n_warps, numblocks);
                 break;
 			}
@@ -523,8 +531,12 @@ int main(int argc, char *argv[]) {
         uint64_t n_data_pages = (uint64_t) n_elems_size/pc_page_size;  
         if((type == RANDOM_WARP) || (type == RANDOM_WARP_PC)){
             assignment_h = (uint64_t*) malloc (n_warps*sizeof(uint64_t));
+            std::random_device rd;  //Will be used to obtain a seed for the random number engine
+            std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+            std::uniform_int_distribution<uint64_t> distrib(0, n_warps);
+
             for(uint64_t i=0; i< n_warps; i++){
-                uint64_t page = rand() % (n_warps); 
+                uint64_t page = distrib(gen); 
                 assignment_h[i] = page; 
             }
             cuda_err_chk(cudaMalloc(&assignment_d, n_warps*sizeof(uint64_t)));
@@ -568,7 +580,7 @@ int main(int argc, char *argv[]) {
 
         if((type == SEQUENTIAL_PC) || (type == SEQUENTIAL_WARP_PC) || (type == RANDOM_PC) || (type == RANDOM_WARP_PC) || (type == STRIDE_PC) || (type == STRIDE_WARP_PC) || (type == POWERLAW_WARP_PC)) {
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
-            h_Arange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)n_elems, (uint64_t) (ceil(settings.afileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
+            h_Arange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)n_elems, (uint64_t) (ceil(settings.afileoffset*1.0/pc_page_size)),(uint64_t)n_pc_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
             vec_Arange[0] = h_Arange; 
             h_Aarray = new array_t<uint64_t>(n_elems, settings.afileoffset, vec_Arange, settings.cudaDevice);
 
@@ -592,45 +604,45 @@ int main(int argc, char *argv[]) {
 
             switch (type) {
                 case SEQUENTIAL:{
-					kernel_sequential<uint64_t><<<blockDim, numthreads>>>(a_d, n_elems, output_d);
+					kernel_sequential<uint64_t><<<blockDim, blocksize>>>(a_d, n_elems, output_d);
                     break;
                 }
                 case SEQUENTIAL_PC:{
-                    kernel_sequential_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr,a_d, n_elems, output_d);
+                    kernel_sequential_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr,a_d, n_elems, output_d);
                     break;
                 }
                 case SEQUENTIAL_WARP:{
-                    printf("blockDim.x is %llu \t numthreads: %llu\n", blockDim.x, numthreads );
-                    kernel_sequential_warp<uint64_t><<<blockDim, numthreads>>>(a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size);
+                    printf("blockDim.x is %llu \t blocksize: %llu\n", blockDim.x, blocksize );
+                    kernel_sequential_warp<uint64_t><<<blockDim, blocksize>>>(a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size);
                     break;
                 }
                 case SEQUENTIAL_WARP_PC:{
-                    kernel_sequential_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size);
+                    kernel_sequential_warp_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size);
                     break;
                 }
 
                 case RANDOM:{
-                    kernel_random<uint64_t><<<blockDim, numthreads>>>(a_d, assignment_d, n_elems, output_d);
+                    kernel_random<uint64_t><<<blockDim, blocksize>>>(a_d, assignment_d, n_elems, output_d);
                     break;
                 }
                 case RANDOM_PC:{
-                    kernel_random_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d, assignment_d, n_elems, output_d);
+                    kernel_random_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, a_d, assignment_d, n_elems, output_d);
                     break;
                 }
                 case RANDOM_WARP:{
-                    kernel_random_warp<uint64_t><<<blockDim, numthreads>>>(a_d,n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp<uint64_t><<<blockDim, blocksize>>>(a_d,n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 case RANDOM_WARP_PC:{
-                    kernel_random_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d,n_elems,  n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, a_d,n_elems,  n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 case POWERLAW_WARP:{
-                    kernel_random_warp<uint64_t><<<blockDim, numthreads>>>(a_d, n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp<uint64_t><<<blockDim, blocksize>>>(a_d, n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 case POWERLAW_WARP_PC:{
-                    kernel_random_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d, n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, a_d, n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 
