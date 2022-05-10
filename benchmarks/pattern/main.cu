@@ -126,6 +126,7 @@ void kernel_sequential_pc(array_d_t<T>* dr, T *input, uint64_t num_elems, unsign
     uint64_t val=0; 
     for(uint64_t i=tid; i < num_elems; i+= blockDim.x*gridDim.x){
         val += ptr[i];
+        //atomicAdd(&(output[0]), ptr[i]);
     }
 
     if(threadIdx.x ==0)
@@ -241,20 +242,21 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uin
             size_t start_idx = cur_page * n_elems_per_page + lane;
 
             for (size_t j = 0; j < n_elems_per_page; j += WARPSIZE) {
-            //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
+                    //printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                     idx = start_idx + j; 
                     if(idx < n_elems)
                         v += ptr[idx];
+                        //v = ptr[idx];
+                        //atomicAdd(&sum[0], v);
             }
         }
-        //atomicAdd(&sum[0], v);
         sum[0] = v;
     }
 }
 
 template<typename T>
 __global__ __launch_bounds__(64,32)
-void kernel_random_warp(T *input, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t* assignment, uint64_t n_warps, size_t page_size, uint64_t stride) {
+void kernel_random_warp(T *input,uint64_t n_elems, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t* assignment, uint64_t n_warps, size_t page_size, uint64_t stride) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
@@ -265,6 +267,7 @@ void kernel_random_warp(T *input, uint64_t n_pages_per_warp, unsigned long long*
     //uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     T v = 0;
+    uint64_t idx=0; 
     if (warp_id < n_warps) {
         size_t start_page = assignment[warp_id];
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
@@ -275,7 +278,9 @@ void kernel_random_warp(T *input, uint64_t n_pages_per_warp, unsigned long long*
 
             for (size_t j = 0; j < n_elems_per_page; j += 32) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
-                    v += input[start_idx + j];
+                    idx = start_idx + j; 
+                    if(idx < n_elems)
+                        v += input[idx];
             }
 
         }
@@ -287,7 +292,7 @@ void kernel_random_warp(T *input, uint64_t n_pages_per_warp, unsigned long long*
 
 template<typename T>
 __global__ __launch_bounds__(64,32)
-void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t* assignment, uint64_t n_warps, size_t page_size, uint64_t stride) {
+void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t* assignment, uint64_t n_warps, size_t page_size, uint64_t stride) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
@@ -298,6 +303,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_pages_per_warp
     //uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     T v = 0;
+    uint64_t idx=0; 
     if (warp_id < n_warps) {
 		bam_ptr<T> ptr(dr);
         size_t start_page = assignment[warp_id];
@@ -309,7 +315,9 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_pages_per_warp
 
             for (size_t j = 0; j < n_elems_per_page; j += 32) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
-                    v += ptr[start_idx + j];
+                    idx = start_idx + j; 
+                    if(idx < n_elems)
+                        v += input[idx];
             }
         }
         *sum = v;
@@ -478,10 +486,9 @@ int main(int argc, char *argv[]) {
             case RANDOM_WARP_PC:
             case POWERLAW_WARP_PC:
 			{
-                 numblocks = (n_elems + numthreads - 1)/numthreads;//80*16;
-                 uint64_t n_threads = numthreads * numblocks;
-                 n_warps = (n_elems + 31)/32;
-                 printf("n_warps: %llu\n", n_warps);
+                 n_warps = n_pages; 
+                 numblocks = n_warps*WARPSIZE;//(n_elems*WARPSIZE + numthreads - 1)/numthreads;//80*16;
+                 printf("n_warps: %llu \t numblocks:%llu \n", n_warps, numblocks);
                 break;
 			}
             default:
@@ -611,19 +618,19 @@ int main(int argc, char *argv[]) {
                     break;
                 }
                 case RANDOM_WARP:{
-                    kernel_random_warp<uint64_t><<<blockDim, numthreads>>>(a_d, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp<uint64_t><<<blockDim, numthreads>>>(a_d,n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 case RANDOM_WARP_PC:{
-                    kernel_random_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d,n_elems,  n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 case POWERLAW_WARP:{
-                    kernel_random_warp<uint64_t><<<blockDim, numthreads>>>(a_d, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp<uint64_t><<<blockDim, numthreads>>>(a_d, n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 case POWERLAW_WARP_PC:{
-                    kernel_random_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
+                    kernel_random_warp_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, a_d, n_elems, n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
                 
@@ -656,16 +663,19 @@ int main(int argc, char *argv[]) {
             auto itrend = std::chrono::system_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
-            uint64_t ios =0; 
+            uint64_t ios =n_elems; 
 			uint64_t data = ios*sizeof(uint64_t);
 			double iops = ((double) ios*1000/ (milliseconds)); 
 			double bandwidth = (((double) data*1000/(milliseconds))/(1024ULL*1024ULL*1024ULL));
 			if((type == SEQUENTIAL_WARP) || (type == SEQUENTIAL_WARP_PC) || (type == RANDOM_WARP) || (type == RANDOM_WARP_PC) || (type == POWERLAW_WARP) || (type == POWERLAW_WARP_PC)){
 				
+				//ios = n_warps*n_pages_per_warp*n_elems_per_page; 
 				ios = n_warps*n_pages_per_warp*n_elems_per_page; 
+                iops = ((double) ios*1000/ (milliseconds)); 
 				data = ios*sizeof(uint64_t); 
 				bandwidth = (((double) data*1000/(milliseconds))/(1024ULL*1024ULL*1024ULL));
-			}
+            }
+			printf("n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \t bandwidth: %f GBps \t time: %f\n",n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, milliseconds ); 
 
 
 			if(mem == BAFS_DIRECT) {
