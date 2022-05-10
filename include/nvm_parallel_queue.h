@@ -418,7 +418,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
 //                    printf("wrote CQ_db: %llu\tcur_head: %llu\tmove_count: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_relaxed);
 
-                    clean_cids(cq, sq, head_move_count);
+                    //clean_cids(cq, sq, head_move_count);
                     //cont = false;
                 }
                 cq->head_lock.store(UNLOCKED, simt::memory_order_release);
@@ -434,7 +434,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
             }
     }
 
-    /*
+
 	uint64_t j = 0;
     uint32_t new_head = cq->head.load(simt::memory_order_relaxed);
     ns = 8;
@@ -465,7 +465,6 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
 #endif
     } while(true);
 
-*/
 
 }
 
