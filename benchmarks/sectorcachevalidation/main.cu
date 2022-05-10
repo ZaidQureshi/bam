@@ -85,10 +85,11 @@ void sequential_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uin
         
         //device_buffer[tid]= (*dr)[(tid)];
         device_buffer[tid]= ptr[tid];
+        //printf("tid = %llu\t device_buffer %llu\n", (unsigned long long)tid, (unsigned long long)device_buffer[tid]);
         //device_buffer[stride + tid]= ptr[tid];
 
     }
-    __syncthreads();
+    //__syncthreads();
 
 }
 
