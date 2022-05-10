@@ -260,11 +260,11 @@ void kernel_random_warp(T *input,uint64_t n_elems, uint64_t n_pages_per_warp, un
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
-    const uint64_t warp_id = tid / 32;
+    const uint64_t old_warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     
-    //uint64_t nep = (n_warps+stride)/stride; 
-    //uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
+    uint64_t nep = (n_warps+stride)/stride; 
+    uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     T v = 0;
     uint64_t idx=0; 
@@ -296,14 +296,13 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
-    const uint64_t warp_id = tid / 32;
+    const uint64_t old_warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     
     //uint64_t nep = (n_warps+stride)/stride; 
     //uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
-
+    uint64_t warp_id = old_warp_id; 
     T v = 0;
-    uint64_t idx=0; 
     if (warp_id < n_warps) {
 		bam_ptr<T> ptr(dr);
         size_t start_page = assignment[warp_id];
@@ -315,9 +314,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
 
             for (size_t j = 0; j < n_elems_per_page; j += 32) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
-                    idx = start_idx + j; 
-                    //if(idx < n_elems)
-                        v += ptr[idx];
+                        v += ptr[start_idx+j];
             }
         }
         *sum = v;
@@ -490,12 +487,13 @@ int main(int argc, char *argv[]) {
             case RANDOM_WARP_PC:
             case POWERLAW_WARP_PC:
 			{
-                 n_warps = numthreads*sizeof(uint64_t)/pc_page_size;
+                 numblocks = (numthreads + blocksize - 1)/blocksize;//80*16;
+                 n_warps = blocksize * numblocks/ WARPSIZE; 
                  if(n_warps > n_pc_pages){
                      printf("Error: Cannot have n_warps greater than n_elems.\n");
+                     printf("n_warps: %llu \t n_pc_pages:%llu \n", n_warps, n_pc_pages);
                      exit(1); 
                  }
-                 numblocks = n_warps*WARPSIZE;//(n_elems*WARPSIZE + blocksize - 1)/blocksize;//80*16;
                  printf("n_warps: %llu \t numblocks:%llu \n", n_warps, numblocks);
                 break;
 			}
@@ -530,14 +528,17 @@ int main(int argc, char *argv[]) {
         }
         uint64_t n_data_pages = (uint64_t) n_elems_size/pc_page_size;  
         if((type == RANDOM_WARP) || (type == RANDOM_WARP_PC)){
+            printf("I am called\n");
             assignment_h = (uint64_t*) malloc (n_warps*sizeof(uint64_t));
             std::random_device rd;  //Will be used to obtain a seed for the random number engine
             std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
             std::uniform_int_distribution<uint64_t> distrib(0, n_warps);
 
             for(uint64_t i=0; i< n_warps; i++){
-                uint64_t page = distrib(gen); 
+                //uint64_t page = distrib(gen); 
+                uint64_t page = rand() % n_data_pages; 
                 assignment_h[i] = page; 
+                //printf("%llu \t", page);
             }
             cuda_err_chk(cudaMalloc(&assignment_d, n_warps*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(assignment_d, assignment_h, n_warps*sizeof(uint64_t), cudaMemcpyHostToDevice));
@@ -634,6 +635,7 @@ int main(int argc, char *argv[]) {
                     break;
                 }
                 case RANDOM_WARP_PC:{
+                    printf("blockDim.x is %llu \t blocksize: %llu\n", blockDim.x, blocksize );
                     kernel_random_warp_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, a_d,n_elems,  n_pages_per_warp, output_d, assignment_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
@@ -671,7 +673,7 @@ int main(int argc, char *argv[]) {
             //        total+=a_h[count];
             //    printf("total in cpu: %llu \n", total);
             //}
-            printf("val in gpu: %llu \n ", output_h[0]);
+            //printf("val in gpu: %llu \n", output_h[0]);
             auto itrend = std::chrono::system_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
