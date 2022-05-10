@@ -130,10 +130,10 @@ typedef struct
     uint8_t pad2[28];
     simt::atomic<uint32_t, simt::thread_scope_device> tail;
     uint8_t pad3[28];
-    //simt::atomic<uint32_t, simt::thread_scope_system> tail_copy;
-    //uint8_t pad4[28];
-    //simt::atomic<uint32_t, simt::thread_scope_system> head_copy;
-    //uint8_t pad5[28];
+    simt::atomic<uint32_t, simt::thread_scope_system> tail_copy;
+    uint8_t pad4[28];
+    simt::atomic<uint32_t, simt::thread_scope_system> head_copy;
+    uint8_t pad5[28];
 
     /* padded_struct<simt::atomic<uint32_t, simt::thread_scope_system>> head; */
     /* padded_struct<simt::atomic<uint32_t, simt::thread_scope_system>> tail; */

@@ -66,7 +66,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
     bool pass = true;
     while (pass ) {
         //uint32_t count_copy = count;
-        pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_relaxed) & q->qs_minus_1));
+        pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_relaxed) ));
         if (pass) {
             pass = ((q->tail_mark[(cur_tail+count)&q->qs_minus_1].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED);
             if (pass)
@@ -110,7 +110,8 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
             sq->tickets[loc].val.fetch_add(1, simt::memory_order_relaxed);
         }
         //printf("---new_sq_head: %llu\tcur_sq_head: %llu\tloc: %llu\tsq_move_count: %llu\n", (unsigned long long) new_sq_head, (unsigned long long) cur_sq_head, (unsigned long long) loc, (unsigned long long) sq_move_count);
-        sq->head.store(cur_sq_head + sq_move_count, simt::memory_order_relaxed);
+        if (sq_move_count)
+            sq->head.store(new_sq_head, simt::memory_order_relaxed);
 
     }
     return (count);
@@ -290,7 +291,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                     uint32_t new_db = (new_tail) & (sq->qs_minus_1);
                     *(sq->db) = new_db;
 
-                    //sq->tail_copy.store(new_tail, simt::memory_order_release);
+                    sq->tail_copy.store(new_tail, simt::memory_order_release);
 //	            printf("wrote SQ_db: %llu\tcur_tail: %llu\tmove_count: %llu\tsq_tail: %llu\tsq_head: %llu\n", (unsigned long long) new_db, (unsigned long long) cur_tail, (unsigned long long) tail_move_count, (unsigned long long) (new_tail),  (unsigned long long)(sq->head.load(simt::memory_order_acquire)));
                     sq->tail.store(new_tail, simt::memory_order_relaxed);
                     //cont = false;
@@ -431,7 +432,7 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
                     uint32_t new_db = (new_head) & (cq->qs_minus_1);
 
                     *(cq->db) = new_db;
-                    //cq->head_copy.store(new_head, simt::memory_order_release);
+                    cq->head_copy.store(new_head, simt::memory_order_release);
 //                    printf("wrote CQ_db: %llu\tcur_head: %llu\tmove_count: %llu\tcq_head: %llu\tcq_tail: %llu\n", (unsigned long long) new_db, (unsigned long long) cur_head, (unsigned long long) head_move_count, (unsigned long long) (new_head),  (unsigned long long)(cq->tail.load(simt::memory_order_acquire)));
                     cq->head.store(new_head, simt::memory_order_relaxed);
 
