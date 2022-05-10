@@ -90,14 +90,27 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
 	//uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3];
         //uint32_t cid = (cpl_entry & 0x0000ffff);
         //put_cid(sq, cid);
-        if (pass) {
-            uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3];
-            uint32_t cid = (cpl_entry & 0x0000ffff);
-            q->clean_cid[count-1] = cid;
-        }
+        /* if (pass) { */
+        /*     uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3]; */
+        /*     uint32_t cid = (cpl_entry & 0x0000ffff); */
+        /*     q->clean_cid[count-1] = cid; */
+        /* } */
 
     }
-    return (count-1);
+    count -= 1;
+    if (count) {
+        uint32_t loc_ = (cur_head + count) & q->qs_minus_1;
+        uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc_].dword[2];
+        uint16_t new_sq_head =  (cpl_entry & 0x0000ffff);
+        uint32_t sq_move_count = 0;
+        uint32_t cur_sq_head = sq->head.load(simt::memory_order_relaxed);
+        uint32_t loc = cur_sq_head & sq->qs_minus_1;
+        for (; loc != new_sq_head; sq_move_count++, loc= ((loc+1)  & sq->qs_minus_1))
+            sq->tickets[loc].val.fetch_add(1, simt::memory_order_relaxed);
+        sq->head.store(cur_sq_head + sq_move_count, simt::memory_order_release);
+
+    }
+    return (count);
 
 }
 
