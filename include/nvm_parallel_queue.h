@@ -66,7 +66,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
     bool pass = true;
     while (pass ) {
         //uint32_t count_copy = count;
-        pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_relaxed) & q->qs_minus_1));
+        pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_acquire) & q->qs_minus_1));
         if (pass) {
             pass = ((q->tail_mark[(cur_tail+count)&q->qs_minus_1].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED);
             if (pass)
