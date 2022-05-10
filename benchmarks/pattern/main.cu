@@ -317,7 +317,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                     idx = start_idx + j; 
                     if(idx < n_elems)
-                        v += input[idx];
+                        v += ptr[idx];
             }
         }
         *sum = v;
@@ -524,7 +524,7 @@ int main(int argc, char *argv[]) {
         if((type == RANDOM_WARP) || (type == RANDOM_WARP_PC)){
             assignment_h = (uint64_t*) malloc (n_warps*sizeof(uint64_t));
             for(uint64_t i=0; i< n_warps; i++){
-                uint64_t page = rand() % (n_data_pages); 
+                uint64_t page = rand() % (n_warps); 
                 assignment_h[i] = page; 
             }
             cuda_err_chk(cudaMalloc(&assignment_d, n_warps*sizeof(uint64_t)));
