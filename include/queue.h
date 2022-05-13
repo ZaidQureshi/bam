@@ -43,7 +43,7 @@ struct QueuePair
     //BufferPtr           sq_head_mark;
     BufferPtr           sq_tail_mark;
     BufferPtr           sq_cid;
-    BufferPtr           cq_tickets;
+    //BufferPtr           cq_tickets;
     BufferPtr           cq_head_mark;
     //BufferPtr           cq_tail_mark;
 
@@ -69,10 +69,10 @@ struct QueuePair
         this->sq.qs_log2 = (uint32_t) std::log2(this->sq.qs);
 
 
-        this->cq_tickets = createBuffer(this->cq.qs * sizeof(padded_struct), cudaDevice);
+        //this->cq_tickets = createBuffer(this->cq.qs * sizeof(padded_struct), cudaDevice);
         this->cq_head_mark = createBuffer(this->cq.qs * sizeof(padded_struct), cudaDevice);
         //this->cq_tail_mark = createBuffer(this->cq.qs * sizeof(padded_struct), cudaDevice);
-        this->cq.tickets = (padded_struct*) this->cq_tickets.get();
+        //this->cq.tickets = (padded_struct*) this->cq_tickets.get();
         this->cq.head_mark = (padded_struct*) this->cq_head_mark.get();
         //this->cq.tail_mark = (padded_struct*) this->cq_tail_mark.get();
         this->cq.qs_minus_1 = this->cq.qs - 1;
