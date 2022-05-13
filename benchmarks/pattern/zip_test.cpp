@@ -34,7 +34,7 @@ int main(){
 
       std::random_device rd;
       std::mt19937 gen(rd());
-      zipf_distribution<uint64_t> zipf(100); //number of unique keys
+      zipf_distribution<uint64_t> zipf(100, 0.5); //number of unique keys
   
       for (int i = 0; i < 10000; i++) //number of values to draw from the unique keys.
           printf("i: %d val: %llu\n", i, zipf(gen));
