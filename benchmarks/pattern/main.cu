@@ -553,12 +553,17 @@ int main(int argc, char *argv[]) {
 
         if((type == POWERLAW_WARP) || (type == POWERLAW_WARP_PC)){
             std::random_device rd;
-            std::mt19937 gen(rd());
+            unsigned seed; 
+            if(settings.seed >0)
+               seed = settings.seed; 
+            else 
+                seed = rd(); 
+            std::mt19937 gen(seed);
             uint64_t unique_keys = n_data_pages;//pc_pages*8; // 8 times is picked for making sure all keys do not fall within the cache and hence there are misses. 
 			//if(n_warps < unique_keys)
 			//	printf("WARNING: powerlaw pattern requires unique keys (%llu) to be smaller than the n_warps (%llu). Either reduce the cache size or increase n_warps.\n", unique_keys, n_warps);
 			//TODO: Control alpha or zipf coefficient. 
-			zipf_distribution<uint64_t> zipf(unique_keys, 1.8);
+			zipf_distribution<uint64_t> zipf(unique_keys, 1.45);
             assignment_h = (uint64_t*) malloc (n_warps*sizeof(uint64_t));
             for(uint64_t i=0; i< n_warps; i++){
                 assignment_h[i] = zipf(gen); 

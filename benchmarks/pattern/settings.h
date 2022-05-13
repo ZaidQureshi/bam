@@ -57,6 +57,7 @@ struct Settings
     size_t src;
     uint64_t maxPageCacheSize;
     uint64_t stride;
+    uint64_t seed;
     //float    zipf;
     uint64_t coarse;
     uint64_t n_elems;
@@ -383,6 +384,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
         {'P', OptionPtr(new Option<uint64_t>(stride, "number", "STRIDE", "Hashing stride factor for cc. It is calculated as P = stride. Assumes power of 2", "1"))},
+        {'S', OptionPtr(new Option<uint64_t>(seed, "number", "seed", "seed for powerlaw distribution.", "0"))},
         //{'Z', OptionPtr(new Option<float>(zipf, "number", "zipf", "Zipfian scale factor. 1.25 gives 70-30, 1.45 gives 80-20, 1.8 gives 90-10. Default", "1.45"))},
         {'C', OptionPtr(new Option<uint64_t>(coarse, "number", "COARSE", "Thread coarsening factor", "1"))},
     };
@@ -487,6 +489,7 @@ Settings::Settings()
     src = 0;
     maxPageCacheSize = 8589934592;
     stride = 1;
+    seed = 0;
     coarse = 1;
     //zipf = 1.45; 
     n_elems= 1048576;
