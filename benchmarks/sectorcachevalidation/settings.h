@@ -58,6 +58,7 @@ struct Settings
     uint64_t accessType;
     uint64_t ratio;
     uint64_t sectorSize;
+    uint64_t cacheSize;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -395,6 +396,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write", "0"))},
         {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
         {'S', OptionPtr(new Range(sectorSize, 512, 8192, "sector_size", "sector size for sector cache", "512"))},
+        {'c', OptionPtr(new Range(cacheSize, 0, 8589934592, "cache_size", "cache buffer size for sector cache", "8589934592"))},
     };
 
     string optionString;
@@ -494,6 +496,7 @@ Settings::Settings()
     accessType = READ;
     ratio = 100;
     sectorSize = 512;
+    cacheSize = 8589934592;
 }
 
 

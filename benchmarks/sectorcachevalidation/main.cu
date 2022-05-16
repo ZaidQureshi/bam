@@ -97,9 +97,10 @@ __global__
 void random_access_read_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t* device_buffer, uint64_t* assignment_buffer, uint64_t n_pages, uint64_t page_size, int* counter) {
 
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    bam_ptr<uint64_t> ptr(dr);
     if (tid < n_reqs) {
-        
-        device_buffer[tid]= (*dr)[(assignment_buffer[tid])];
+        device_buffer[tid]= ptr[assignment_buffer[tid]];
+        //device_buffer[tid]= (*dr)[(assignment_buffer[tid])];
 
         /*uint64_t result;
         //result = (*dr)[(tid)];
@@ -154,9 +155,11 @@ int main(int argc, char** argv) {
         std::cout << n_threads <<std::endl;
 
         uint64_t page_size = settings.pageSize;
-        uint64_t n_pages = settings.numPages;
-        uint64_t total_cache_size = (page_size * n_pages);
+        /*uint64_t n_pages = settings.numPages;
+        uint64_t total_cache_size = (page_size * n_pages);*/
         uint64_t n_blocks = settings.numBlks;
+        uint64_t total_cache_size = settings.cacheSize;
+        uint64_t n_pages = ceil(total_cache_size/page_size);
         uint32_t sector_size = settings.sectorSize;
 
         /*if(total_cache_size > (sb_in.st_size - settings.ifileoffset)){
@@ -255,21 +258,14 @@ int main(int argc, char** argv) {
 
                     int errorcnt=0;
                     
-                    for (uint64_t i=0; i<n_threads; i++) {
+                    /*for (uint64_t i=0; i<n_threads; i++) {
                         //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
-                        if (i != tmprbuff[(size_t)i]) {
+                        if (assignment[i] != tmprbuff[(size_t)i]) {
                             errorcnt++;
                             std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }
                     }
-                    /*for (uint64_t i=n_threads; i<n_threads*2; i++) {
-                        //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
-                        if (i-n_threads != tmprbuff[(size_t)i]) {
-                            errorcnt++;
-                            std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
-                        }
-                    }*/
-                    std::cout << "Total error count : " << errorcnt <<std::endl; 
+                    std::cout << "Total error count : " << errorcnt <<std::endl; */
 
 
         

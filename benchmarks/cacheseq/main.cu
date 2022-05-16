@@ -33,24 +33,22 @@
 using error = std::runtime_error;
 using std::string;
 
-#define SECTOR_SIZE_BENCH 512
-
 uint32_t n_ctrls = 1;
 const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7"};
 
 
-template<typename T>
+/*template<typename T>
 __global__ __launch_bounds__(64,32)
-void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned long long* sum, uint64_t type, uint64_t* assignment, uint64_t n_warps, size_t page_size) {
+void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned long long* sum, uint64_t type, uint64_t* assignment, uint64_t n_warps, size_t page_size, size_t sector_size) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size/sizeof(T);
-    const uint64_t n_elems_per_sector = SECTOR_SIZE_BENCH / sizeof(T);
+    const uint64_t n_elems_per_sector = sector_size / sizeof(T);
     T v = 0;
     if (warp_id < n_warps) {
-//	bam_ptr<T> ptr(dr);
+    	bam_ptr<T> ptr(dr);
         size_t start_page = assignment[warp_id]*n_elems_per_page;//n_pages_per_warp * warp_id;//assignment[warp_id];
 //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
         for (size_t i = 0; i < n_pages_per_warp; i++) {
@@ -61,13 +59,35 @@ void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned lo
             for (size_t j = 0; j < n_elems_per_sector; j += 32) {
 //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                 //if (type == ORIG) {
-                    v += (*dr)[start_idx + j];
+                    v += ptr[start_idx + j];
                 //}
                 //else {
                 //    v += ptr[start_idx + j];
                 //}
             }
 
+        }
+        *sum = v;
+    }
+
+}*/
+
+template<typename T>
+__global__ __launch_bounds__(64,32)
+void random_access_warp(array_d_t<T>* dr, uint64_t n_pages_per_warp, unsigned long long* sum, uint64_t type, uint64_t* assignment, uint64_t n_warps, size_t page_size, size_t sector_size) {
+
+    const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint64_t lane = tid % 32;
+    const uint64_t warp_id = tid / 32;
+    const uint64_t n_elems_per_page = page_size/sizeof(T);
+    const uint64_t n_elems_per_sector = sector_size / sizeof(T);
+    T v = 0;
+    if (warp_id < n_warps) {
+    	bam_ptr<T> ptr(dr);
+        size_t start_sector = assignment[warp_id]*n_elems_per_sector;
+        size_t start_idx = start_sector + lane;
+        for (size_t j = 0; j < n_elems_per_sector; j += 32) {
+                    v += ptr[start_idx + j];
         }
         *sum = v;
     }
@@ -160,10 +180,11 @@ int main(int argc, char** argv) {
         uint64_t page_size = settings.pageSize;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
+        uint64_t sector_size = settings.sectorSize;
         //uint64_t n_pages = total_cache_size/page_size;
 
 
-        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+        page_cache_t h_pc(page_size, n_pages, sector_size, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
@@ -172,6 +193,7 @@ int main(int argc, char** argv) {
         uint64_t n_elems = settings.numElems;
         uint64_t t_size = n_elems * sizeof(TYPE);
         uint64_t n_data_pages =  (uint64_t)(t_size/page_size);
+        uint64_t n_data_sectors = (uint64_t)(t_size/sector_size);
 
         range_t<uint64_t> h_range((uint64_t)0, (uint64_t)n_elems, (uint64_t)0, n_data_pages, (uint64_t)0, (uint64_t)page_size, &h_pc, settings.cudaDevice);
         range_t<uint64_t>* d_range = (range_t<uint64_t>*) h_range.d_range_ptr;
@@ -189,8 +211,7 @@ int main(int argc, char** argv) {
         uint64_t gran = settings.gran; //(settings.gran == WARP) ? 32 : b_size;
         uint64_t type = settings.type;
 
-        uint64_t n_elems_per_page = SECTOR_SIZE_BENCH / sizeof(uint64_t);
-        std::cout << "n_elems_per_page: " << n_elems_per_page << std::endl;
+        uint64_t n_elems_per_sector = sector_size / sizeof(uint64_t);
         unsigned long long* d_req_count;
         cuda_err_chk(cudaMalloc(&d_req_count, sizeof(unsigned long long)));
         cuda_err_chk(cudaMemset(d_req_count, 0, sizeof(unsigned long long)));
@@ -203,8 +224,8 @@ int main(int argc, char** argv) {
         if (settings.random) {
             assignment = (uint64_t*) malloc(n_warps*sizeof(uint64_t));
             for (size_t i = 0; i < n_warps; i++) {
-                uint64_t page = rand() % (n_data_pages);
-                assignment[i] = page;
+                uint64_t sector = rand() % (n_data_sectors);
+                assignment[i] = sector;
             }
             cuda_err_chk(cudaMalloc(&d_assignment, n_warps*sizeof(uint64_t)));
             cuda_err_chk(cudaMemcpy(d_assignment, assignment,  n_warps*sizeof(uint64_t), cudaMemcpyHostToDevice));
@@ -212,7 +233,7 @@ int main(int argc, char** argv) {
         Event before;
         //access_kernel<<<g_size, b_size>>>(h_pc.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs);
         if (settings.random) {
-                random_access_warp<TYPE><<<g_size, b_size>>>(a.d_array_ptr, n_pages_per_warp, d_req_count, type, d_assignment, n_warps, page_size);
+                random_access_warp<TYPE><<<g_size, b_size>>>(a.d_array_ptr, n_pages_per_warp, d_req_count, type, d_assignment, n_warps, page_size, sector_size);
 
 
         }
@@ -225,7 +246,7 @@ int main(int argc, char** argv) {
 
 
         double elapsed = after - before;
-        uint64_t ios = n_warps*n_pages_per_warp*n_elems_per_page;
+        uint64_t ios = n_warps*n_pages_per_warp*n_elems_per_sector;
         uint64_t data = ios*sizeof(uint64_t);
         double iops = ((double)ios)/(elapsed/1000000);
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
