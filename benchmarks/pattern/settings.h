@@ -38,9 +38,11 @@ struct Settings
     bool            stats;
     const char*     input;
     const char*     output;
+    const char*     input_a;
+    size_t          afileoffset; 
+    size_t          bfileoffset; 
     size_t          type; 
     size_t          memalloc; 
-    size_t          tensor_size;
     size_t          numThreads;
     uint32_t        domain;
     uint32_t        bus;
@@ -51,9 +53,15 @@ struct Settings
     size_t numQueues;
     size_t pageSize;
     uint64_t numElems;
+    size_t repeat;
+    size_t src;
     uint64_t maxPageCacheSize;
-
-    bool random;
+    uint64_t stride;
+    uint64_t sectorsize;
+    uint64_t seed;
+    //float    zipf;
+    uint64_t coarse;
+    uint64_t n_elems;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -173,8 +181,11 @@ void Option<bool>::parseArgument(const char* optstr, const char* optarg)
 
 
 template <>
-void Option<const char*>::parseArgument(const char*, const char* optarg)
+void Option<const char*>::parseArgument(const char* optstr, const char* optarg)
 {
+    if(optarg == nullptr){
+            throwError(optstr, optarg); 
+    }
     value = optarg;
 }
 
@@ -360,28 +371,24 @@ static void verifyNumberOfThreads(size_t numThreads)
 void Settings::parseArguments(int argc, char** argv)
 {
     OptionMap parsers = {
-        {'f', OptionPtr(new Option<const char*>(input, "path", "input", "Input dataset path used to write to NVMe SSD"))},
-        {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
-        {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
-        //{'i', OptionPtr(new Option<uint32_t>(nvmNamespace, "identifier", "namespace", "NVM namespace identifier", "1"))},
-        //{'B', OptionPtr(new Option<bool>(doubleBuffered, "bool", "double-buffer", "double buffer disk reads", "false"))},
-        //{'r', OptionPtr(new Option<bool>(stats, "bool", "stats", "print statistics", "false"))},
-        {'n', OptionPtr(new Range(numReqs, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "reqs", "number of reqs per thread", "1"))},
-        {'p', OptionPtr(new Range(numPages, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "pages", "number of pages in cache", "1024"))},
-        {'P', OptionPtr(new Range(pageSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "page_size", "size of page in cache", "4096"))},
+        {'a', OptionPtr(new Option<const char*>(input_a, "path", "input_a", "File path A file is. Provide .bel path."))},
+        {'A', OptionPtr(new Range(afileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "aoffset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
+        {'v', OptionPtr(new Range(type, 0, 50, "impl_type", "BASELINE=0, COALESCE = 1, COALESCE_CHUNK = 2, BASELINE_PC=3, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5\n BASELINE_HASH = 6, COALESCE_HASH = 7, BASELINE_HASH_PC = 9, COALESCE_HASH_PC = 10", "1"))},
+        {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
+        {'s', OptionPtr(new Option<uint64_t>(n_elems, "number", "n_elems", "specify vector size in elements for both A and B. Each element is of 8B. Default uses 1M elements", "1048576"))},
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "1024"))},
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "CUDA thread block size", "64"))},
+        {'g', OptionPtr(new Option<uint32_t>(cudaDevice, "number", "gpu", "specify CUDA device", "0"))},
+        {'k', OptionPtr(new Option<uint32_t>(n_ctrls, "number", "n_ctrls", "specify number of NVMe controllers", "1"))},
+        {'p', OptionPtr(new Range(pageSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "page_size", "size of page in cache", "4096"))},
         {'d', OptionPtr(new Range(queueDepth, 2, 65536, "queue_depth", "queue depth per queue", "16"))},
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
-        {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
-        {'v', OptionPtr(new Range(type, 0, 10, "impl_type", "SEQUENTIAL= 0, RANDOM=1, GRID_STREAMING=2, BLOCK_STREAMING=3, WARP_RANDOM=4, BLOCK_RANDOM = 5", "1"))},
-        {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
-        {'s', OptionPtr(new Range(tensor_size, 1, 65536, "tensor_size", "Tensor size in terms of number of element and not in bytes. numElems becomes keys", "1"))},
         {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
-        //{'r', OptionPtr(new Option<bool>(random, "bool", "random", "if true the random access benchmark runs, if false the sequential access benchmark runs", "true"))},
-        //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
-        //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
-        //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
+        {'P', OptionPtr(new Option<uint64_t>(stride, "number", "STRIDE", "Hashing stride factor for cc. It is calculated as P = stride. Assumes power of 2", "1"))},
+        {'S', OptionPtr(new Option<uint64_t>(sectorsize, "number", "sectorsize", "Sector size of the cacheline. Assumes power of 2", "4096"))},
+        {'E', OptionPtr(new Option<uint64_t>(seed, "number", "seed", "seed for powerlaw distribution.", "0"))},
+        //{'Z', OptionPtr(new Option<float>(zipf, "number", "zipf", "Zipfian scale factor. 1.25 gives 70-30, 1.45 gives 80-20, 1.8 gives 90-10. Default", "1.45"))},
+        {'C', OptionPtr(new Option<uint64_t>(coarse, "number", "COARSE", "Thread coarsening factor", "1"))},
     };
 
     string optionString;
@@ -464,23 +471,31 @@ Settings::Settings()
     startBlock = 0;
     stats = false;
     input = nullptr;
+    input_a = nullptr;
     output = nullptr;
+    afileoffset = 0;
+    bfileoffset = 0;
     type = 1;
     memalloc = 2; 
-    tensor_size = 1; 
-    numThreads = 64;
+    numThreads = 1024;
     blkSize = 64;
     domain = 0;
     bus = 0;
     devfn = 0;
     n_ctrls = 1;
-    queueDepth = 16;
-    numQueues = 1;
+    queueDepth = 1024;
+    numQueues = 128;
     pageSize = 4096;
     numElems = 2147483648;
-    random = true;
+    repeat = 32;
+    src = 0;
     maxPageCacheSize = 8589934592;
-
+    stride = 1;
+    sectorsize= 4096;
+    seed = 0;
+    coarse = 1;
+    //zipf = 1.45; 
+    n_elems= 1048576;
 }
 
 
