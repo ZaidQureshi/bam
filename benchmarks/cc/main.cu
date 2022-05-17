@@ -287,7 +287,7 @@ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -312,7 +312,7 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -334,7 +334,7 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *nex
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 //void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
 void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -355,7 +355,7 @@ void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, b
 
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 //void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
 void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -416,7 +416,7 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
 
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 //void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
 void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -567,7 +567,7 @@ void kernel_verify(uint64_t count, unsigned long long int *list, uint64_t condva
  
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -591,7 +591,7 @@ void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -653,7 +653,7 @@ void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 //    const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -690,7 +690,7 @@ void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, int sm_count) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
@@ -761,7 +761,7 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, int sm_count) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 //    const uint64_t warpIdx = oldtid >> WARP_SHIFT;
@@ -800,7 +800,7 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
@@ -832,7 +832,7 @@ void kernel_coalesce_hash_coarse(bool *curr_visit, bool *next_visit, uint64_t ve
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
@@ -863,7 +863,7 @@ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visi
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_half(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t stride) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldhalfwarpIdx = tid >> 4;
@@ -892,7 +892,7 @@ void kernel_coalesce_hash_half(bool *curr_visit, bool *next_visit, uint64_t vert
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_half_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldhalfwarpIdx = tid >> 4;
@@ -958,7 +958,7 @@ __global__ void kernel_coalesce_chunk(bool *curr_visit, bool *next_visit, uint64
 }
 
 
-__global__ __launch_bounds__(1024,2)
+__global__ //__launch_bounds__(1024,2)
 void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
