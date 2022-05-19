@@ -85,16 +85,18 @@ using std::string;
 
 
 inline void Controller::print_reset_stats(void) {
-    if (cuda_dev >= 0)
+    if (cuda_dev >= 0) {
         cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
+    }
     else {
         std::memcpy(&access_count, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>));
     }
     std::cout << "------------------------------------" << std::endl;
     std::cout << std::dec << "#SSDAccesses:\t" << access_counter << std::endl;
 
-    if (cuda_dev >= 0)
+    if (cuda_dev >= 0) {
         cuda_err_chk(cudaMemset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
+    }
     else {
         std::memset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>));
     }
@@ -193,10 +195,12 @@ inline Controller::Controller(const char* path, uint32_t ns_id, int cudaDevice, 
     n_qps = std::min(n_qps, (uint16_t)numQueues);
     printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
-    if (cuda_dev >= 0)
+    if (cuda_dev >= 0) {
         cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
-    else
+    }
+    else {
         d_qps = h_qps;
+    }
     for (size_t i = 0; i < n_qps; i++) {
         //printf("started creating qp\n");
         h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
