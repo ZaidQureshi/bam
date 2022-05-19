@@ -127,17 +127,17 @@ struct returned_cache_page_t {
 #define SHARED_ 1
 #define GLOBAL_ 2
 
-//#ifdef __CUDACC__
-#define TID ( (threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z)))
-//#else
-//#define TID 0
-//#endif
+#ifdef __CUDACC__
+#define TID ( (threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z))) \
+#else
+#define TID 0
+#endif
 
-//#ifdef __CUDACC__
+#ifdef __CUDACC__
 #define BLKSIZE ( (blockDim.x * blockDim.y * blockDim.z) )
-//#else
-//#define BLKSIZE 1
-//#endif
+#else
+#define BLKSIZE 1
+#endif
 
 #ifdef __CUDACC__
 #define SYNC (loc != THREAD_ ? __syncthreads() : (void)0)
@@ -272,7 +272,7 @@ struct tlb {
                     st = entry->state.fetch_or(VALID_, simt::memory_order_acquire);
                     if ((st & VALID_) == 0)
                         break;
-                    __nanosleep(100);
+                    _nanosleep_(100);
                 } while (true);
 
                 if ((entry->page != nullptr) && (gid == entry->global_id)) {
@@ -304,10 +304,10 @@ struct tlb {
 
                 }
                 else {
-                    if (++c % 100000 == 0)
-                        printf("c: %llu\ttid: %llu\twanted_gid: %llu\tgot_gid: %llu\tst: %llx\tst&0x7: %llx\n", (unsigned long long) c, (unsigned long long) (TID), (unsigned long long) gid, (unsigned long long) entry->global_id, (unsigned long long) st, (unsigned long long) (st & 0x7fffffff));
-                    entry->state.store(st, simt::memory_order_relaxed);
-                    __nanosleep(100);
+                    // if (++c % 100000 == 0)
+                    //     printf("c: %llu\ttid: %llu\twanted_gid: %llu\tgot_gid: %llu\tst: %llx\tst&0x7: %llx\n", (unsigned long long) c, (unsigned long long) (TID), (unsigned long long) gid, (unsigned long long) entry->global_id, (unsigned long long) st, (unsigned long long) (st & 0x7fffffff));
+                    // entry->state.store(st, simt::memory_order_relaxed);
+                    //  //__nanosleep(100);
 
                 }
 
@@ -533,11 +533,11 @@ struct page_cache_d_t {
     uint64_t n_blocks_per_page;
 
     __forceinline__
-    __device__
+    __host__ __device__
     cache_page_t* get_cache_page(const uint32_t page) const;
 
     __forceinline__
-    __device__
+    __host__ __device__
     uint32_t find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
 };
 
@@ -884,52 +884,52 @@ struct range_d_t {
     page_cache_d_t cache;
     //range_d_t(range_t<T>* rt);
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_backing_page(const size_t i) const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_backing_ctrl(const size_t i) const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_sector_size() const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_page(const size_t i) const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_subindex(const size_t i) const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_global_address(const size_t page) const;
     __forceinline__
-    __device__
+    __host__ __device__
     void release_page(const size_t pg) const;
     __forceinline__
-    __device__
+    __host__ __device__
     void release_page(const size_t pg, const uint32_t count) const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl, const uint32_t queue) ;
     __forceinline__
-    __device__
+    __host__ __device__
     void write_done(const size_t pg, const uint32_t count) const;
     __forceinline__
-    __device__
+    __host__ __device__
     T operator[](const size_t i) ;
     __forceinline__
-    __device__
+    __host__ __device__
     void operator()(const size_t i, const T val);
     __forceinline__
-    __device__
+    __host__ __device__
     cache_page_t* get_cache_page(const size_t pg) const;
     __forceinline__
-    __device__
+    __host__ __device__
     uint64_t get_cache_page_addr(const uint32_t page_trans) const;
 
 };
 
-__device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
-__device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+__host__ __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+__host__ __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
 
 
 template <typename T>
@@ -1015,7 +1015,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
 
 
 __forceinline__
-__device__
+__host__ __device__
 uint64_t get_backing_page_(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
     uint64_t page = page_start;
     if (dist == STRIPE) {
@@ -1030,14 +1030,14 @@ uint64_t get_backing_page_(const uint64_t page_start, const size_t page_offset, 
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_backing_page(const size_t page_offset) const {
     return get_backing_page_(page_start, page_offset, cache.n_ctrls, dist);
 }
 
 
 __forceinline__
-__device__
+__host__ __device__
 uint64_t get_backing_ctrl_(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
     uint64_t ctrl;
 
@@ -1053,14 +1053,14 @@ uint64_t get_backing_ctrl_(const size_t page_offset, const uint64_t n_ctrls, con
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_backing_ctrl(const size_t page_offset) const {
     return get_backing_ctrl_(page_offset, cache.n_ctrls, dist);
 }
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_sector_size() const {
     return page_size;
 }
@@ -1068,27 +1068,27 @@ uint64_t range_d_t<T>::get_sector_size() const {
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_page(const size_t i) const {
     uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) >> (cache.page_size_log);
     return index;
 }
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_subindex(const size_t i) const {
     uint64_t index = ((i - index_start) * sizeof(T) + page_start_offset) & (cache.page_size_minus_1);
     return index;
 }
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_global_address(const size_t page) const {
     return ((page << cache.n_ranges_bits) | range_id);
 }
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 void range_d_t<T>::release_page(const size_t pg) const {
     uint64_t index = pg;
     pages[index].state.fetch_sub(1, simt::memory_order_release);
@@ -1096,7 +1096,7 @@ void range_d_t<T>::release_page(const size_t pg) const {
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
     uint64_t index = pg;
     pages[index].state.fetch_sub(count, simt::memory_order_release);
@@ -1104,7 +1104,7 @@ void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 cache_page_t* range_d_t<T>::get_cache_page(const size_t pg) const {
     uint32_t page_trans = pages[pg].offset;
     return cache.get_cache_page(page_trans);
@@ -1112,7 +1112,7 @@ cache_page_t* range_d_t<T>::get_cache_page(const size_t pg) const {
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::get_cache_page_addr(const uint32_t page_trans) const {
     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
 }
@@ -1120,7 +1120,7 @@ uint64_t range_d_t<T>::get_cache_page_addr(const uint32_t page_trans) const {
 
 template <typename T>
 __forceinline__
-__device__
+__host__ __device__
 uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue) {
     uint64_t index = pg;
     uint64_t expected_state = VALID;
@@ -1134,6 +1134,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     //T ret;
     uint64_t j = 0;
     uint64_t read_state,st,st_new;
+
     read_state = pages[index].state.fetch_add(count, simt::memory_order_acquire);
     do {
         bool pass = false;
@@ -1211,12 +1212,11 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         if (fail) {
             //if ((++j % 1000000) == 0)
             //    printf("failed to acquire_page: j: %llu\tcnt_shift+1: %llu\tpage: %llu\tread_state: %llx\tst: %llx\tst_new: %llx\n", (unsigned long long)j, (unsigned long long) (CNT_SHIFT+1), (unsigned long long) index, (unsigned long long)read_state, (unsigned long long)st, (unsigned long long)st_new);
-#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
-            __nanosleep(ns);
+            _nanosleep(ns);
             if (ns < 256) {
                 ns *= 2;
             }
-#endif
+
             read_state = pages[index].state.load(simt::memory_order_acquire);
         }
 
@@ -1237,7 +1237,7 @@ struct array_d_t {
     range_d_t<T>* d_ranges;
 
     __forceinline__
-    __device__
+    __host__ __device__
     void get_page_gid(const uint64_t i, range_d_t<T>*& r_, size_t& pg, size_t& gid) const {
         int64_t r = find_range(i);
         r_ = d_ranges+r;
@@ -1253,7 +1253,7 @@ struct array_d_t {
         }
     }
     __forceinline__
-    __device__
+    __host__ __device__
     void memcpy(const uint64_t i, const uint64_t count, T* dest) {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
@@ -1315,7 +1315,7 @@ struct array_d_t {
 
     }
     __forceinline__
-    __device__
+    __host__ __device__
     int64_t find_range(const size_t i) const {
         int64_t range = -1;
         int64_t k = 0;
@@ -1329,7 +1329,7 @@ struct array_d_t {
         return range;
     }
     __forceinline__
-    __device__
+    __host__ __device__
     void coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const uint64_t gaddr, const bool write,
                        uint32_t& eq_mask, int& master, uint32_t& count, uint64_t& base_master) const {
         uint32_t ctrl;
@@ -1367,7 +1367,7 @@ struct array_d_t {
     }
 
     __forceinline__
-    __device__
+    __host__ __device__
     returned_cache_page_t<T> get_raw(const size_t i) const {
         returned_cache_page_t<T> ret;
         uint32_t lane = lane_id();
@@ -1404,7 +1404,7 @@ struct array_d_t {
         return ret;
     }
     __forceinline__
-    __device__
+    __host__ __device__
     void release_raw(const size_t i) const {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
@@ -1440,7 +1440,7 @@ struct array_d_t {
     }
 
     __forceinline__
-    __device__
+    __host__ __device__
     void* acquire_page_(const size_t i, data_page_t*& page_, size_t& start, size_t& end, range_d_t<T>* r_, const size_t page) const {
         //uint32_t lane = lane_id();
 
@@ -1470,7 +1470,7 @@ struct array_d_t {
         return ret;
     }
     __forceinline__
-    __device__
+    __host__ __device__
     void* acquire_page(const size_t i, data_page_t*& page_, size_t& start, size_t& end, int64_t& r) const {
         uint32_t lane = lane_id();
         r = find_range(i);
@@ -1506,7 +1506,7 @@ struct array_d_t {
     }
 
     __forceinline__
-    __device__
+    __host__ __device__
     void release_page(data_page_t* page_, const int64_t r, const size_t i) const {
         uint32_t lane = lane_id();
         auto r_ = d_ranges+r;
@@ -1539,7 +1539,7 @@ struct array_d_t {
     }
 
     __forceinline__
-    __device__
+    __host__ __device__
     T seq_read(const size_t i) const {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
@@ -1575,7 +1575,7 @@ struct array_d_t {
         return ret;
     }
     __forceinline__
-    __device__
+    __host__ __device__
     void seq_write(const size_t i, const T val) const {
         uint32_t lane = lane_id();
         int64_t r = find_range(i);
@@ -1610,7 +1610,7 @@ struct array_d_t {
         }
     }
     __forceinline__
-    __device__
+    __host__ __device__
     T operator[](size_t i) const {
         return seq_read(i);
         // size_t k = 0;
@@ -1626,7 +1626,7 @@ struct array_d_t {
         //     return (((d_ranges[k]))[i-d_ranges[k].index_start]);
     }
     __forceinline__
-    __device__
+    __host__ __device__
     void operator()(size_t i, T val) const {
         seq_write(i, val);
         // size_t k = 0;
@@ -1645,7 +1645,7 @@ struct array_d_t {
 
 
     __forceinline__
-    __device__
+    __host__ __device__
     T AtomicAdd(const size_t i, const T val) const {
         //uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
         uint32_t lane = lane_id();
@@ -1806,7 +1806,7 @@ struct array_t {
 };
 
 __forceinline__
-__device__
+__host__ __device__
 cache_page_t* page_cache_d_t::get_cache_page(const uint32_t page) const {
     return &this->cache_pages[page];
 }
@@ -1814,7 +1814,7 @@ cache_page_t* page_cache_d_t::get_cache_page(const uint32_t page) const {
 
 
 __forceinline__
-__device__
+__host__ __device__
 uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_) {
     bool fail = true;
     uint64_t count = 0;
@@ -1939,12 +1939,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
   }
   }*/
         if (fail) {
-#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
-//             __nanosleep(ns);
-//             if (ns < 256) {
-//                 ns *= 2;
-//             }
-#endif
+
             //   if ((j % 10000000) == 0) {
             //     printf("failed to find slot j: %llu\taddr: %llx\tpage: %llx\texpected_state: %llx\tnew_expected_date: %llx\n", (unsigned long long) j, (unsigned long long) address, (unsigned long long)page, (unsigned long long) expected_state, (unsigned long long) new_expected_state);
 //            }
@@ -1960,7 +1955,7 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
 }
 
 
-inline __device__ void poll_async(QueuePair* qp, uint16_t cid, uint16_t sq_pos) {
+inline __host__ __device__ void poll_async(QueuePair* qp, uint16_t cid, uint16_t sq_pos) {
     uint32_t cq_pos = cq_poll(&qp->cq, cid);
     //sq_dequeue(&qp->sq, sq_pos);
 
@@ -1971,7 +1966,7 @@ inline __device__ void poll_async(QueuePair* qp, uint16_t cid, uint16_t sq_pos) 
     put_cid(&qp->sq, cid);
 }
 
-inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode, uint16_t * cid, uint16_t* sq_pos) {
+inline __host__ __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode, uint16_t * cid, uint16_t* sq_pos) {
     nvm_cmd_t cmd;
     *cid = get_cid(&(qp->sq));
     ////printf("cid: %u\n", (unsigned int) cid);
@@ -1991,7 +1986,7 @@ inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, cons
 
 }
 
-inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+inline __host__ __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
@@ -2028,7 +2023,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
 }
 
 
-inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+inline __host__ __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
@@ -2065,7 +2060,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
 
 }
 
-inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode) {
+inline __host__ __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
@@ -2104,7 +2099,7 @@ inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint
 
 
 //#ifndef __CUDACC__
-//#undef __device__
+//#undef __host__ __device__
 //#undef __host__
 //#undef __forceinline__
 //#endif
