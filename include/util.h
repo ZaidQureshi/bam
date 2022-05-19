@@ -130,6 +130,34 @@ inline __host__ __device__ void _nanosleep_(long ns) {
 #endif;
 }
 
+
+
+__forceinline__ __host__ __device__ uint32_t lane_id()
+{
+    uint32_t ret = 0;
+#if defined(__CUDACC__)
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+    return ret;
+}
+
+__forceinline__ __host__ __device__ unsigned warp_id()
+{
+    // this is not equal to threadIdx.x / 32
+    unsigned ret = 0;
+#if defined(__CUDACC__)
+    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
+#endif
+    return ret;
+}
+
+__forceinline__ __host__ __device__ uint32_t get_smid() {
+     uint32_t ret = 0;
+#if defined(__CUDACC__)
+     asm  ("mov.u32 %0, %smid;" : "=r"(ret) );
+#endif
+     return ret;
+}
+
 //#ifndef __CUDACC__
 //#undef __device__
 //#undef __host__
