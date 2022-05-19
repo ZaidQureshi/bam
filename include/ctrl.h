@@ -47,7 +47,8 @@ struct Controller
     uint16_t                n_sqs;
     uint16_t                n_cqs;
     uint16_t                n_qps;
-    uint32_t                deviceId;
+    int                deviceId;
+    int                cuda_dev;
     QueuePair**             h_qps;
     QueuePair*              d_qps;
 
@@ -84,11 +85,19 @@ using std::string;
 
 
 inline void Controller::print_reset_stats(void) {
-    cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
+    if (cuda_dev >= 0)
+        cuda_err_chk(cudaMemcpy(&access_counter, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
+    else {
+        stdd:memcpy(&access_count, d_ctrl_ptr, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>))
+    }
     std::cout << "------------------------------------" << std::endl;
     std::cout << std::dec << "#SSDAccesses:\t" << access_counter << std::endl;
 
-    cuda_err_chk(cudaMemset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
+    if (cuda_dev >= 0)
+        cuda_err_chk(cudaMemset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
+    else {
+        stdd:memset(d_ctrl_ptr, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>));
+    }
 }
 
 static void initializeController(struct Controller& ctrl, uint32_t ns_id)
@@ -145,12 +154,13 @@ Controller::Controller(uint64_t ctrl_id, uint32_t ns_id, uint32_t)
 
 
 
-inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues)
+inline Controller::Controller(const char* path, uint32_t ns_id, int  cudaDevice, uint64_t queueDepth, uint64_t numQueues)
     : ctrl(nullptr)
     , aq_ref(nullptr)
     , deviceId(cudaDevice)
 {
     int fd = open(path, O_RDWR);
+    cuda_dev = deviceId;
     if (fd < 0)
     {
         throw error(string("Failed to open descriptor: ") + strerror(errno));
@@ -167,10 +177,12 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     aq_mem = createDma(ctrl, ctrl->page_size * 3);
 
     initializeController(*this, ns_id);
-    cudaError_t err = cudaHostRegister((void*) ctrl->mm_ptr, NVM_CTRL_MEM_MINSIZE, cudaHostRegisterIoMemory);
-    if (err != cudaSuccess)
-    {
-        throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
+    if (cuda_dev >= 0) {
+        cudaError_t err = cudaHostRegister((void*) ctrl->mm_ptr, NVM_CTRL_MEM_MINSIZE, cudaHostRegisterIoMemory);
+        if (err != cudaSuccess)
+        {
+            throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
+        }
     }
     queue_counter = 0;
     page_size = ctrl->page_size;
@@ -181,21 +193,32 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     n_qps = std::min(n_qps, (uint16_t)numQueues);
     printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
-    cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
+    if (cuda_dev >= 0)
+        cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
+    else {
+        d_qps = h_qps;
+    }
     for (size_t i = 0; i < n_qps; i++) {
         //printf("started creating qp\n");
         h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
         //printf("finished creating qp\n");
-        cuda_err_chk(cudaMemcpy(d_qps+i, h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
+        if (cuda_dev >= 0)
+            cuda_err_chk(cudaMemcpy(d_qps+i, h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
     }
     //printf("finished creating all qps\n");
 
 
     close(fd);
 
-    d_ctrl_buff = createBuffer(sizeof(Controller), cudaDevice);
-    d_ctrl_ptr = d_ctrl_buff.get();
-    cuda_err_chk(cudaMemcpy(d_ctrl_ptr, this, sizeof(Controller), cudaMemcpyHostToDevice));
+    if (cuda_dev >= 0) {
+        d_ctrl_buff = createBuffer(sizeof(Controller), cudaDevice);
+        d_ctrl_ptr = d_ctrl_buff.get();
+        cuda_err_chk(cudaMemcpy(d_ctrl_ptr, this, sizeof(Controller), cudaMemcpyHostToDevice));
+
+    }
+    else {
+        d_ctrl_ptr = this;
+    }
 }
 
 

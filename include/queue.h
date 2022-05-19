@@ -26,6 +26,7 @@ using std::string;
 
 struct QueuePair
 {
+    int cuda_dev;
     uint32_t            pageSize;
     uint32_t            block_size;
     uint32_t            block_size_log;
@@ -55,7 +56,7 @@ struct QueuePair
 #define MAX_SQ_ENTRIES_64K  (64*1024/64)
 #define MAX_CQ_ENTRIES_64K  (64*1024/16)
 
-    inline void init_gpu_specific_struct( const uint32_t cudaDevice) {
+    inline void init_gpu_specific_struct( const int cudaDevice) {
         this->sq_tickets = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
         //this->sq_head_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
         this->sq_tail_mark = createBuffer(this->sq.qs * sizeof(padded_struct), cudaDevice);
@@ -84,10 +85,10 @@ struct QueuePair
 
 
 
-    inline QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth)
+    inline QueuePair( const nvm_ctrl_t* ctrl, const int cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth)
     {
         //this->this = (QueuePairThis*) malloc(sizeof(QueuePairThis));
-
+        cuda_dev = cudaDevice;
 
     //    std::cout << "HERE\n";
         uint64_t cap = ((volatile uint64_t*) ctrl->mm_ptr)[0];
@@ -136,42 +137,44 @@ struct QueuePair
         //this->prpListIoAddrs = this->prp_mem->ioaddrs;
         this->qp_id = qp_id;
 
-        if (cq_need_prp) {
-            size_t iters = (size_t)ceil(((float)cq_size*sizeof(nvm_cpl_t))/((float)ctrl->page_size));
-            uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
-            memset((void*)cpu_vaddrs, 0, 64*1024);
-            for (size_t i = 0; i < iters; i++) {
-                size_t page_64  = i/(64*1024);
-                size_t page_4 = i%(64*1024/ctrl->page_size);
-                cpu_vaddrs[i] = this->cq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
+        if (cuda_dev >= 0 ) {
+            if (cq_need_prp) {
+                size_t iters = (size_t)ceil(((float)cq_size*sizeof(nvm_cpl_t))/((float)ctrl->page_size));
+                uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
+                memset((void*)cpu_vaddrs, 0, 64*1024);
+                for (size_t i = 0; i < iters; i++) {
+                    size_t page_64  = i/(64*1024);
+                    size_t page_4 = i%(64*1024/ctrl->page_size);
+                    cpu_vaddrs[i] = this->cq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
+                }
+
+                if (this->cq_mem.get()->vaddr) {
+                    cuda_err_chk(cudaMemcpy(this->cq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
+                }
+
+                this->cq_mem.get()->vaddr = (void*)((uint64_t)this->cq_mem.get()->vaddr + 64*1024);
+
+                free(cpu_vaddrs);
             }
 
-            if (this->cq_mem.get()->vaddr) {
-                cuda_err_chk(cudaMemcpy(this->cq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
+            if (sq_need_prp) {
+                size_t iters = (size_t)ceil(((float)sq_size*sizeof(nvm_cpl_t))/((float)ctrl->page_size));
+                uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
+                memset((void*)cpu_vaddrs, 0, 64*1024);
+                for (size_t i = 0; i < iters; i++) {
+                    size_t page_64  = i/(64*1024);
+                    size_t page_4 = i%(64*1024/ctrl->page_size);
+                    cpu_vaddrs[i] = this->sq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
+                }
+
+                if (this->sq_mem.get()->vaddr) {
+                    cuda_err_chk(cudaMemcpy(this->sq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
+                }
+
+                this->sq_mem.get()->vaddr = (void*)((uint64_t)this->sq_mem.get()->vaddr + 64*1024);
+
+                free(cpu_vaddrs);
             }
-
-            this->cq_mem.get()->vaddr = (void*)((uint64_t)this->cq_mem.get()->vaddr + 64*1024);
-
-            free(cpu_vaddrs);
-        }
-
-        if (sq_need_prp) {
-            size_t iters = (size_t)ceil(((float)sq_size*sizeof(nvm_cpl_t))/((float)ctrl->page_size));
-            uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
-            memset((void*)cpu_vaddrs, 0, 64*1024);
-            for (size_t i = 0; i < iters; i++) {
-                size_t page_64  = i/(64*1024);
-                size_t page_4 = i%(64*1024/ctrl->page_size);
-                cpu_vaddrs[i] = this->sq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
-            }
-
-            if (this->sq_mem.get()->vaddr) {
-                cuda_err_chk(cudaMemcpy(this->sq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
-            }
-
-            this->sq_mem.get()->vaddr = (void*)((uint64_t)this->sq_mem.get()->vaddr + 64*1024);
-
-            free(cpu_vaddrs);
         }
       //  std::cout << "before nvm_admin_cq_create\n";
         // Create completion queue
@@ -185,12 +188,16 @@ struct QueuePair
 
         // Get a valid device pointer for CQ doorbell
         void* devicePtr = nullptr;
-        cudaError_t err = cudaHostGetDevicePointer(&devicePtr, (void*) this->cq.db, 0);
-        if (err != cudaSuccess)
-        {
-            throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
+        cudaError_t err;
+        if (cuda_dev >= 0) {
+             err = cudaHostGetDevicePointer(&devicePtr, (void*) this->cq.db, 0);
+            if (err != cudaSuccess)
+            {
+                throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
+            }
+            this->cq.db = (volatile uint32_t*) devicePtr;
         }
-        this->cq.db = (volatile uint32_t*) devicePtr;
+
 
         // Create submission queue
         //  nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
@@ -201,13 +208,15 @@ struct QueuePair
         }
 
 
-        // Get a valid device pointer for SQ doorbell
-        err = cudaHostGetDevicePointer(&devicePtr, (void*) this->sq.db, 0);
-        if (err != cudaSuccess)
-        {
-            throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
+        if (cuda_dev >= 0) {
+            // Get a valid device pointer for SQ doorbell
+            err = cudaHostGetDevicePointer(&devicePtr, (void*) this->sq.db, 0);
+            if (err != cudaSuccess)
+            {
+                throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
+            }
+            this->sq.db = (volatile uint32_t*) devicePtr;
         }
-        this->sq.db = (volatile uint32_t*) devicePtr;
 //        std::cout << "Finish Making Queue\n";
 
         init_gpu_specific_struct(cudaDevice);
