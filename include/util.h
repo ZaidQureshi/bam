@@ -18,7 +18,7 @@
 #include "host_util.h"
 //#include <ctype>
 #include <cstdio>
-
+#include <time.h>
 
 #define cuda_err_chk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
