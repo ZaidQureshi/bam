@@ -199,7 +199,7 @@ inline Controller::Controller(const char* path, uint32_t ns_id, int cudaDevice, 
         cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
     }
     else {
-        d_qps = malloc(sizeof(QueuePair)*n_qps);
+        d_qps = (QueuePair*) malloc(sizeof(QueuePair)*n_qps);
     }
     for (size_t i = 0; i < n_qps; i++) {
         //printf("started creating qp\n");
