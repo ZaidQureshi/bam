@@ -543,7 +543,7 @@ struct page_cache_d_t {
 
 struct page_cache_t {
 
-
+    int cuda_dev;
     //void* d_pc;
 
     //BufferPtr prp2_list_buf;
@@ -581,16 +581,18 @@ struct page_cache_t {
         h_ranges[range->rdt.range_id] = range->rdt.pages;
         h_ranges_page_starts[range->rdt.range_id] = range->rdt.page_start;
         h_ranges_dists[range->rdt.range_id] = range->rdt.dist;
-        cuda_err_chk(cudaMemcpy(pdt.ranges_page_starts, h_ranges_page_starts, pdt.n_ranges * sizeof(uint64_t), cudaMemcpyHostToDevice));
-        cuda_err_chk(cudaMemcpy(pdt.ranges, h_ranges, pdt.n_ranges* sizeof(pages_t), cudaMemcpyHostToDevice));
-        cuda_err_chk(cudaMemcpy(pdt.ranges_dists, h_ranges_dists, pdt.n_ranges* sizeof(data_dist_t), cudaMemcpyHostToDevice));
-        cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
+        if (cuda_dev >= 0) {
+            cuda_err_chk(cudaMemcpy(pdt.ranges_page_starts, h_ranges_page_starts, pdt.n_ranges * sizeof(uint64_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.ranges, h_ranges, pdt.n_ranges* sizeof(pages_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(pdt.ranges_dists, h_ranges_dists, pdt.n_ranges* sizeof(data_dist_t), cudaMemcpyHostToDevice));
+            cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
+        }
 
     }
 
-    page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
-
-        ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+    page_cache_t(const uint64_t ps, const uint64_t np, const int cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
+        cuda_dev = cudaDevice;
+        ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cuda_dev);
         pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
         pdt.page_size = ps;
         pdt.page_size_minus_1 = ps - 1;
@@ -598,14 +600,22 @@ struct page_cache_t {
         pdt.ctrl_page_size = ctrl.ctrl->page_size;
         pdt.n_pages_minus_1 = np - 1;
         pdt.n_ctrls = ctrls.size();
-        d_ctrls_buff = createBuffer(pdt.n_ctrls * sizeof(Controller*), cudaDevice);
+
+        d_ctrls_buff = createBuffer(pdt.n_ctrls * sizeof(Controller*), cuda_dev);
         pdt.d_ctrls = (Controller**) d_ctrls_buff.get();
         pdt.n_blocks_per_page = (ps/ctrl.blk_size);
         pdt.n_cachelines_for_states = np/STATES_PER_CACHELINE;
-        for (size_t k = 0; k < pdt.n_ctrls; k++)
-            cuda_err_chk(cudaMemcpy(pdt.d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
+        for (size_t k = 0; k < pdt.n_ctrls; k++) {
+            if (cuda_dev >= 0 ) {
+                cuda_err_chk(cudaMemcpy(pdt.d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
+            }
+            else {
+                std::memcpy(pdt.d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*));
+            }
+
+        }
         //n_ctrls = ctrls.size();
-        //d_ctrls_buff = createBuffer(n_ctrls * sizeof(Controller*), cudaDevice);
+        //d_ctrls_buff = createBuffer(n_ctrls * sizeof(Controller*), cuda_dev);
         //d_ctrls = (Controller**) d_ctrls_buff.get();
         //for (size_t k = 0; k < n_ctrls; k++)
         //    cuda_err_chk(cudaMemcpy(d_ctrls+k, &(ctrls[k]->d_ctrl_ptr), sizeof(Controller*), cudaMemcpyHostToDevice));
@@ -618,42 +628,76 @@ struct page_cache_t {
         std::cout << "n_ranges_mask: " << std::dec << pdt.n_ranges_mask << std::endl;
 
         pdt.page_size_log = std::log2(ps);
-        ranges_buf = createBuffer(max_range * sizeof(pages_t), cudaDevice);
-        pdt.ranges = (pages_t*)ranges_buf.get();
+
         h_ranges = new pages_t[max_range];
+
+        if (cuda_dev >= 0) {
+             ranges_buf = createBuffer(max_range * sizeof(pages_t), cuda_dev);
+             pdt.ranges = (pages_t*)ranges_buf.get();
+        }
+        else {
+            pdt.ranges = h_ranges;
+        }
 
         h_ranges_page_starts = new uint64_t[max_range];
         std::memset(h_ranges_page_starts, 0, max_range * sizeof(uint64_t));
 
-        //pages_translation_buf = createBuffer(np * sizeof(uint32_t), cudaDevice);
+        //pages_translation_buf = createBuffer(np * sizeof(uint32_t), cuda_dev);
         //pdt.page_translation = (uint32_t*)page_translation_buf.get();
-        //page_translation_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
+        //page_translation_buf = createBuffer(np * sizeof(padded_struct_pc), cuda_dev);
         //page_translation = (padded_struct_pc*)page_translation_buf.get();
 
-        //page_take_lock_buf = createBuffer(np * sizeof(padded_struct_pc), cudaDevice);
+        //page_take_lock_buf = createBuffer(np * sizeof(padded_struct_pc), cuda_dev);
         //pdt.page_take_lock =  (padded_struct_pc*)page_take_lock_buf.get();
 
-        cache_pages_buf = createBuffer(np * sizeof(cache_page_t), cudaDevice);
+        cache_pages_buf = createBuffer(np * sizeof(cache_page_t), cuda_dev);
         pdt.cache_pages = (cache_page_t*)cache_pages_buf.get();
 
-        ranges_page_starts_buf = createBuffer(max_range * sizeof(uint64_t), cudaDevice);
-        pdt.ranges_page_starts = (uint64_t*) ranges_page_starts_buf.get();
 
-        page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
+
+        page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cuda_dev);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
         //std::vector<padded_struct_pc> tps(np, FREE);
-        cache_page_t* tps = new cache_page_t[np];
+        cache_page_t* tps;
+
+        if (cuda_dev >= 0) {
+            tps = new cache_page_t[np];
+
+        }
+        else {
+            tps = pdt.cache_pages;
+        }
+
         for (size_t i = 0; i < np; i++)
             tps[i].page_take_lock = FREE;
-        cuda_err_chk(cudaMemcpy(pdt.cache_pages, tps, np*sizeof(cache_page_t), cudaMemcpyHostToDevice));
-        delete tps;
+        if (cuda_dev >= 0) {
+            cuda_err_chk(cudaMemcpy(pdt.cache_pages, tps, np*sizeof(cache_page_t), cudaMemcpyHostToDevice));
+            delete tps;
+        }
 
-        ranges_dists_buf = createBuffer(max_range * sizeof(data_dist_t), cudaDevice);
-        pdt.ranges_dists = (data_dist_t*)ranges_dists_buf.get();
+
         h_ranges_dists = new data_dist_t[max_range];
 
+        if (cuda_dev >= 0) {
+             ranges_page_starts_buf = createBuffer(max_range * sizeof(uint64_t), cuda_dev);
+             pdt.ranges_page_starts = (uint64_t*) ranges_page_starts_buf.get();
+        }
+        else
+            pdt.ranges_page_starts = h_ranges_page_starts;
+
+
+        if (cuda_dev >= 0) {
+            ranges_dists_buf = createBuffer(max_range * sizeof(data_dist_t), cuda_dev);
+            pdt.ranges_dists = (data_dist_t*)ranges_dists_buf.get();
+        }
+        else
+            pdt.ranges_dists = h_ranges_dists;
+
+
+
+
         uint64_t cache_size = ps*np;
-        this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
+        this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cuda_dev);
         pdt.base_addr = (uint8_t*) this->pages_dma.get()->vaddr;
         std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
         std::cout << "HEREN\n";
@@ -663,24 +707,34 @@ struct page_cache_t {
         if (ps <= this->pages_dma.get()->page_size) {
             std::cout << "Cond1\n";
             uint64_t how_many_in_one = ctrl.ctrl->page_size/ps;
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cuda_dev);
             pdt.prp1 = (uint64_t*) this->prp1_buf.get();
 
 
             std::cout << np << " " << sizeof(uint64_t) << " " << how_many_in_one << " " << this->pages_dma.get()->n_ioaddrs <<std::endl;
-            uint64_t* temp = new uint64_t[how_many_in_one *  this->pages_dma.get()->n_ioaddrs];
-            std::memset(temp, 0, how_many_in_one *  this->pages_dma.get()->n_ioaddrs);
-            if (temp == NULL)
-                std::cout << "NULL\n";
+            uint64_t* temp;
+            if (cuda_dev >= 0) {
+                temp = new uint64_t[how_many_in_one *  this->pages_dma.get()->n_ioaddrs];
 
+
+                if (temp == NULL)
+                    std::cout << "NULL\n";
+            }
+
+            else {
+                temp = pdt.prp1;
+            }
+            std::memset(temp, 0, how_many_in_one *  this->pages_dma.get()->n_ioaddrs);
             for (size_t i = 0; (i < this->pages_dma.get()->n_ioaddrs) ; i++) {
                 for (size_t j = 0; (j < how_many_in_one); j++) {
                     temp[i*how_many_in_one + j] = ((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps;
                     //std::cout << std::dec << "\ti: " << i << "\tj: " << j << "\tindex: "<< (i*how_many_in_one + j) << "\t" << std::hex << (((uint64_t)this->pages_dma.get()->ioaddrs[i]) + j*ps) << std::dec << std::endl;
                 }
             }
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            delete temp;
+            if (cuda_dev >= 0) {
+                cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+                delete temp;
+            }
             //std::cout << "HERE1\n";
             //free(temp);
             //std::cout << "HERE2\n";
@@ -688,37 +742,60 @@ struct page_cache_t {
         }
 
         else if ((ps > this->pages_dma.get()->page_size) && (ps <= (this->pages_dma.get()->page_size * 2))) {
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cuda_dev);
             pdt.prp1 = (uint64_t*) this->prp1_buf.get();
-            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cuda_dev);
             pdt.prp2 = (uint64_t*) this->prp2_buf.get();
             //uint64_t* temp1 = (uint64_t*) malloc(np * sizeof(uint64_t));
-            uint64_t* temp1 = new uint64_t[np * sizeof(uint64_t)];
-            std::memset(temp1, 0, np * sizeof(uint64_t));
-            //uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
-            uint64_t* temp2 = new uint64_t[np * sizeof(uint64_t)];
-            std::memset(temp2, 0, np * sizeof(uint64_t));
-            for (size_t i = 0; i < np; i++) {
-                temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2]);
-                temp2[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2+1]);
-            }
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+            uint64_t* temp1;
+            uint64_t* temp2;
+            if (cuda_dev >= 0) {
+                temp1 = new uint64_t[np * sizeof(uint64_t)];
 
-            delete temp1;
-            delete temp2;
+            //uint64_t* temp2 = (uint64_t*) malloc(np * sizeof(uint64_t));
+
+                temp2 = new uint64_t[np * sizeof(uint64_t)];
+            }
+            else {
+                temp1 = pdt.prp1;
+                temp2 = pdt.prp2;
+            }
+            std::memset(temp1, 0, np * sizeof(uint64_t));
+            std::memset(temp2, 0, np * sizeof(uint64_t));
+            if (cuda_dev >= 0) {
+                for (size_t i = 0; i < np; i++) {
+                    temp1[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2]);
+                    temp2[i] = ((uint64_t)this->pages_dma.get()->ioaddrs[i*2+1]);
+                }
+                cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+                cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+
+                delete temp1;
+                delete temp2;
+            }
             pdt.prps = true;
         }
         else {
-            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp1_buf = createBuffer(np * sizeof(uint64_t), cuda_dev);
             pdt.prp1 = (uint64_t*) this->prp1_buf.get();
             uint32_t prp_list_size =  ctrl.ctrl->page_size  * np;
-            this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cudaDevice);
-            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cudaDevice);
+            this->prp_list_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(prp_list_size, 1UL << 16), cuda_dev);
+            this->prp2_buf = createBuffer(np * sizeof(uint64_t), cuda_dev);
             pdt.prp2 = (uint64_t*) this->prp2_buf.get();
-            uint64_t* temp1 = new uint64_t[np * sizeof(uint64_t)];
-            uint64_t* temp2 = new uint64_t[np * sizeof(uint64_t)];
-            uint64_t* temp3 = new uint64_t[prp_list_size];
+            uint64_t* temp1;
+            uint64_t* temp2;
+            uint64_t* temp3;
+            if (cuda_dev >= 0) {
+                temp1 = new uint64_t[np * sizeof(uint64_t)];
+                temp2 = new uint64_t[np * sizeof(uint64_t)];
+                temp3 = new uint64_t[prp_list_size];
+            }
+            else {
+                temp1 = pdt.prp1;
+                temp2 = pdt.prp2;
+                temp3 = (uint64_t*) this->prp_list_dma.get()->vaddr;
+            }
+
             std::memset(temp1, 0, np * sizeof(uint64_t));
             std::memset(temp2, 0, np * sizeof(uint64_t));
             std::memset(temp3, 0, prp_list_size);
@@ -742,20 +819,26 @@ struct page_cache_t {
             */
 
             std::cout << "Done creating PRP\n";
-            cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            cuda_err_chk(cudaMemcpy(this->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
+            if (cuda_dev >= 0) {
+                cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+                cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
+                cuda_err_chk(cudaMemcpy(this->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
 
-            delete temp1;
-            delete temp2;
-            delete temp3;
+                delete temp1;
+                delete temp2;
+                delete temp3;
+            }
             pdt.prps = true;
         }
 
-
-        pc_buff = createBuffer(sizeof(page_cache_d_t), cudaDevice);
-        d_pc_ptr = (page_cache_d_t*)pc_buff.get();
-        cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
+        if (cuda_dev >= 0) {
+            pc_buff = createBuffer(sizeof(page_cache_d_t), cuda_dev);
+            d_pc_ptr = (page_cache_d_t*)pc_buff.get();
+            cuda_err_chk(cudaMemcpy(d_pc_ptr, &pdt, sizeof(page_cache_d_t), cudaMemcpyHostToDevice));
+        }
+        else {
+            d_pc_ptr = &pdt;
+        }
         std::cout << "Finish Making Page Cache\n";
 
     }
@@ -851,6 +934,7 @@ __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t sta
 
 template <typename T>
 struct range_t {
+    int cuda_dev;
     range_d_t<T> rdt;
 
     range_d_t<T>* d_range_ptr;
@@ -863,14 +947,15 @@ struct range_t {
 
 
 
-    range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist = REPLICATE);
+    range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, int cudaDevice, data_dist_t dist = REPLICATE);
 
 
 
 };
 
 template <typename T>
-range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, int cudaDevice, data_dist_t dist) {
+    cuda_dev = cudaDevice;
     rdt.access_cnt = 0;
     rdt.miss_cnt = 0;
     rdt.hit_cnt = 0;
@@ -886,7 +971,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     size_t s = pc;//(rdt.page_end-rdt.page_start);//*page_size / c_h->page_size;
     rdt.n_elems_per_page = rdt.page_size / sizeof(T);
     cache = (page_cache_d_t*) c_h->d_pc_ptr;
-    pages_buff = createBuffer(s * sizeof(data_page_t), cudaDevice);
+    pages_buff = createBuffer(s * sizeof(data_page_t), cuda_dev);
     rdt.pages = (pages_t) pages_buff.get();
     //std::vector<padded_struct_pc> ts(s, INVALID);
     data_page_t* ts = new data_page_t[s];
@@ -894,26 +979,37 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
         ts[i].state = INVALID;
     }
     ////printf("S value: %llu\n", (unsigned long long)s);
-    cuda_err_chk(cudaMemcpy(rdt.pages//_states
-                            , ts, s * sizeof(data_page_t), cudaMemcpyHostToDevice));
-    delete ts;
+    if (cuda_dev >= 0) {
+        cuda_err_chk(cudaMemcpy(rdt.pages//_states
+                                , ts, s * sizeof(data_page_t), cudaMemcpyHostToDevice));
+        delete ts;
+    }
+    else {
+        rdt.pages = ts;
+    }
 
-    //page_addresses_buff = createBuffer(s * sizeof(uint32_t), cudaDevice);
+    //page_addresses_buff = createBuffer(s * sizeof(uint32_t), cuda_dev);
     //rdt.page_addresses = (uint32_t*) page_addresses_buff.get();
-    //page_addresses_buff = createBuffer(s * sizeof(padded_struct_pc), cudaDevice);
+    //page_addresses_buff = createBuffer(s * sizeof(padded_struct_pc), cuda_dev);
     //page_addresses = (padded_struct_pc*) page_addresses_buff.get();
 
-    range_buff = createBuffer(sizeof(range_d_t<T>), cudaDevice);
-    d_range_ptr = (range_d_t<T>*)range_buff.get();
-    //rdt.range_id  = c_h->pdt.n_ranges++;
+    if (cuda_dev >= 0) {
+        range_buff = createBuffer(sizeof(range_d_t<T>), cuda_dev);
+        d_range_ptr = (range_d_t<T>*)range_buff.get();
+        //rdt.range_id  = c_h->pdt.n_ranges++;
 
 
-    cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+        cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+    }
+    else
+        d_range_ptr = &rdt;
 
     c_h->add_range(this);
 
     rdt.cache = c_h->pdt;
-    cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+    if (cuda_dev >= 0) {
+        cuda_err_chk(cudaMemcpy(d_range_ptr, &rdt, sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+    }
 
 }
 
@@ -1623,6 +1719,7 @@ struct array_d_t {
 
 template<typename T>
 struct array_t {
+    int cuda_dev;
     array_d_t<T> adt;
 
     //range_t<T>** d_ranges;
@@ -1635,46 +1732,75 @@ struct array_t {
     BufferPtr d_d_ranges_buff;
 
     void print_reset_stats(void) {
-        std::vector<range_d_t<T>> rdt(adt.n_ranges);
+        range_d_t<T>* rdt;
+        if (cuda_dev >= 0) {
+            rdt = new range_d_t<T>[adt.n_ranges];
         //range_d_t<T>* rdt = new range_d_t<T>[adt.n_ranges];
-        cuda_err_chk(cudaMemcpy(rdt.data(), adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+        cuda_err_chk(cudaMemcpy(rdt, adt.d_ranges, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+
+
+        }
+        else {
+            rdt = adt.d_ranges;
+        }
+
         for (size_t i = 0; i < adt.n_ranges; i++) {
 
-            std::cout << std::dec << "#READ IOs: "  << rdt[i].read_io_cnt 
-                                  << "\t#Accesses:" << rdt[i].access_cnt
-                                  << "\t#Misses:"   << rdt[i].miss_cnt 
-                                  << "\tMiss Rate:" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt)
-                                  << "\t#Hits: "    << rdt[i].hit_cnt 
-                                  << "\tHit Rate:"  << ((float)rdt[i].hit_cnt/rdt[i].access_cnt) 
-                                  << "\tCLSize:"    << rdt[i].page_size 
-                                  << std::endl;
+            std::cout << std::dec << "#READ IOs: "  << rdt[i].read_io_cnt
+                      << "\t#Accesses:" << rdt[i].access_cnt
+                      << "\t#Misses:"   << rdt[i].miss_cnt
+                      << "\tMiss Rate:" << ((float)rdt[i].miss_cnt/rdt[i].access_cnt)
+                      << "\t#Hits: "    << rdt[i].hit_cnt
+                      << "\tHit Rate:"  << ((float)rdt[i].hit_cnt/rdt[i].access_cnt)
+                      << "\tCLSize:"    << rdt[i].page_size
+                      << std::endl;
             std::cout << "*********************************" << std::endl;
             rdt[i].read_io_cnt = 0;
             rdt[i].access_cnt = 0;
             rdt[i].miss_cnt = 0;
             rdt[i].hit_cnt = 0;
         }
-        cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt.data(), adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+
+         if (cuda_dev >= 0) {
+
+             cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt, adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
+             delete rdt;
+         }
     }
 
-    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
+    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, int cudaDevice) {
+        cuda_dev = cudaDevice;
         adt.n_elems = num_elems;
         adt.start_offset = disk_start_offset;
 
         adt.n_ranges = ranges.size();
-        d_array_buff = createBuffer(sizeof(array_d_t<T>), cudaDevice);
-        d_array_ptr = (array_d_t<T>*) d_array_buff.get();
-
-        //d_ranges_buff = createBuffer(n_ranges * sizeof(range_t<T>*), cudaDevice);
-        d_d_ranges_buff = createBuffer(adt.n_ranges * sizeof(range_d_t<T>), cudaDevice);
-        adt.d_ranges = (range_d_t<T>*)d_d_ranges_buff.get();
-        //d_ranges = (range_t<T>**) d_ranges_buff.get();
-        for (size_t k = 0; k < adt.n_ranges; k++) {
-            //cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range_t<T>*), cudaMemcpyHostToDevice));
-            cuda_err_chk(cudaMemcpy(adt.d_ranges+k, (ranges[k]->d_range_ptr), sizeof(range_d_t<T>), cudaMemcpyDeviceToDevice));
+        if (cuda_dev >= 0) {
+            d_array_buff = createBuffer(sizeof(array_d_t<T>), cuda_dev);
+            d_array_ptr = (array_d_t<T>*) d_array_buff.get();
         }
+        d_d_ranges_buff = createBuffer(adt.n_ranges * sizeof(range_d_t<T>), cuda_dev);
+        adt.d_ranges = (range_d_t<T>*)d_d_ranges_buff.get();
+        if (cuda_dev >= 0) {
+            //d_ranges_buff = createBuffer(n_ranges * sizeof(range_t<T>*), cuda_dev);
 
-        cuda_err_chk(cudaMemcpy(d_array_ptr, &adt, sizeof(array_d_t<T>), cudaMemcpyHostToDevice));
+
+            //d_ranges = (range_t<T>**) d_ranges_buff.get();
+            for (size_t k = 0; k < adt.n_ranges; k++) {
+
+                //cuda_err_chk(cudaMemcpy(d_ranges+k, &(ranges[k]->d_range_ptr), sizeof(range_t<T>*), cudaMemcpyHostToDevice));
+                cuda_err_chk(cudaMemcpy(adt.d_ranges+k, (ranges[k]->d_range_ptr), sizeof(range_d_t<T>), cudaMemcpyDeviceToDevice));
+
+            }
+        }
+        else {
+            std::memcpy(adt.d_ranges, ranges.data(), ranges.size()*sizeof(range_t<T>*));
+        }
+        if (cuda_dev >= 0) {
+            cuda_err_chk(cudaMemcpy(d_array_ptr, &adt, sizeof(array_d_t<T>), cudaMemcpyHostToDevice));
+        }
+        else {
+            d_array_ptr = &adt;
+        }
     }
 
 };
