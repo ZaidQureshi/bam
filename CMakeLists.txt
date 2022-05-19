@@ -47,11 +47,7 @@ set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORC
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -std=c++11 -O3 -Wno-unused-variable" CACHE INTERNAL "" FORCE)
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} -g -DDEBUG " CACHE INTERNAL "" FORCE)
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wno-unused-variable -std=c++11" CACHE INTERNAL "" FORCE)
-string(REPLACE " " ";" CMAKE_CXX_FLAGS_LIST ${CMAKE_CXX_FLAGS})
-foreach(flag IN LISTS CMAKE_CXX_FLAGS_LIST)
-    set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler=${flag}")
-endforeach()
-set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -w  -lineinfo -D__CUDA__ -D__CUDACC__ -O3;-std=c++11;${GPU_ARCHS}")
+set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}  -Xcompiler -O3 -Xcompiler -std=c++11 -Xcompiler -Wall -Xcompiler -Wno-unused-variable -w  -lineinfo -D__CUDA__ -D__CUDACC__ -O3;-std=c++11;${GPU_ARCHS}")
 set (CUDA_NVCC_FLAGS_RELEASE "${CMAKE_NVCC_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORCE)
 
 if (no_cc)
