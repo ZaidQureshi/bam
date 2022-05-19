@@ -122,7 +122,7 @@ inline __host__ __device__ void _nanosleep_(long ns) {
 #endif
 
 #ifndef __CUDA_ARCH__
-    struct timespace req, rem;
+    struct timespec req, rem;
 
     req.tv_nsec = ns;
     nanosleep(&req, &rem);
