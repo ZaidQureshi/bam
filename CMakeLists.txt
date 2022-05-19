@@ -50,7 +50,7 @@ set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Wno-unused-variabl
 string(REPLACE " " ";" CMAKE_CXX_FLAGS_LIST ${CMAKE_CXX_FLAGS})
 foreach(flag IN LISTS CMAKE_CXX_FLAGS_LIST)
     set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler=${flag}")
-endforeach();
+endforeach()
 set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -w  -lineinfo -D__CUDA__ -D__CUDACC__ -O3;-std=c++11;${GPU_ARCHS}")
 set (CUDA_NVCC_FLAGS_RELEASE "${CMAKE_NVCC_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORCE)
 
