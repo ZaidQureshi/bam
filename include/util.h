@@ -117,7 +117,7 @@ void warp_memcpy(T* dest, const T* src, size_t num) {
 }
 
 inline __host__ __device__ void _nanosleep_(long ns) {
-#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700))
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700)
     __nanosleep(ns);
 #endif
 
