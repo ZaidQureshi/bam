@@ -137,6 +137,7 @@ __forceinline__ __host__ __device__ uint32_t lane_id()
     uint32_t ret = 0;
 #if defined(__CUDACC__)
     asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+#endif
     return ret;
 }
 
