@@ -1212,7 +1212,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
         if (fail) {
             //if ((++j % 1000000) == 0)
             //    printf("failed to acquire_page: j: %llu\tcnt_shift+1: %llu\tpage: %llu\tread_state: %llx\tst: %llx\tst_new: %llx\n", (unsigned long long)j, (unsigned long long) (CNT_SHIFT+1), (unsigned long long) index, (unsigned long long)read_state, (unsigned long long)st, (unsigned long long)st_new);
-            _nanosleep(ns);
+            _nanosleep_(ns);
             if (ns < 256) {
                 ns *= 2;
             }
