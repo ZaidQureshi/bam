@@ -22,6 +22,35 @@
 
 #define cuda_err_chk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 
+
+
+__forceinline__ __host__ __device__ uint32_t lane_id()
+{
+    uint32_t ret = 0;
+#if defined(__CUDACC__)
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+#endif
+    return ret;
+}
+
+__forceinline__ __host__ __device__ unsigned warp_id()
+{
+    // this is not equal to threadIdx.x / 32
+    unsigned ret = 0;
+#if defined(__CUDACC__)
+    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
+#endif
+    return ret;
+}
+
+__forceinline__ __host__ __device__ uint32_t get_smid() {
+     uint32_t ret = 0;
+#if defined(__CUDACC__)
+     asm  ("mov.u32 %0, %smid;" : "=r"(ret) );
+#endif
+     return ret;
+}
+
 #ifndef __CUDACC__
 inline void gpuAssert(int code, const char *file, int line, bool abort=false)
 {
@@ -100,7 +129,7 @@ void __ignore(T &&)
 { }
 /*warp memcpy, assumes alignment at type T and num is a count in type T*/
 template <typename T>
-inline __device__
+inline __host__ __device__
 void warp_memcpy(T* dest, const T* src, size_t num) {
 #ifndef __CUDACC__
     uint32_t mask = 1;
@@ -131,33 +160,6 @@ inline __host__ __device__ void _nanosleep_(long ns) {
 }
 
 
-
-__forceinline__ __host__ __device__ uint32_t lane_id()
-{
-    uint32_t ret = 0;
-#if defined(__CUDACC__)
-    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
-#endif
-    return ret;
-}
-
-__forceinline__ __host__ __device__ unsigned warp_id()
-{
-    // this is not equal to threadIdx.x / 32
-    unsigned ret = 0;
-#if defined(__CUDACC__)
-    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
-#endif
-    return ret;
-}
-
-__forceinline__ __host__ __device__ uint32_t get_smid() {
-     uint32_t ret = 0;
-#if defined(__CUDACC__)
-     asm  ("mov.u32 %0, %smid;" : "=r"(ret) );
-#endif
-     return ret;
-}
 
 //#ifndef __CUDACC__
 //#undef __device__
