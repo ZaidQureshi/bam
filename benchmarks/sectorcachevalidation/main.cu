@@ -37,7 +37,7 @@ using error = std::runtime_error;
 using std::string;
 
  //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6"};
-const char* const ctrls_paths[] = {"/dev/libnvm0"};
+const char* const ctrls_paths[] = {"/dev/libnvm1"};
 
 __global__
 void sequential_access_write_kernel(array_d_t<uint64_t>* dr, uint64_t n_reqs, uint64_t n_pages, uint64_t page_size, int* counter) {
@@ -155,11 +155,11 @@ int main(int argc, char** argv) {
         std::cout << n_threads <<std::endl;
 
         uint64_t page_size = settings.pageSize;
-        /*uint64_t n_pages = settings.numPages;
-        uint64_t total_cache_size = (page_size * n_pages);*/
+        uint64_t n_pages = settings.numPages;
+        uint64_t total_cache_size = (page_size * n_pages);
         uint64_t n_blocks = settings.numBlks;
-        uint64_t total_cache_size = settings.cacheSize;
-        uint64_t n_pages = ceil(total_cache_size/page_size);
+        /*uint64_t total_cache_size = settings.cacheSize;
+        uint64_t n_pages = ceil(total_cache_size/page_size);*/
         uint32_t sector_size = settings.sectorSize;
 
         /*if(total_cache_size > (sb_in.st_size - settings.ifileoffset)){
@@ -258,14 +258,14 @@ int main(int argc, char** argv) {
 
                     int errorcnt=0;
                     
-                    /*for (uint64_t i=0; i<n_threads; i++) {
+                    for (uint64_t i=0; i<n_threads; i++) {
                         //std::cout << i << "   :   " << tmprbuff[i] << std::endl;
-                        if (assignment[i] != tmprbuff[(size_t)i]) {
+                        if (i != tmprbuff[(size_t)i]) {
                             errorcnt++;
                             std::cout << "Error: threadID : " << i << "\tValue : " << tmprbuff[(size_t)i] <<std::endl;
                         }
                     }
-                    std::cout << "Total error count : " << errorcnt <<std::endl; */
+                    std::cout << "Total error count : " << errorcnt <<std::endl; 
 
 
         

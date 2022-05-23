@@ -333,7 +333,7 @@ struct page_cache_t
 	        pdt.n_sectors_per_block = ceil((1.0f*ctrl.ctrl->page_size)/pdt.sector_size);
 	        pdt.n_sectors_per_block_log = std::log2(pdt.n_sectors_per_block);
             //std::cout << "ctrl.page_size = " << ctrl.ctrl->page_size << "\n";
-            //std::cout << "how_many_in_one = " << pdt.how_many_in_one << "\n";
+            std::cout << "n_pages " << np << "\thow_many_in_one = " << pdt.how_many_in_one << "\n";
 	        //std::cout << "pdt.n_sectors_per_block = " << pdt.n_sectors_per_block << "\n";
             this->prp1_buf = createBuffer(np*pdt.how_many_in_one*sizeof(uint64_t), cudaDevice);
             pdt.prp1 = (uint64_t *)this->prp1_buf.get();
@@ -346,7 +346,7 @@ struct page_cache_t
 
             for (size_t i = 0; (i < np*pdt.how_many_in_one); i++)
             {
-                //std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
+                std::cout << std::dec << "\ti: " << i << "\t" << std::hex << ((uint64_t)this->pages_dma.get()->ioaddrs[i]) << std::dec << std::endl;
                 temp[i] = (uint64_t)this->pages_dma.get()->ioaddrs[i];
                 /*for (size_t j = 0; (j < how_many_in_one); j++)
                 {
@@ -480,8 +480,8 @@ struct range_d_t
             get_sectorsubindex(const size_t i) const;
 };
 
-__device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
-__device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+__device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint32_t sector);
+__device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint32_t sector);
 
 template <typename T>
 struct range_t
@@ -534,6 +534,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     //printf("S value: %llu\n", (unsigned long long)s);
     cuda_err_chk(cudaMemcpy(rdt.page_states, ts, s * sizeof(data_page_t), cudaMemcpyHostToDevice));
     delete ts;
+    std::cout << "total sector states " << sectors << std::endl;
     sector_states_buff = createBuffer(sectors*sizeof(sector_state_t), cudaDevice);
     rdt.sector_states = (sector_states_t)sector_states_buff.get();
     sector_state_t *ss = new sector_state_t[sectors];
@@ -647,7 +648,7 @@ __forceinline__
         range_d_t<T>::get_sectorindex(const size_t i) const
 {
     //printf("tid %d\tindex_calc %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)((i - index_start) * sizeof(T) + page_start_offset));
-    uint64_t index = (((i - index_start) * sizeof(T) + page_start_offset) >> (cache->sector_size_log)) & (cache->n_sectors_per_page_minus_1);
+    uint64_t index = (((i - index_start) * sizeof(T)) >> (cache->sector_size_log)) & (cache->n_sectors_per_page_minus_1);
     return index;
 }
 
@@ -753,7 +754,8 @@ __forceinline__
     uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
     uint32_t new_state = SECTOR_VALID;
-    uint64_t sector_trans = (page_addresses[page_index] * cache->n_sectors_per_page) + sector;//cache->n_sectors_per_page_log) + sector;
+    //uint64_t sector_trans = (page_addresses[page_index] * cache->n_sectors_per_page) + sector;//cache->n_sectors_per_page_log) + sector;
+    uint64_t page_trans = page_addresses[page_index];
     //printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
     uint32_t shift_val = SECTOR_STATUS_BITS*sector_number;
     uint32_t mask = 0x0000000F << shift_val;
@@ -784,7 +786,7 @@ __forceinline__
                     //printf("tid %llu\t original_state%16x\t new_state%16x\t in SECTOR_INVALID passed\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)original_state, (unsigned long long)new_state);
                     uint64_t ctrl = get_backing_ctrl(page_index);
                     uint32_t queue = 0;
-                    /*if (ctrl == ALL_CTRLS) {
+                    if (ctrl == ALL_CTRLS) {
                         //printf("here");
                         ctrl = cache->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (cache->n_ctrls);//get_smid() % (cache->n_ctrls);
                         queue = get_smid() % (cache->d_ctrls[ctrl]->n_qps);
@@ -794,7 +796,7 @@ __forceinline__
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, sector_trans);*/
+                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
                     //    hexdump((void*)cache->base_addr, 512);
                     expected_state = SECTOR_DISABLE_BUSY_ENABLE_VALID << (shift_val);
                     if (write)
@@ -989,12 +991,12 @@ struct array_d_t
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;
         auto r_ = d_ranges+r;
-        if (lane == leader)
+        /*if (lane == leader)
         {
             page_cache_d_t *pc = d_ranges[r].cache;
             //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
             //queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-        }
+        }*/
 
         ctrl = 0;//__shfl_sync(mask, ctrl, leader);
         queue = 0;//__shfl_sync(mask, queue, leader);
@@ -1506,6 +1508,10 @@ struct bam_ptr {
         if (page) {
             //printf("tid %llu\ti %llu releasing page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
             array->release_page(page, range_id, start);
+            start = -1;
+            end = -1;
+            sector_start = -1;
+            sector_end = -1;
             page = nullptr;
         }
 
@@ -1713,7 +1719,7 @@ __forceinline__
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
                                                 int sector = (i*n_sector_states) + j;
-                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, (page<<(this->n_sectors_per_page_log))+sector);
+                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                             }
                                         }
                                     }
@@ -1730,7 +1736,7 @@ __forceinline__
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
                                             int sector = (i*n_sector_states) + j;
-                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, (page<<(this->n_sectors_per_page_log))+sector);
+                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                         }
                                     }
                                 }
@@ -1832,7 +1838,7 @@ __forceinline__
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
                                                 int sector = (i*n_sector_states) + j;
-                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, (page<<(this->n_sectors_per_page_log))+sector);
+                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                             }
                                         }
                                     }
@@ -1849,7 +1855,7 @@ __forceinline__
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
                                             int sector = (i*n_sector_states) + j;
-                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, (page<<(this->n_sectors_per_page_log))+sector);
+                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                         }
                                     }
                                 }
@@ -1911,19 +1917,14 @@ inline __device__ void access_data_async(page_cache_d_t *pc, QueuePair *qp, cons
     *sq_pos = sq_enqueue(&qp->sq, &cmd);
 }
 
-inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry)
+inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint32_t sector)
 {
 
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
 
     nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
-    /*uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];*/
-    uint64_t sector = (pc_entry & (pc->n_sectors_per_page_minus_1));
-    uint64_t prp_entry = ((pc_entry >> (pc->n_sectors_per_page_log))*(pc->how_many_in_one))+(sector/(pc->n_sectors_per_block));
+    uint64_t prp_entry = (pc_entry*(pc->how_many_in_one))+(sector/(pc->n_sectors_per_block)); //this maybe wrong
     uint64_t prp1 = pc->prp1[prp_entry];
     //printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
     prp1 = (prp1) + ((sector&(pc->n_sectors_per_block-1))<<pc->sector_size_log);
@@ -1945,7 +1946,7 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
 
 }
 
-inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry)
+inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint32_t sector)
 {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
@@ -1964,8 +1965,8 @@ inline __device__ void write_data(page_cache_d_t *pc, QueuePair *qp, const uint6
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];*/
-    uint64_t sector = (pc_entry & (pc->n_sectors_per_page_minus_1));
-    uint64_t prp_entry = ((pc_entry >> (pc->n_sectors_per_page_log))*(pc->how_many_in_one))+(sector/(pc->n_sectors_per_block));
+    //uint64_t sector = (pc_entry & (pc->n_sectors_per_page_minus_1));
+    uint64_t prp_entry = (pc_entry*(pc->how_many_in_one))+(sector/(pc->n_sectors_per_block));
     uint64_t prp1 = pc->prp1[prp_entry];
     //printf("tid: %llu\tprp_entry: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (prp_entry), (void*)prp1);
     prp1 = (prp1) + ((sector&(pc->n_sectors_per_block-1))<<pc->sector_size_log);
