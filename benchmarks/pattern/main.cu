@@ -305,22 +305,23 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t old_warp_id = tid / 32;
-    const uint64_t n_elems_per_page = page_size / sizeof(T);
+    const uint64_t n_elems_per_sector = 512 / sizeof(T);
     
     uint64_t nep = (n_warps+stride)/stride; 
     uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
+    uint64_t n_sectors_per_warp = 1; //temp
     //uint64_t warp_id = old_warp_id; 
     T v = 0;
     if (warp_id < n_warps) {
 		bam_ptr<T> ptr(dr);
-        size_t start_page = assignment[warp_id];
+        size_t start_sector = assignment[warp_id];
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
-        for (size_t i = 0; i < n_pages_per_warp; i++) {
-            size_t cur_page = start_page + i;
+        for (size_t i = 0; i < n_sectors_per_warp; i++) {
+            size_t cur_sector = start_sector + i;
             //	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
-            size_t start_idx = cur_page * n_elems_per_page + lane;
+            size_t start_idx = cur_sector * n_elems_per_sector + lane;
 
-            for (size_t j = 0; j < n_elems_per_page; j += 32) {
+            for (size_t j = 0; j < n_elems_per_sector; j += 32) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                         v += ptr[start_idx+j];
             }
@@ -475,7 +476,7 @@ int main(int argc, char *argv[]) {
         uint64_t n_pc_pages = ceil(((float)n_elems_size)/pc_page_size); 
         uint64_t blocksize = 64; 
         uint64_t n_warps =0;
-        
+        uint32_t sector_size = settings.sectorsize;
     
 
         switch (type) {
@@ -498,10 +499,11 @@ int main(int argc, char *argv[]) {
 			{
                  numblocks = (numthreads + blocksize - 1)/blocksize;//80*16;
                  n_warps = blocksize * numblocks/ WARPSIZE; 
-                 if(n_warps > n_pc_pages){
+                 uint64_t n_pc_sectors = n_pc_pages*ceil((1.0f*pc_page_size)/sector_size);
+                 /*if(n_warps > n_pc_sectors){
                      printf("Error: Cannot have n_warps greater than n_elems.\n");
                      printf("n_warps: %llu \t n_pc_pages:%llu \n", n_warps, n_pc_pages);
-                 }
+                 }*/
                  printf("n_warps: %llu \t numblocks:%llu \n", n_warps, numblocks);
                 break;
 			}
@@ -544,7 +546,8 @@ int main(int argc, char *argv[]) {
 
             for(uint64_t i=0; i< n_warps; i++){
                 //uint64_t page = distrib(gen); 
-                uint64_t page = rand() % n_data_pages; 
+                uint64_t n_sectors = n_data_pages * ceil((1.0f*pc_page_size)/sector_size);
+                uint64_t page = rand() % (n_sectors); 
                 assignment_h[i] = page; 
                 //printf("%llu \t", page);
             }
@@ -593,7 +596,7 @@ int main(int argc, char *argv[]) {
 
 
         if((type == SEQUENTIAL_PC) || (type == SEQUENTIAL_WARP_PC) || (type == RANDOM_PC) || (type == RANDOM_WARP_PC) || (type == STRIDE_PC) || (type == STRIDE_WARP_PC) || (type == POWERLAW_WARP_PC)) {
-            h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+            h_pc =new page_cache_t(pc_page_size, pc_pages, sector_size, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_Arange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)n_elems, (uint64_t) (ceil(settings.afileoffset*1.0/pc_page_size)),(uint64_t)n_pc_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
             vec_Arange[0] = h_Arange; 
             h_Aarray = new array_t<uint64_t>(n_elems, settings.afileoffset, vec_Arange, settings.cudaDevice);
@@ -612,7 +615,7 @@ int main(int argc, char *argv[]) {
         float totaltime = 0; 
         float avgtime = 0; 
 
-        for(int titr=0; titr<11; titr+=1){
+        for(int titr=0; titr<2; titr+=1){
             cuda_err_chk(cudaEventRecord(start, 0));
         	cuda_err_chk(cudaMemset(output_d, 0, sizeof(unsigned long long)));
                 
@@ -722,7 +725,7 @@ int main(int argc, char *argv[]) {
                  h_Aarray->print_reset_stats();
                  cuda_err_chk(cudaDeviceSynchronize());
             }
-			printf("P:%d Impl: %llu \t SSD: %llu \t n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \t bandwidth: %f GBps \t avgiops: %f \t avgbandwidth: %f \n",titr, type, settings.n_ctrls, n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, avgiops, avgbandwidth ); 
+			printf("P:%d Impl: %llu \t SSD: %llu \t n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \n bandwidth: %f GBps \t avgiops: %f \t avgbandwidth: %f \n",titr, type, settings.n_ctrls, n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, avgiops, avgbandwidth ); 
             //printf("\nVA %d A:%s Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, milliseconds); 
             fflush(stdout);
         }

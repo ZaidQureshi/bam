@@ -374,7 +374,7 @@ void Settings::parseArguments(int argc, char** argv)
         {'a', OptionPtr(new Option<const char*>(input_a, "path", "input_a", "File path A file is. Provide .bel path."))},
         {'A', OptionPtr(new Range(afileoffset, 0, (uint64_t)std::numeric_limits<uint64_t>::max, "aoffset", "Offset where the input file contents need to be stored in NVMe SSD", "0"))},
         {'v', OptionPtr(new Range(type, 0, 50, "impl_type", "BASELINE=0, COALESCE = 1, COALESCE_CHUNK = 2, BASELINE_PC=3, COALESCE_PC = 4, COALESCE_CHUNK_PC = 5\n BASELINE_HASH = 6, COALESCE_HASH = 7, BASELINE_HASH_PC = 9, COALESCE_HASH_PC = 10", "1"))},
-        {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "2"))},
+        {'m', OptionPtr(new Range(memalloc, 0, 6, "memalloc", "GPUMEM = 0, UVM_READONLY = 1, UVM_DIRECT = 2, BAFS_DIRECT = 6", "6"))},
         {'s', OptionPtr(new Option<uint64_t>(n_elems, "number", "n_elems", "specify vector size in elements for both A and B. Each element is of 8B. Default uses 1M elements", "1048576"))},
         {'t', OptionPtr(new Range(numThreads, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "threads", "number of CUDA threads", "1024"))},
         {'b', OptionPtr(new Range(blkSize, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "blk_size", "CUDA thread block size", "64"))},
