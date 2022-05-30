@@ -373,9 +373,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid, uint32_t* loc_ = NULL) {
     unsigned int ns = 8;
     //uint64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     //printf("---tid: %llu\tcid: %llu\tcq_start: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) (search_cid), (uint64_t) cq->vaddr);
-    uint32_t head = cq->head.load(simt::memory_order_relaxed);
     while (true) {
-
+        uint32_t head = cq->head.load(simt::memory_order_relaxed);
 
         for (size_t i = 0; i < cq->qs_minus_1; i++) {
             uint32_t cur_head = head + i;
@@ -399,18 +398,8 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid, uint32_t* loc_ = NULL) {
                 *loc_ = cur_head;
                 return loc;
             }
-            if ((phase != search_phase) || ((i+1) == cq->qs_minus_1)) {
-                uint32_t prev_head = head;
-                head  = cq->head.load(simt::memory_order_relaxed);
-                uint32_t diff = 0;
-                if (prev_head <= head)
-                    diff = head - prev_head;
-                else
-                    diff = 4294967295 - prev_head + head;
-                if (i > diff)
-                    head = cur_head;
+            if (phase != search_phase)
                 break;
-            }
             //__nanosleep(1000);
         }
         j++;
