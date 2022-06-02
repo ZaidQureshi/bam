@@ -491,7 +491,7 @@ int nvm_admin_disable_volatile_cache(nvm_aq_ref ref)
     nvm_cmd_data_ptr(&command, 0, 0);
 
     command.dword[10] = (0x00 << 8) | 0x06;
-    command.dword[11] = 1;
+    command.dword[11] = 0;
 
     int err = nvm_raw_rpc(ref, &command, &completion);
     (void) err;
