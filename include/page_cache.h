@@ -1890,14 +1890,18 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
     uint32_t head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+
+    uint32_t c_sq_head = qp->sq.head.load(simt::memory_order_acquire);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+
+    uint32_t nc_sq_head = qp->sq.head.load(simt::memory_order_release);
     //sq_dequeue(&qp->sq, sq_pos);
-
-    nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
-    sq_pos = sq_enqueue(&qp->sq, &cmd);
-    cq_pos = cq_poll(&qp->cq, cid, &head);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
-
+    if (c_sq_head == nc_sq_head) {
+        nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
+        sq_pos = sq_enqueue(&qp->sq, &cmd);
+        cq_pos = cq_poll(&qp->cq, cid, &head);
+        cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+    }
     put_cid(&qp->sq, cid);
 
 

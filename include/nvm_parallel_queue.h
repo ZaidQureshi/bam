@@ -413,7 +413,7 @@ uint32_t cq_poll(nvm_queue_t* cq, uint16_t search_cid, uint32_t* loc_ = NULL) {
 }
 
 inline __device__
-void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 0) {
+void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint32_t loc_ = 0) {
 
     //uint32_t pos = cq_poll(cq, cid);
     cq->head_mark[pos].val.store(LOCKED, simt::memory_order_release);
@@ -486,7 +486,6 @@ void cq_dequeue(nvm_queue_t* cq, uint16_t pos, nvm_queue_t* sq, uint64_t loc_ = 
         }
 #endif
     } while(true);
-
 
 }
 
