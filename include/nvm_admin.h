@@ -116,5 +116,6 @@ int nvm_admin_get_log_page(nvm_aq_ref ref,
                            uint8_t log_id, 
                            uint64_t log_offset);
 
+int nvm_admin_disable_volatile_cache(nvm_aq_ref ref);
 
 #endif /* #ifdef __NVM_ADMIN_H__ */
