@@ -178,7 +178,9 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     blk_size_log = std::log2(blk_size);
     reserveQueues(MAX_QUEUES,MAX_QUEUES);
 
-    nvm_admin_disable_volatile_cache(aq_ref);
+    status = nvm_admin_disable_volatile_cache(aq_ref);
+
+    printf("disableing volatile cache status: %d\n", status);
     n_qps = std::min(n_sqs, n_cqs);
     n_qps = std::min(n_qps, (uint16_t)numQueues);
     printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
