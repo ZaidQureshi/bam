@@ -1068,7 +1068,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                 //uint32_t queue = c->queue_counter.fetch_add(1, simt::memory_order_relaxed) % (c->n_qps);
                 //uint32_t queue = ((sm_id * 64) + warp_id()) % (c->n_qps);
                 read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
-                read_data(&cache, (c->d_qps)+queue, ((b_page)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans);
+                read_data(&cache, (c->d_qps)+queue, ((b_page)*cache.n_blocks_per_page), cache.n_blocks_per_page, page_trans, c);
                 //page_addresses[index].store(page_trans, simt::memory_order_release);
                 pages[index].offset = page_trans;
                 // while (cache.page_translation[global_page].load(simt::memory_order_acquire) != page_trans)
@@ -1865,7 +1865,7 @@ inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, cons
 
 }
 
-inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, Controller * c = NULL) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
@@ -1897,6 +1897,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint32_t nc_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
     //sq_dequeue(&qp->sq, sq_pos);
     if (c_sq_head == nc_sq_head) {
+        c->access_counter.fetch_add(1, simt::memory_order_relaxed);
         nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
         sq_pos = sq_enqueue(&qp->sq, &cmd);
         cq_pos = cq_poll(&qp->cq, cid, &head);
