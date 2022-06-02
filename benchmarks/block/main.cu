@@ -144,7 +144,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
 
 }
 
-__global__ __launch_bounds__(64,32)
+__global__ //__launch_bounds__(64,32)
 void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -157,8 +157,8 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
     if (laneid == 0) {
 	//ctrl = smid % (pc->n_ctrls);
         ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-        queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
-        //queue = smid % (ctrls[ctrl]->n_qps);
+        //queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+        queue = smid % (ctrls[ctrl]->n_qps);
     }
     ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
     queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
