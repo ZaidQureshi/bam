@@ -509,7 +509,7 @@ int nvm_admin_disable_volatile_cache(nvm_aq_ref ref)
     nvm_cmd_header(&command, 0, NVM_ADMIN_GET_FEATURES , 0);
     nvm_cmd_data_ptr(&command, 0, 0);
 
-    int err = nvm_raw_rpc(ref, &command, &completion);
+    err = nvm_raw_rpc(ref, &command, &completion);
     (void) err;
 
     printf("after get features volatile cache: %u\n", (unsigned) completion.dword[0]);
