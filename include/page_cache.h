@@ -1893,7 +1893,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     //sq_dequeue(&qp->sq, sq_pos);
 
-    nvm_cmd_header(&cmd, cid, 0, 0xffffffff);
+    nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
     sq_pos = sq_enqueue(&qp->sq, &cmd);
     cq_pos = cq_poll(&qp->cq, cid, &head);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);

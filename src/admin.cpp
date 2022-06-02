@@ -477,6 +477,28 @@ int nvm_admin_set_num_queues(nvm_aq_ref ref, uint16_t n_cqs, uint16_t n_sqs)
 }
 
 
+int nvm_admin_disable_volatile_cache(nvm_aq_ref ref)
+{
+    nvm_cmd_t command;
+    nvm_cpl_t completion;
+
+    if (*n_cqs == 0 || *n_sqs == 0)
+    {
+        return NVM_ERR_PACK(NULL, EINVAL);
+    }
+
+    memset(&command, 0, sizeof(command));
+    memset(&completion, 0, sizeof(completion));
+
+    nvm_cmd_header(&command, 0, NVM_ADMIN_SET_FEATURES , 0);
+    nvm_cmd_data_ptr(&command, 0, 0);
+
+    cmd->dword[10] = (0x00 << 8) | 0x06;
+    cmd->dword[11] = 0;
+
+    int err = nvm_raw_rpc(ref, &command, &completion);
+    return NVM_ERR_PACK(NULL, 0);
+}
 
 int nvm_admin_request_num_queues(nvm_aq_ref ref, uint16_t* n_cqs, uint16_t* n_sqs)
 {
