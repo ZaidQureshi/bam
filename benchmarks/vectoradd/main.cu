@@ -73,7 +73,9 @@ typedef uint64_t EdgeT;
 
 typedef enum {
     BASELINE = 0,
-    BASELINE_PC = 3,
+    OPTIMIZED= 1, 
+    BASELINE_PC = 2,
+    OPTIMIZED_PC= 3,
 } impl_type;
 
 typedef enum {
@@ -88,31 +90,101 @@ typedef enum {
 
 __global__ //__launch_bounds__(64,32)
 void kernel_baseline(uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long long int *sum){
-    uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    //uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
+    uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
     if(tid<n_elems){
-       uint64_t val = A[tid] + B[tid];  
+       sum[tid]= A[tid] + B[tid];  
+       //uint64_t val = A[tid] + B[tid];  
        //atomicAdd(&sum[0], val);
-     sum[tid] = val; 
-     //  printf("A:%llu B:%llu \n", A[tid], B[tid]);
+       //printf("tid: %llu A:%llu B:%llu \n",tid,  A[tid], B[tid]);
     }
 }
 
-__global__ __launch_bounds__(128,16)
-void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long long int *sum){
-    uint64_t  tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
-///    uint64_t stride = 4096; 
-///    uint64_t nep = (n_elems+stride)/stride; 
-///    uint64_t tid = (otid/nep) + ((otid  % nep)*stride);
+__global__ __launch_bounds__(64,32)
+void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, uint64_t n_elems, array_d_t<uint64_t>* dc,  unsigned long long int *sum){
+    uint64_t  tid = blockDim.x * blockIdx.x + threadIdx.x;
     
     bam_ptr<uint64_t> Aptr(da);
-    bam_ptr<uint64_t> Bptr(da);
+    bam_ptr<uint64_t> Bptr(db);
+    bam_ptr<uint64_t> Cptr(dc);
 
     if(tid<n_elems){
+       //Cptr[tid] = Aptr[tid] + Bptr[tid];  
        uint64_t val = Aptr[tid] + Bptr[tid];  
+       //uint64_t val = A[tid] + B[tid];  
+       sum[tid] = val; 
        //atomicAdd(&sum[0], val);
-    sum[tid] = val; 
     }
 }
+
+
+template<typename T>
+__global__ __launch_bounds__(64,32)
+void kernel_sequential_warp(T *A, T *B, uint64_t n_elems,  uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
+
+    const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint64_t lane = tid % 32;
+    const uint64_t warp_id = tid / 32;
+    const uint64_t n_elems_per_page = page_size / sizeof(T);
+    T val = 0;
+    uint64_t idx=0; 
+
+    if(tid ==0)
+        printf("n_elems_per_page: %llu\n", n_elems_per_page);
+    if (warp_id < n_warps) {
+        size_t start_page = n_pages_per_warp * warp_id;;
+        for (size_t i = 0; i < n_pages_per_warp; i++) {
+            size_t cur_page = start_page + i;
+            size_t start_idx = cur_page * n_elems_per_page + lane;
+
+            for (size_t j = 0; j < n_elems_per_page; j += WARP_SIZE) {
+               idx = start_idx + j; 
+               if(idx < n_elems){
+                   val  = A[idx] + B[idx];
+                   sum[idx] = val;
+                   //atomicAdd(&sum[0], val);
+       //            printf("tid: %llu A:%llu B:%llu \n",idx,  A[tid], B[tid]);
+               }
+            }
+        }
+    }
+}
+
+template<typename T>
+__global__ __launch_bounds__(64,32)
+void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t n_elems,  uint64_t n_pages_per_warp, array_d_t<T> *dc, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
+
+    bam_ptr<uint64_t> Aptr(da);
+    bam_ptr<uint64_t> Bptr(db);
+    bam_ptr<uint64_t> Cptr(dc);
+
+    const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint64_t lane = tid % 32;
+    const uint64_t warp_id = tid / 32;
+    const uint64_t n_elems_per_page = page_size / sizeof(T);
+    T val = 0;
+    uint64_t idx=0; 
+
+    if (warp_id < n_warps) {
+        size_t start_page = n_pages_per_warp * warp_id;;
+        for (size_t i = 0; i < n_pages_per_warp; i++) {
+            size_t cur_page = start_page + i;
+            size_t start_idx = cur_page * n_elems_per_page + lane;
+
+            for (size_t j = 0; j < n_elems_per_page; j += WARP_SIZE) {
+               idx = start_idx + j; 
+               if(idx < n_elems){
+                   val  = Aptr[idx] + Bptr[idx];
+                   sum[idx] = val;
+                   //atomicAdd(&sum[0], val);
+       //            printf("tid: %llu A:%llu B:%llu \n",idx,  A[tid], B[tid]);
+               }
+            }
+        }
+        //sum[0] =val;
+    }
+}
+
 
 
 int main(int argc, char *argv[]) {
@@ -147,6 +219,7 @@ int main(int argc, char *argv[]) {
     uint32_t *pad;
     uint64_t *a_h, *a_d;
     uint64_t *b_h, *b_d;
+    uint64_t *c_h, *c_d;
     uint64_t n_elems, n_size;
     uint64_t typeT;
     uint64_t numblocks, numthreads;
@@ -333,22 +406,30 @@ int main(int argc, char *argv[]) {
 		printf("Allocation finished\n");
         fflush(stdout);
 
-
+        uint64_t n_warps;
 
         switch (type) {
             case BASELINE:
             case BASELINE_PC:
-                numblocks = ((n_elems+numthreads)/numthreads);
+                numblocks = ((n_elems+numthreads-1)/numthreads);
                 break;
+            case OPTIMIZED: 
+            case OPTIMIZED_PC:{
+                uint64_t n_elems_per_page = pc_page_size/sizeof(uint64_t); 
+                n_warps = (n_elems + n_elems_per_page-1)/n_elems_per_page; 
+                numblocks = (n_warps * WARP_SIZE + numthreads-1) / numthreads; 
+                break;
+                           }
             default:
                 fprintf(stderr, "Invalid type\n");
                 exit(1);
                 break;
         }
         
-        dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
+        //dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
+        dim3 blockDim(numblocks);
 
-        if((type == BASELINE_PC)) {
+        if((type == BASELINE_PC) || (type==OPTIMIZED_PC)) {
                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
         }
         std::vector<Controller*> ctrls(settings.n_ctrls);
@@ -364,28 +445,36 @@ int main(int argc, char *argv[]) {
         page_cache_t* h_pc;
         range_t<uint64_t>* h_Arange;
         range_t<uint64_t>* h_Brange;
+        range_t<uint64_t>* h_Crange;
         std::vector<range_t<uint64_t>*> vec_Arange(1);
         std::vector<range_t<uint64_t>*> vec_Brange(1);
+        std::vector<range_t<uint64_t>*> vec_Crange(1);
         array_t<uint64_t>* h_Aarray;
         array_t<uint64_t>* h_Barray;
+        array_t<uint64_t>* h_Carray;
 
 
-        if((type == BASELINE_PC)) {
+        uint64_t cfileoffset = 720*1024*1024*1024;
+        if((type == BASELINE_PC) || (type == OPTIMIZED_PC)) {
             //TODO: fix for 2 arrays
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
             h_Arange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)n_elems, (uint64_t) (ceil(settings.afileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
             h_Brange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)n_elems, (uint64_t) (ceil(settings.bfileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
+            h_Crange = new range_t<uint64_t>((uint64_t)0 ,(uint64_t)n_elems, (uint64_t) (ceil(cfileoffset*1.0/pc_page_size)),(uint64_t)n_pages, (uint64_t)0, (uint64_t)pc_page_size, h_pc, settings.cudaDevice); 
             vec_Arange[0] = h_Arange; 
             vec_Brange[0] = h_Brange; 
+            vec_Crange[0] = h_Crange; 
             h_Aarray = new array_t<uint64_t>(n_elems, settings.afileoffset, vec_Arange, settings.cudaDevice);
             h_Barray = new array_t<uint64_t>(n_elems, settings.bfileoffset, vec_Brange, settings.cudaDevice);
+            h_Carray = new array_t<uint64_t>(n_elems, cfileoffset, vec_Crange, settings.cudaDevice);
 
             printf("Page cache initialized\n");
             fflush(stdout);
         }
 
+        //cuda_err_chk(cudaMalloc((void**)&c_d, n_elems_size));
 
-        for(int titr=0; titr<2; titr+=1){
+        for(int titr=0; titr<1; titr+=1){
             cuda_err_chk(cudaEventRecord(start, 0));
                 
             auto itrstart = std::chrono::system_clock::now();
@@ -398,9 +487,19 @@ int main(int argc, char *argv[]) {
                     //kernel_baseline<<<blockDim, numthreads>>>(n_elems,  sum_d);
                     break;
                 case BASELINE_PC:
-                    kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, a_d, b_d, sum_d);
+                    printf("launching baseline_pc: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+                    kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, h_Carray->d_array_ptr, sum_d);
                     break;
 
+                case OPTIMIZED:
+                    printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
+                    kernel_sequential_warp<uint64_t><<<blockDim, numthreads>>>(a_d, b_d, n_elems, 1, sum_d, n_warps, settings.pageSize);
+                    break;
+
+                case OPTIMIZED_PC:
+                    printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
+                    kernel_sequential_warp_ptr_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, 1, h_Carray->d_array_ptr, sum_d, n_warps, settings.pageSize);
+                    break;
                 default:
                     fprintf(stderr, "Invalid type\n");
                     exit(1);
@@ -410,6 +509,7 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaEventSynchronize(end));
             cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
             
+            //cuda_err_chk(cudaMemcpy(c_d, sum_h, n_elems_size, cudaMemcpyDeviceToHost));
             cuda_err_chk(cudaMemcpy(sum_h, sum_d, n_elems*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
             printf("sum: %llu\n", sum_h[0]);
 
@@ -419,6 +519,7 @@ int main(int argc, char *argv[]) {
             //if(mem == BAFS_DIRECT) {
             //         h_Aarray->print_reset_stats();
             //         h_Barray->print_reset_stats();
+            //         h_Carray->print_reset_stats();
 		    // printf("VA SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
             //}
 
@@ -438,7 +539,7 @@ int main(int argc, char *argv[]) {
            free(b_h);
          }
 
-        if((type == BASELINE_PC)) {
+        if((type == BASELINE_PC) || (type == OPTIMIZED_PC)) {
             //TODO: Fix this
             delete h_pc;
             delete h_Arange;
