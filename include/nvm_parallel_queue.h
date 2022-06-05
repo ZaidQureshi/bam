@@ -25,7 +25,7 @@
 #define LOCKED   1
 #define UNLOCKED 0
 
-#define BATCH 1024
+#define BATCH 32
 #define BATCH_SQ_TAIL BATCH
 #define BATCH_SQ_HEAD BATCH
 #define BATCH_CQ_HEAD BATCH
@@ -92,7 +92,7 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
     bool pass = true;
     //uint32_t old_head;
     while (pass && (count < BATCH_CQ_HEAD)) {
-        uint32_t loc = (cur_head+count+1)&q->qs_minus_1;
+        uint32_t loc = (cur_head+count)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED;
         if (pass)
             count++;
