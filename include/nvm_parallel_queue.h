@@ -28,7 +28,7 @@
 #define BATCH 32
 #define BATCH_SQ_TAIL BATCH
 #define BATCH_SQ_HEAD BATCH
-#define BATCH_cQ_HEAD BATCH
+#define BATCH_CQ_HEAD BATCH
 
 __forceinline__ __device__ uint64_t get_id(uint64_t x, uint64_t y) {
     //return (x >> y);
