@@ -237,7 +237,7 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uin
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     T v = 0;
     uint64_t idx =0;
-    uint64_t nep = (n_warps+stride)/stride; 
+    uint64_t nep = (n_warps+stride-1)/stride; 
     uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     if (warp_id < n_warps) {
@@ -271,7 +271,7 @@ void kernel_random_warp(T *input,uint64_t n_elems, uint64_t n_pages_per_warp, un
     const uint64_t old_warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     
-    uint64_t nep = (n_warps+stride)/stride; 
+    uint64_t nep = (n_warps+stride-1)/stride; 
     uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     T v = 0;
@@ -307,7 +307,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
     const uint64_t old_warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     
-    uint64_t nep = (n_warps+stride)/stride; 
+    uint64_t nep = (n_warps+stride-1)/stride; 
     uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
     //uint64_t warp_id = old_warp_id; 
     T v = 0;
