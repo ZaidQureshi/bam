@@ -126,7 +126,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
                 access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
             }
             else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, ctrls[ctrl]);
 
             }
             else {
@@ -368,8 +368,10 @@ int main(int argc, char** argv) {
         //ofile.write((char*)ret_array, data);
         //ofile.close();
 
-        for (size_t i = 0 ; i < settings.n_ctrls; i++)
+        for (size_t i = 0 ; i < settings.n_ctrls; i++) {
+            ctrls[i]->print_reset_stats();
             delete ctrls[i];
+        }
         //hexdump(ret_array, n_pages*page_size);
 /*
         cudaFree(d_qp);

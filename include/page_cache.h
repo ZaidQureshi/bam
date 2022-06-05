@@ -1879,9 +1879,9 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     ////printf("cid: %u\n", (unsigned int) cid);
 
 
-    nvm_cmd_header(&cmd, cid, 0x08, qp->nvmNamespace);
+    nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
 
-    starting_lba = c->ns.size - 1;
+    //starting_lba = c->ns.size - 1;
     n_blocks = 0;
     uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
@@ -1893,21 +1893,34 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
     uint32_t head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+    uint32_t sq_h_p = sq->head.load(simt::memory_order_acquire);
+    uint32_t sq_t_p = sq->tail.load(simt::memory_order_relaxed);
+    cq->tail_lock.fetch_add(1, simt::memory_order_acq_rel);
     //qp->cq.tail.store(1, simt::memory_order_release);
     //uint32_t c_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+    cq->tail_lock.fetch_add(1, simt::memory_order_acq_rel);
+    uint32_t sq_h_pp = sq->head.load(simt::memory_order_acquire);
+
+    bool sec = ((sq_h_pp < sq_h_p) && (s_h_p <= s_t_p)) ||
+        ((sq_h_p <= sq_t_p) && (s_t_p < s_h_pp)) ||
+        ((sq_t_p < sq_h_pp) && (s_h_pp < s_h_p));
+
     //qp->cq.tail.store(1, simt::memory_order_release);
     //uint32_t nc_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
     //sq_dequeue(&qp->sq, sq_pos);
-    /*
-    if (c_sq_head == nc_sq_head) {
+
+    if (sec) {
         c->access_counter.fetch_add(1, simt::memory_order_relaxed);
         nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
+        nvm_cmd_rw_blks(&cmd, starting_lba, 1);
+
+        nvm_cmd_data_ptr(&cmd, prp1, 0);
         sq_pos = sq_enqueue(&qp->sq, &cmd);
         cq_pos = cq_poll(&qp->cq, cid, &head);
         cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     }
-    */
+
     put_cid(&qp->sq, cid);
 
 
