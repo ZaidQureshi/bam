@@ -109,10 +109,10 @@ void kernel_baseline_ptr_pc(array_d_t<uint64_t>* da, array_d_t<uint64_t>* db, ui
     bam_ptr<uint64_t> Cptr(dc);
 
     if(tid<n_elems){
-       //Cptr[tid] = Aptr[tid] + Bptr[tid];  
-       uint64_t val = Aptr[tid] + Bptr[tid];  
+       Cptr[tid] = Aptr[tid] + Bptr[tid];  
+       //uint64_t val = Aptr[tid] + Bptr[tid];  
        //uint64_t val = A[tid] + B[tid];  
-       sum[tid] = val; 
+       //sum[tid] = val; 
        //atomicAdd(&sum[0], val);
     }
 }
@@ -151,8 +151,8 @@ void kernel_sequential_warp(T *A, T *B, uint64_t n_elems,  uint64_t n_pages_per_
 }
 
 template<typename T>
-__global__ __launch_bounds__(64,32)
-void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t n_elems,  uint64_t n_pages_per_warp, array_d_t<T> *dc, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
+__global__ //__launch_bounds__(64,32)
+void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t n_elems,  uint64_t n_pages_per_warp, array_d_t<T> *dc, unsigned long long* sum,  uint64_t n_warps, size_t page_size, uint64_t stride) {
 
     bam_ptr<uint64_t> Aptr(da);
     bam_ptr<uint64_t> Bptr(db);
@@ -160,10 +160,12 @@ void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t 
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
-    const uint64_t warp_id = tid / 32;
+    const uint64_t old_warp_id = tid / 32;
     const uint64_t n_elems_per_page = page_size / sizeof(T);
     T val = 0;
     uint64_t idx=0; 
+    uint64_t nep = (n_warps+stride-1)/stride; 
+    uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     if (warp_id < n_warps) {
         size_t start_page = n_pages_per_warp * warp_id;;
@@ -175,7 +177,8 @@ void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t 
                idx = start_idx + j; 
                if(idx < n_elems){
                    val  = Aptr[idx] + Bptr[idx];
-                   sum[idx] = val;
+                   Cptr[idx] = val; 
+                   //sum[idx] = val;
                    //atomicAdd(&sum[0], val);
        //            printf("tid: %llu A:%llu B:%llu \n",idx,  A[tid], B[tid]);
                }
@@ -184,6 +187,67 @@ void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t 
         //sum[0] =val;
     }
 }
+
+
+//template<typename T>
+//__global__ 
+//void cache_flush(array_d_t<T> *dc, uint64_t n_pages, uint64_t page_size){
+//    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x; 
+//
+//    if(tid < n_pages)
+//        dc->flushcache(tid, page_size); 
+//}
+//
+//
+//
+//
+//
+//__global__
+//void flush_kernel(page_cache_d_t* cache) {
+//    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+//    uint64_t page = tid;
+//    
+//	if (page < cache->n_pages) {
+//        uint32_t v = cache->page_take_lock[page].load(simt::memory_order_acquire);
+//        if (v != FREE) {
+//            uint32_t previous_global_address = cache->page_translation[page];
+//            uint32_t previous_range = previous_global_address & cache->n_ranges_mask;
+//            uint32_t previous_address = previous_global_address >> cache->n_ranges_bits;
+//            uint32_t expected_state = cache->ranges[previous_range][previous_address].load(simt::memory_order_acquire);
+//            if (expected_state == VALID_DIRTY) {
+//                uint64_t ctrl = get_backing_ctrl_(previous_address, cache->n_ctrls, cache->ranges_dists[previous_range]);
+//                //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+//                uint64_t index = get_backing_page_(cache->ranges_page_starts[previous_range], previous_address,
+//                                                   cache->n_ctrls, cache->ranges_dists[previous_range]);
+//                // printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+//                //        (unsigned long long) previous_range, (unsigned long long)previous_address,
+//                //        (unsigned long long) ctrl, (unsigned long long) index);
+//                if (ctrl == ALL_CTRLS) {
+//                    for (ctrl = 0; ctrl < cache->n_ctrls; ctrl++) {
+//                        Controller* c = cache->d_ctrls[ctrl];
+//                        uint32_t queue = (tid/32) % (c->n_qps);
+//                        write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
+//                    }
+//                }
+//                else {
+//
+//                    Controller* c = cache->d_ctrls[ctrl];
+//                    uint32_t queue = (tid/32) % (c->n_qps);
+//
+//                    //index = ranges_page_starts[previous_range] + previous_address;
+//
+//
+//                    write_data(cache, (c->d_qps)+queue, (index*cache->n_blocks_per_page), cache->n_blocks_per_page, page);
+//                }
+//            }
+//        }
+//
+//    }
+//}
+//
+
+
+
 
 
 
@@ -489,6 +553,9 @@ int main(int argc, char *argv[]) {
                 case BASELINE_PC:
                     printf("launching baseline_pc: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
                     kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, h_Carray->d_array_ptr, sum_d);
+                    //uint64_t n_pages = pc_pages; 
+                    //numblocks = (n_pages+numthreads-1)/numthreads; 
+                    //cache_flush<uint64_t><<<numblocks, numthreads>>>(h_Carray->d_array_ptr, n_pages, settings.pageSize);
                     break;
 
                 case OPTIMIZED:
@@ -498,7 +565,7 @@ int main(int argc, char *argv[]) {
 
                 case OPTIMIZED_PC:
                     printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
-                    kernel_sequential_warp_ptr_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, 1, h_Carray->d_array_ptr, sum_d, n_warps, settings.pageSize);
+                    kernel_sequential_warp_ptr_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, 1, h_Carray->d_array_ptr, sum_d, n_warps, settings.pageSize, settings.stride);
                     break;
                 default:
                     fprintf(stderr, "Invalid type\n");
@@ -530,7 +597,7 @@ int main(int argc, char *argv[]) {
                  h_Barray->print_reset_stats();
                  cuda_err_chk(cudaDeviceSynchronize());
             }
-            printf("\nVA %d A:%s \t B:%s Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), b_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, milliseconds); 
+            printf("\nVA %d A:%s \t B:%s Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %llu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), b_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, milliseconds); 
             fflush(stdout);
         }
 
