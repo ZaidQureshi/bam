@@ -1882,7 +1882,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
 
     //starting_lba = c->ns.size - 1;
-    n_blocks = 0;
+
     uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
@@ -1893,14 +1893,14 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
     uint32_t head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
-    uint32_t sq_h_p = sq->head.load(simt::memory_order_acquire);
-    uint32_t sq_t_p = sq->tail.load(simt::memory_order_relaxed);
-    cq->tail_lock.fetch_add(1, simt::memory_order_acq_rel);
+    uint32_t sq_h_p = qp->sq.head.load(simt::memory_order_acquire);
+    uint32_t sq_t_p = qp->sq.tail.load(simt::memory_order_relaxed);
+    qp->cq.tail_lock.fetch_add(1, simt::memory_order_acq_rel);
     //qp->cq.tail.store(1, simt::memory_order_release);
     //uint32_t c_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
-    cq->tail_lock.fetch_add(1, simt::memory_order_acq_rel);
-    uint32_t sq_h_pp = sq->head.load(simt::memory_order_acquire);
+    qp->cq.tail_lock.fetch_add(1, simt::memory_order_acq_rel);
+    uint32_t sq_h_pp = qp->sq.head.load(simt::memory_order_acquire);
 
     bool sec = ((sq_h_pp < sq_h_p) && (s_h_p <= s_t_p)) ||
         ((sq_h_p <= sq_t_p) && (s_t_p < s_h_pp)) ||
