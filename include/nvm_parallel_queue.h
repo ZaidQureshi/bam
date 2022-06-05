@@ -64,7 +64,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 
 
     bool pass = true;
-    while (pass ) {
+    while (pass && (count < 32) ) {
         //uint32_t count_copy = count;
         pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_relaxed) & q->qs_minus_1 ));
         if (pass) {
