@@ -1894,13 +1894,13 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint32_t head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
     uint32_t sq_h_p = qp->sq.head.load(simt::memory_order_acquire);
-    uint32_t sq_t_p = qp->sq.tail.load(simt::memory_order_relaxed);
-    qp->cq.tail_lock.fetch_add(1, simt::memory_order_acq_rel);
+    uint32_t sq_t_p = qp->sq.tail.load(simt::memory_order_acquire);
+    qp->cq.tail_lock.fetch_add(1, simt::memory_order_release);
     //qp->cq.tail.store(1, simt::memory_order_release);
     //uint32_t c_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
-    qp->cq.tail_lock.fetch_add(1, simt::memory_order_acq_rel);
-    uint32_t sq_h_pp = qp->sq.head.load(simt::memory_order_acquire);
+    qp->cq.tail_lock.fetch_add(1, simt::memory_order_release);
+    uint32_t sq_h_pp = qp->sq.head.load(simt::memory_order_relaxed);
 
     bool sec = ((sq_h_pp < sq_h_p) && (sq_h_p <= sq_t_p)) ||
         ((sq_h_p <= sq_t_p) && (sq_t_p < sq_h_pp)) ||
