@@ -1910,7 +1910,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     //uint32_t nc_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
     //sq_dequeue(&qp->sq, sq_pos);
 
-    if (sec) {
+    if (!sec) {
         c->access_counter.fetch_add(1, simt::memory_order_relaxed);
         nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
         nvm_cmd_rw_blks(&cmd, starting_lba, 1);

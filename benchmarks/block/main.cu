@@ -178,7 +178,7 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
                 access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
             }
             else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, ctrls[ctrl]);
 
             }
             else {
