@@ -1902,9 +1902,9 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     qp->cq.tail_lock.fetch_add(1, simt::memory_order_acq_rel);
     uint32_t sq_h_pp = qp->sq.head.load(simt::memory_order_acquire);
 
-    bool sec = ((sq_h_pp < sq_h_p) && (s_h_p <= s_t_p)) ||
-        ((sq_h_p <= sq_t_p) && (s_t_p < s_h_pp)) ||
-        ((sq_t_p < sq_h_pp) && (s_h_pp < s_h_p));
+    bool sec = ((sq_h_pp < sq_h_p) && (sq_h_p <= sq_t_p)) ||
+        ((sq_h_p <= sq_t_p) && (sq_t_p < sq_h_pp)) ||
+        ((sq_t_p < sq_h_pp) && (sq_h_pp < sq_h_p));
 
     //qp->cq.tail.store(1, simt::memory_order_release);
     //uint32_t nc_sq_head = qp->sq.head.load(simt::memory_order_relaxed);
