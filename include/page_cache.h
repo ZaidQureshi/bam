@@ -548,32 +548,33 @@ void __flush(page_cache_d_t* pc) {
     if (page < pc->n_pages) {
         uint32_t previous_global_address = pc->cache_pages[page].page_translation;
         //uint8_t previous_range = this->cache_pages[page].range_id;
-        uint32_t previous_range = previous_global_address & n_ranges_mask;
-        uint32_t previous_address = previous_global_address >> n_ranges_bits;
+        uint32_t previous_range = previous_global_address & pc->n_ranges_mask;
+        uint32_t previous_address = previous_global_address >> pc->n_ranges_bits;
         //uint32_t new_state = BUSY;
 
         uint32_t expected_state = pc->ranges[previous_range][previous_address].state.load(simt::memory_order_relaxed);
 
         uint32_t d = expected_state & DIRTY;
+        uint32_t smid = get_smid();
         if (d) {
 
-            uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
+            uint64_t ctrl = get_backing_ctrl_(previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
             //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-            uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
+            uint64_t index = get_backing_page_(pc->ranges_page_starts[previous_range], previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
             // //printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
             //        (unsigned long long) previous_range, (unsigned long long)previous_address,
             //        (unsigned long long) ctrl, (unsigned long long) index);
             if (ctrl == ALL_CTRLS) {
-                for (ctrl = 0; ctrl < n_ctrls; ctrl++) {
+                for (ctrl = 0; ctrl < pc->n_ctrls; ctrl++) {
                     Controller* c = pc->d_ctrls[ctrl];
-                    uint32_t queue = queue_ % (c->n_qps);
+                    uint32_t queue = smid % (c->n_qps);
                     write_data(pc, (c->d_qps)+queue, (index*pc->n_blocks_per_page), pc->n_blocks_per_page, page);
                 }
             }
             else {
 
                 Controller* c = pc->d_ctrls[ctrl];
-                uint32_t queue = queue_ % (c->n_qps);
+                uint32_t queue = smid % (c->n_qps);
 
                 //index = ranges_page_starts[previous_range] + previous_address;
 
