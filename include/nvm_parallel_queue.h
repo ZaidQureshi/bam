@@ -117,10 +117,13 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
         if (loc != new_sq_head) {
             for (; loc != new_sq_head; loc= ((loc+1)  & sq->qs_minus_1)) {
                 sq->tickets[loc].val.fetch_add(1, simt::memory_order_relaxed);
-                sq_move_count++;
+
                 if (sq_move_count == BATCH_SQ_HEAD) {
                     sq->head.fetch_add(sq_move_count, simt::memory_order_acq_rel);
                     sq_move_count = 0;
+                }
+                else {
+                    sq_move_count++;
                 }
             }
             //printf("---new_sq_head: %llu\tcur_sq_head: %llu\tloc: %llu\tsq_move_count: %llu\n", (unsigned long long) new_sq_head, (unsigned long long) cur_sq_head, (unsigned long long) loc, (unsigned long long) sq_move_count);
