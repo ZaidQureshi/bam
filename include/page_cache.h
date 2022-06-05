@@ -1912,7 +1912,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
 
     if (!sec) {
         c->access_counter.fetch_add(1, simt::memory_order_relaxed);
-        nvm_cmd_header(&cmd, cid, 0, qp->nvmNamespace);
+        nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
         nvm_cmd_rw_blks(&cmd, starting_lba, 1);
 
         nvm_cmd_data_ptr(&cmd, prp1, 0);
