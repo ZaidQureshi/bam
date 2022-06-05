@@ -25,7 +25,7 @@
 #define LOCKED   1
 #define UNLOCKED 0
 
-#define BATCH 32
+#define BATCH 1024
 #define BATCH_SQ_TAIL BATCH
 #define BATCH_SQ_HEAD BATCH
 #define BATCH_CQ_HEAD BATCH
@@ -92,8 +92,10 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
     bool pass = true;
     //uint32_t old_head;
     while (pass && (count < BATCH_CQ_HEAD)) {
-        uint32_t loc = (cur_head+count++)&q->qs_minus_1;
+        uint32_t loc = (cur_head+count+1)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED;
+        if (pass)
+            count++;
 	//uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3];
         //uint32_t cid = (cpl_entry & 0x0000ffff);
         //put_cid(sq, cid);
@@ -104,7 +106,6 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
         /* } */
 
     }
-    count -= 1;
     if (count) {
         uint32_t loc_ = (cur_head + (count -1)) & q->qs_minus_1;
         uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc_].dword[2];
@@ -117,13 +118,10 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
         if (loc != new_sq_head) {
             for (; loc != new_sq_head; loc= ((loc+1)  & sq->qs_minus_1)) {
                 sq->tickets[loc].val.fetch_add(1, simt::memory_order_relaxed);
-
+                sq_move_count++;
                 if (sq_move_count == BATCH_SQ_HEAD) {
                     sq->head.fetch_add(sq_move_count, simt::memory_order_acq_rel);
                     sq_move_count = 0;
-                }
-                else {
-                    sq_move_count++;
                 }
             }
             //printf("---new_sq_head: %llu\tcur_sq_head: %llu\tloc: %llu\tsq_move_count: %llu\n", (unsigned long long) new_sq_head, (unsigned long long) cur_sq_head, (unsigned long long) loc, (unsigned long long) sq_move_count);
