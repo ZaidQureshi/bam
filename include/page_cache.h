@@ -541,6 +541,12 @@ struct page_cache_d_t {
     uint32_t find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
 };
 
+
+__device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+__device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+
+
+
 __global__
 void __flush(page_cache_d_t* pc) {
     uint64_t page = threadIdx.x + blockIdx.x * blockDim.x;
@@ -558,9 +564,9 @@ void __flush(page_cache_d_t* pc) {
         uint32_t smid = get_smid();
         if (d) {
 
-            uint64_t ctrl = get_backing_ctrl_(previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
+            uint64_t ctrl = pc->get_backing_ctrl_(previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
             //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-            uint64_t index = get_backing_page_(pc->ranges_page_starts[previous_range], previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
+            uint64_t index = pc->get_backing_page_(pc->ranges_page_starts[previous_range], previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
             // //printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
             //        (unsigned long long) previous_range, (unsigned long long)previous_address,
             //        (unsigned long long) ctrl, (unsigned long long) index);
@@ -899,10 +905,6 @@ struct range_d_t {
     uint64_t get_cache_page_addr(const uint32_t page_trans) const;
 
 };
-
-__device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
-__device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
-
 
 template <typename T>
 struct range_t {
