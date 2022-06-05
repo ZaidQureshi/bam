@@ -541,6 +541,85 @@ struct page_cache_d_t {
     uint32_t find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
 };
 
+
+__device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+__device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
+
+__forceinline__
+__device__
+uint64_t get_backing_page_(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+    uint64_t page = page_start;
+    if (dist == STRIPE) {
+        page += page_offset / n_ctrls;
+    }
+    else if (dist == REPLICATE) {
+        page += page_offset;
+    }
+
+    return page;
+}
+__forceinline__
+__device__
+uint64_t get_backing_ctrl_(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+    uint64_t ctrl;
+
+    if (dist == STRIPE) {
+        ctrl = page_offset % n_ctrls;
+    }
+    else if (dist == REPLICATE) {
+        ctrl = ALL_CTRLS;
+    }
+    return ctrl;
+
+}
+
+__global__
+void __flush(page_cache_d_t* pc) {
+    uint64_t page = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (page < pc->n_pages) {
+        uint32_t previous_global_address = pc->cache_pages[page].page_translation;
+        //uint8_t previous_range = this->cache_pages[page].range_id;
+        uint32_t previous_range = previous_global_address & pc->n_ranges_mask;
+        uint32_t previous_address = previous_global_address >> pc->n_ranges_bits;
+        //uint32_t new_state = BUSY;
+
+        uint32_t expected_state = pc->ranges[previous_range][previous_address].state.load(simt::memory_order_relaxed);
+
+        uint32_t d = expected_state & DIRTY;
+        uint32_t smid = get_smid();
+        if (d) {
+
+            uint64_t ctrl = get_backing_ctrl_(previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
+            //uint64_t get_backing_page(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
+            uint64_t index = get_backing_page_(pc->ranges_page_starts[previous_range], previous_address, pc->n_ctrls, pc->ranges_dists[previous_range]);
+            // //printf("Eviciting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+            //        (unsigned long long) previous_range, (unsigned long long)previous_address,
+            //        (unsigned long long) ctrl, (unsigned long long) index);
+            if (ctrl == ALL_CTRLS) {
+                for (ctrl = 0; ctrl < pc->n_ctrls; ctrl++) {
+                    Controller* c = pc->d_ctrls[ctrl];
+                    uint32_t queue = smid % (c->n_qps);
+                    write_data(pc, (c->d_qps)+queue, (index*pc->n_blocks_per_page), pc->n_blocks_per_page, page);
+                }
+            }
+            else {
+
+                Controller* c = pc->d_ctrls[ctrl];
+                uint32_t queue = smid % (c->n_qps);
+
+                //index = ranges_page_starts[previous_range] + previous_address;
+
+
+                write_data(pc, (c->d_qps)+queue, (index*pc->n_blocks_per_page), pc->n_blocks_per_page, page);
+            }
+
+            pc->ranges[previous_range][previous_address].state.fetch_and(~DIRTY);
+
+        }
+    }
+}
+
 struct page_cache_t {
 
 
@@ -574,6 +653,14 @@ struct page_cache_t {
 
 
 
+    void flush_cache() {
+        size_t threads = 64;
+        size_t n_blocks = (pdt.n_pages + threads - 1) / threads;
+
+        __flush<<<n_blocks, threads>>>(d_pc_ptr);
+
+
+    }
 
     template <typename T>
     void add_range(range_t<T>* range) {
@@ -845,10 +932,6 @@ struct range_d_t {
 
 };
 
-__device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
-__device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry);
-
-
 template <typename T>
 struct range_t {
     range_d_t<T> rdt;
@@ -918,19 +1001,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
 }
 
 
-__forceinline__
-__device__
-uint64_t get_backing_page_(const uint64_t page_start, const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-    uint64_t page = page_start;
-    if (dist == STRIPE) {
-        page += page_offset / n_ctrls;
-    }
-    else if (dist == REPLICATE) {
-        page += page_offset;
-    }
 
-    return page;
-}
 
 template <typename T>
 __forceinline__
@@ -940,20 +1011,7 @@ uint64_t range_d_t<T>::get_backing_page(const size_t page_offset) const {
 }
 
 
-__forceinline__
-__device__
-uint64_t get_backing_ctrl_(const size_t page_offset, const uint64_t n_ctrls, const data_dist_t dist) {
-    uint64_t ctrl;
 
-    if (dist == STRIPE) {
-        ctrl = page_offset % n_ctrls;
-    }
-    else if (dist == REPLICATE) {
-        ctrl = ALL_CTRLS;
-    }
-    return ctrl;
-
-}
 
 template <typename T>
 __forceinline__
