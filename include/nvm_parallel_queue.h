@@ -25,6 +25,11 @@
 #define LOCKED   1
 #define UNLOCKED 0
 
+#define BATCH 32
+#define BATCH_SQ_TAIL BATCH
+#define BATCH_SQ_HEAD BATCH
+#define BATCH_cQ_HEAD BATCH
+
 __forceinline__ __device__ uint64_t get_id(uint64_t x, uint64_t y) {
     //return (x >> y);
     return (x >> y) * 2;  // (x/2^y) *2
@@ -64,7 +69,7 @@ uint32_t move_tail(nvm_queue_t* q, uint32_t cur_tail) {
 
 
     bool pass = true;
-    while (pass && (count < 32) ) {
+    while (pass && (count < BATCH_SQ_TAIL) ) {
         //uint32_t count_copy = count;
         pass = (((cur_tail+count+1) & q->qs_minus_1) != (q->head.load(simt::memory_order_relaxed) & q->qs_minus_1 ));
         if (pass) {
@@ -86,7 +91,7 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
 
     bool pass = true;
     //uint32_t old_head;
-    while (pass) {
+    while (pass && (count < BATCH_CQ_HEAD)) {
         uint32_t loc = (cur_head+count++)&q->qs_minus_1;
         pass = (q->head_mark[loc].val.exchange(UNLOCKED, simt::memory_order_relaxed)) == LOCKED;
 	//uint32_t cpl_entry = ((nvm_cpl_t*)q->vaddr)[loc].dword[3];
@@ -110,12 +115,17 @@ uint32_t move_head_cq(nvm_queue_t* q, uint32_t cur_head, nvm_queue_t* sq) {
         //printf("+++new_sq_head: %llu\tcur_sq_head: %llu\tloc: %llu\tcpl_entry: %llx\n", (unsigned long long) new_sq_head, (unsigned long long) cur_sq_head, (unsigned long long) loc, (unsigned long long) cpl_entry);
 
         if (loc != new_sq_head) {
-            for (; loc != new_sq_head; sq_move_count++, loc= ((loc+1)  & sq->qs_minus_1)) {
+            for (; loc != new_sq_head; loc= ((loc+1)  & sq->qs_minus_1)) {
                 sq->tickets[loc].val.fetch_add(1, simt::memory_order_relaxed);
+                sq_move_count++;
+                if (sq_move_count == BATCH_SQ_HEAD) {
+                    sq->head.fetch_add(sq_move_count, simt::memory_order_acq_rel);
+                    sq_move_count = 0;
+                }
             }
             //printf("---new_sq_head: %llu\tcur_sq_head: %llu\tloc: %llu\tsq_move_count: %llu\n", (unsigned long long) new_sq_head, (unsigned long long) cur_sq_head, (unsigned long long) loc, (unsigned long long) sq_move_count);
-
-            sq->head.fetch_add(sq_move_count, simt::memory_order_acq_rel);
+            if (sq_move_count)
+                sq->head.fetch_add(sq_move_count, simt::memory_order_acq_rel);
         }
     }
     return (count);
