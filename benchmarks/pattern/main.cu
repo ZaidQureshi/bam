@@ -234,7 +234,7 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uin
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t old_warp_id = tid / 32;
-    const uint64_t n_elems_per_page = page_size / sizeof(T);
+    const uint64_t n_elems_per_page = 512 / sizeof(T);
     T v = 0;
     uint64_t idx =0;
     uint64_t nep = (n_warps+stride)/stride; 
@@ -242,12 +242,12 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uin
 
     if (warp_id < n_warps) {
 		bam_ptr<T> ptr(dr);
-        size_t start_page = n_pages_per_warp * warp_id;;
+        size_t start_sector = n_pages_per_warp * warp_id;;
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
         for (size_t i = 0; i < n_pages_per_warp; i++) {
-            size_t cur_page = start_page + i;
+            size_t cur_sector = start_sector + i;
             //	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
-            size_t start_idx = cur_page * n_elems_per_page + lane;
+            size_t start_idx = cur_sector * n_elems_per_page + lane;
 
             for (size_t j = 0; j < n_elems_per_page; j += WARPSIZE) {
                     //printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
@@ -615,7 +615,7 @@ int main(int argc, char *argv[]) {
         float totaltime = 0; 
         float avgtime = 0; 
 
-        for(int titr=0; titr<2; titr+=1){
+        for(int titr=0; titr<11; titr+=1){
             cuda_err_chk(cudaEventRecord(start, 0));
         	cuda_err_chk(cudaMemset(output_d, 0, sizeof(unsigned long long)));
                 
@@ -713,7 +713,7 @@ int main(int argc, char *argv[]) {
             if((type == SEQUENTIAL_WARP) || (type == SEQUENTIAL_WARP_PC) || (type == RANDOM_WARP) || (type == RANDOM_WARP_PC) || (type == POWERLAW_WARP) || (type == POWERLAW_WARP_PC)){
 				
 				//ios = n_warps*n_pages_per_warp*n_elems_per_page; 
-				ios = n_warps*n_pages_per_warp*n_elems_per_page; 
+				ios = n_warps*n_pages_per_warp*512/sizeof(uint64_t); 
                 iops = ((double) ios*1000/ (milliseconds)); 
 				data = ios*sizeof(uint64_t); 
 				bandwidth = (((double) data*1000/(milliseconds))/(1024ULL*1024ULL*1024ULL));
@@ -725,7 +725,7 @@ int main(int argc, char *argv[]) {
                  h_Aarray->print_reset_stats();
                  cuda_err_chk(cudaDeviceSynchronize());
             }
-			printf("P:%d Impl: %llu \t SSD: %llu \t n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \n bandwidth: %f GBps \t avgiops: %f \t avgbandwidth: %f \n",titr, type, settings.n_ctrls, n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, avgiops, avgbandwidth ); 
+			printf("P:%d Impl: %llu \t SSD: %llu \t n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \t bandwidth: %f GBps \t avgiops: %f \t avgbandwidth: %f \n",titr, type, settings.n_ctrls, n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, avgiops, avgbandwidth ); 
             //printf("\nVA %d A:%s Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, milliseconds); 
             fflush(stdout);
         }

@@ -195,7 +195,7 @@ struct page_cache_d_t
     __forceinline__
         __device__
             uint32_t
-            find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
+            find_slot(uint64_t address, uint64_t range_id);
 
     __forceinline__
     __device__
@@ -472,11 +472,11 @@ struct range_d_t
     __forceinline__
         __device__
             uint64_t
-            acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t queue);
+            acquire_page(const size_t pg, const uint32_t count, const bool write);
     __forceinline__
         __device__
             bool
-            acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue);
+            acquire_sector(const uint64_t page_index, const size_t sector_index, uint32_t count, const bool write);
     __forceinline__
         __device__ void
         write_done(const size_t pg, const uint32_t count) const;
@@ -777,7 +777,7 @@ template <typename T>
 __forceinline__
     __device__
         bool
-        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue_)
+        range_d_t<T>::acquire_sector(const uint64_t page_index, const size_t sector, const uint32_t count, const bool write)
 {
     //printf("n_sectors_per_page: %llu\n", (unsigned long long)cache->n_sectors_per_page);
     //printf("tid %d\t count %d\tpage_index %llu\tsector %d\tin acquire_sector\n", (blockIdx.x*blockDim.x+threadIdx.x), count, (unsigned long long)page_index,sector);
@@ -785,24 +785,23 @@ __forceinline__
     uint8_t sector_number = (sector) & (cache->n_sectors_per_state_minus_1);
     size_t sector_index = (sector) >> (cache->n_sectors_per_state_log);
     //printf("tid %llu\t sector %llu\t sector_number %llu\tsector_index %llu\tn_sector_per_page %llu\t n_sectors_per_page_minus_1 %llu\tn_sectors_per_page_log %d\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)sector, (unsigned long long)sector_number, (unsigned long long)sector_index, (unsigned long long)(cache->n_sectors_per_page), (unsigned long long)(cache->n_sectors_per_page_minus_1), (unsigned long long)(cache->n_sectors_per_page_log));
-    uint32_t original_state;
+    //uint32_t original_state;
     uint32_t expected_state = SECTOR_VALID;
-    uint32_t new_state = SECTOR_VALID;
+    //uint32_t new_state = SECTOR_VALID;
     //uint64_t sector_trans = (page_addresses[page_index] * cache->n_sectors_per_page) + sector;//cache->n_sectors_per_page_log) + sector;
     uint64_t page_trans = page_addresses[page_index];
     //printf("tid %d\t page_address %d\tpage_trans %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), page_addresses[page_index], (unsigned long long)page_trans);
     uint32_t shift_val = SECTOR_STATUS_BITS*sector_number;
     uint32_t mask = 0x0000000F << shift_val;
-    uint32_t not_mask = ~mask;
+    //uint32_t not_mask = ~mask;
     //printf("tid %d\tsector_number %d\tmask %08x\n", (blockIdx.x*blockDim.x+threadIdx.x), sector_number, mask);
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
-    uint32_t st, st_new, st_prev;
+    uint32_t st, st_new;
 
     do {
-        bool pass = false;
         //original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
-        original_state = sector_states[page_index*(cache->n_sector_states) + sector_index].load(simt::memory_order_acquire);
-        st = (original_state & mask) >> (shift_val);
+        st = sector_states[page_index*(cache->n_sector_states) + sector_index].load(simt::memory_order_acquire);
+        st = (st & mask) >> (shift_val);
         //printf("tid %llu\toriginal state %16x\tpage_index %llu\tsector_index %llu\tsector_number %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long) original_state,(unsigned long long)page_index, (unsigned long long)sector_index, (unsigned long long)sector_number);
         switch(st){
             case SECTOR_BUSY:
@@ -811,9 +810,9 @@ __forceinline__
             break;
             case SECTOR_INVALID:
                //original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
-               new_state = (SECTOR_BUSY << (shift_val));
+               //new_state = (SECTOR_BUSY << (shift_val));
                //pass = page_states[page_index].sector_states[sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acquire, simt::memory_order_relaxed);
-               st_new = sector_states[page_index*(cache->n_sector_states) + sector_index].fetch_or(new_state, simt::memory_order_acquire);
+               st_new = sector_states[page_index*(cache->n_sector_states) + sector_index].fetch_or((SECTOR_BUSY << (shift_val)), simt::memory_order_acquire);
                st_new = (st_new & mask) >> (shift_val);
                //printf("tid %llu\t original_state %16x\t new_state %16x\t in SECTOR_INVALID\n",(unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)original_state, (unsigned long long)new_state);
                if ((st_new & SECTOR_BUSY) == 0) {
@@ -830,20 +829,13 @@ __forceinline__
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
+                    //read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
                     //    hexdump((void*)cache->base_addr, 512);
                     expected_state = SECTOR_DISABLE_BUSY_ENABLE_VALID << (shift_val);
                     if (write)
                         expected_state = expected_state | (SECTOR_DIRTY << (shift_val));
-                    st_prev = sector_states[page_index*cache->n_sector_states + sector_index].fetch_xor(expected_state, simt::memory_order_release);
+                    sector_states[page_index*cache->n_sector_states + sector_index].fetch_xor(expected_state, simt::memory_order_release);
                     //printf("tid %llu\tprev state %16x\tpage_index %llu\tsector_index %llu\tsector_number %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)st_prev, (unsigned long long)page_index, (unsigned long long)sector_index, (unsigned long long)sector_number);
-                    /*bool caspass = false;
-                    while (!caspass) {
-                        original_state = sector_states[page_index*cache->n_sector_states + sector_index].load(simt::memory_order_acquire);
-                        if (write) {new_state = (original_state & not_mask) | (SECTOR_DIRTY << shift_val);}
-                        else {new_state = (original_state & not_mask) | (SECTOR_VALID << shift_val); }
-                        caspass = sector_states[page_index*cache->n_sector_states + sector_index].compare_exchange_weak(original_state, new_state, simt::memory_order_acq_rel, simt::memory_order_relaxed);
-                    }*/
                     fail = false;
                }
             break;
@@ -871,11 +863,9 @@ template <typename T>
 __forceinline__
     __device__
         uint64_t
-        range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t queue)
+        range_d_t<T>::acquire_page(const size_t index, const uint32_t count, const bool write)
 {
     //printf("tid %d\t count %d\tin acquire_page\n", (blockIdx.x*blockDim.x+threadIdx.x), count);
-    uint64_t index = pg;
-    uint64_t expected_state = VALID;
     uint32_t new_state = VALID;
     //access_cnt.fetch_add(count, simt::memory_order_relaxed);
     bool fail = true;
@@ -883,7 +873,6 @@ __forceinline__
     read_state =page_states[index].state.fetch_add(count, simt::memory_order_acquire);
     do
     {
-        bool pass = false;
         st = (read_state >> (CNT_SHIFT + 1)) & 0x03;
         //expected_state = page_states[index].state.load(simt::memory_order_acquire);
         switch (st)
@@ -903,7 +892,7 @@ __forceinline__
             st_new = page_states[index].state.fetch_or(BUSY, simt::memory_order_acquire);
             if ((st_new & BUSY) == 0)
             {
-                uint32_t page_trans = cache->find_slot(index, range_id, queue);
+                uint32_t page_trans = cache->find_slot(index, range_id);
                 page_addresses[index] = page_trans;
                 page_states[index].offset = page_trans;
                 new_state = count;
@@ -978,7 +967,7 @@ struct array_d_t
             uint32_t count = 1;
             if (master == lane)
             {
-                base = d_ranges[r].acquire_page(page, count, false, ctrl, queue);
+                base = d_ranges[r].acquire_page(page, count, false);
                 base_master = base;
             }
             base_master = __shfl_sync(eq_mask, base_master, master);
@@ -1018,37 +1007,24 @@ struct array_d_t
     __forceinline__
         __device__ void
         coalesce_page_array(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const size_t sector, const uint64_t gaddr, const bool write,
-                      uint32_t &eq_mask, int &master, uint32_t &count, uint64_t &base_master, bool &sector_acquired_master) const
+                      uint64_t &base_master) const
     {
-        //printf("tid %d\t in coalesce_page\n", (blockDim.x*blockIdx.x+threadIdx.x));
-        uint32_t ctrl;
-        uint32_t queue;
-        uint32_t leader = __ffs(mask) - 1;
         auto r_ = d_ranges+r;
-        /*if (lane == leader)
-        {
-            page_cache_d_t *pc = d_ranges[r].cache;
-            //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-            //queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-        }*/
-
-        ctrl = 0;//__shfl_sync(mask, ctrl, leader);
-        queue = 0;//__shfl_sync(mask, queue, leader);
-
+        bool sector_acquired_master;
         uint32_t active_cnt = __popc(mask);
-        eq_mask = __match_any_sync(mask, gaddr);
+        uint32_t eq_mask = __match_any_sync(mask, gaddr);
         eq_mask &= __match_any_sync(mask, (uint64_t)this);
         //eq_mask &= __match_any_sync(mask, sector_index); // not sure if correct
-        master = __ffs(eq_mask) - 1;
+        uint32_t master = __ffs(eq_mask) - 1;
         //printf("tid %d\teq_mask for page %d\n", (blockIdx.x*blockDim.x+threadIdx.x), eq_mask);
 
         uint32_t dirty = __any_sync(eq_mask, write);
 
         uint64_t base;
-        //count = __popc(eq_mask);
+
         if (master == lane)
         {
-            base = d_ranges[r].acquire_page(page, __popc(eq_mask), dirty, queue);
+            base = d_ranges[r].acquire_page(page, __popc(eq_mask), dirty);
             base_master = base;
             //printf("++tid: %llu\tbase: %llu\tpage:%llu\n", (unsigned long long) (blockIdx.x*blockDim.x+ threadIdx.x), (unsigned long long)base_master, (unsigned long long) page);
         }
@@ -1061,11 +1037,11 @@ struct array_d_t
 
         //base_master = r_->acquire_page(page, 1, write, queue);
 
-        bool sector_acquired;
-        count = __popc(eq_mask);
+        
         if (master == lane)
         {
-            sector_acquired = d_ranges[r].acquire_sector(page, sector, count, dirty, ctrl, queue);
+            bool sector_acquired;
+            sector_acquired = d_ranges[r].acquire_sector(page, sector, __popc(eq_mask), dirty);
             sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
         }
@@ -1074,73 +1050,6 @@ struct array_d_t
     }
 
     __forceinline__
-        __device__
-            returned_cache_page_t<T>
-            get_raw(const size_t i) const
-    {
-        returned_cache_page_t<T> ret;
-        uint32_t lane = lane_id();
-        int64_t r = find_range(i);
-
-        if (r != -1)
-        {
-#ifndef __CUDACC__
-            uint32_t mask = 1;
-#else
-            uint32_t mask = __activemask();
-#endif
-            uint32_t eq_mask;
-            int master;
-            uint64_t base_master;
-            uint32_t count;
-            uint64_t page = d_ranges[r].get_page(i);
-            uint64_t subindex = d_ranges[r].get_subindex(i);
-            uint64_t gaddr = d_ranges[r].get_global_address(page);
-
-            coalesce_page_array(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
-
-            ret.addr = (T *)base_master;
-            ret.size = d_ranges[r].get_sector_size() / sizeof(T);
-            ret.offset = subindex / sizeof(T);
-            //ret.page = page;
-            __syncwarp(mask);
-        }
-        return ret;
-    }
-    __forceinline__
-        __device__ void
-        release_raw(const size_t i) const
-    {
-        uint32_t lane = lane_id();
-        int64_t r = find_range(i);
-
-        if (r != -1)
-        {
-#ifndef __CUDACC__
-            uint32_t mask = 1;
-#else
-            uint32_t mask = __activemask();
-#endif
-            uint32_t eq_mask;
-            int master;
-            uint64_t base_master;
-            uint32_t count;
-            uint64_t page = d_ranges[r].get_page(i);
-            uint64_t subindex = d_ranges[r].get_subindex(i);
-            uint64_t gaddr = d_ranges[r].get_global_address(page);
-
-            uint32_t active_cnt = __popc(mask);
-            eq_mask = __match_any_sync(mask, gaddr);
-            eq_mask &= __match_any_sync(mask, (uint64_t)this);
-            master = __ffs(eq_mask) - 1;
-            count = __popc(eq_mask);
-            if (master == lane)
-                d_ranges[r].release_page(page, count);
-            __syncwarp(mask);
-        }
-    }
-
-        __forceinline__
     __device__
     void* acquire_page_array(const size_t i, data_page_t*& page_, size_t& start, size_t& end, size_t& sector_start, size_t& sector_end, int64_t& r, size_t& bamptr_sector, uint64_t& base_master) const {
         uint32_t lane = lane_id();
@@ -1156,18 +1065,11 @@ struct array_d_t
 #else
             uint32_t mask = __activemask();
 #endif
-            //uint32_t mask = 0;
-            uint32_t eq_mask;
-            int master;
-            //uint64_t base_master;
-            bool sector_acquired_master;
-            uint32_t count;
             uint64_t page = r_->get_page(i);
-            uint64_t subindex = r_->get_subindex(i);
             uint64_t gaddr = r_->get_global_address(page);
             size_t sector_index = r_->get_sectorindex(i);
 
-            coalesce_page_array(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
+            coalesce_page_array(lane, mask, r, page, sector_index, gaddr, false, base_master);
             page_ = &(r_->page_states[base_master]);
             bamptr_sector = sector_index;
             
@@ -1202,24 +1104,9 @@ struct array_d_t
             int master;
             //uint64_t base_master;
             bool sector_acquired_master;
-            uint32_t count;
             uint64_t page = r_->get_page(i);
-            uint64_t subindex = r_->get_subindex(i);
             uint64_t gaddr = r_->get_global_address(page);
             size_t sector_index = r_->get_sectorindex(i);
-
-            uint32_t ctrl;
-            uint32_t queue;
-            uint32_t leader = __ffs(mask) - 1;
-            if (lane == leader)
-            {
-                page_cache_d_t *pc = d_ranges[r].cache;
-                //ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                //queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-            }
-
-            ctrl = 0;// __shfl_sync(mask, ctrl, leader);
-            queue = 0;//__shfl_sync(mask, queue, leader);
 
             eq_mask = __match_any_sync(mask, gaddr);
             //eq_mask &= __match_any_sync(mask, (uint64_t)this);
@@ -1228,12 +1115,10 @@ struct array_d_t
             master = __ffs(eq_mask) - 1;
             uint32_t dirty = 0;//__any_sync(eq_mask, write);
 
-            bool sector_acquired;
-            count = __popc(eq_mask);
-
             if (master == lane)
             {
-                sector_acquired = d_ranges[r].acquire_sector(page, sector_index, count, dirty, ctrl, queue); 
+                bool sector_acquired;
+                sector_acquired = d_ranges[r].acquire_sector(page, sector_index, __popc(eq_mask), dirty); 
                 sector_acquired_master = sector_acquired;
             }
             
@@ -1312,18 +1197,14 @@ struct array_d_t
 #else
             uint32_t mask = __activemask();
 #endif
-            uint32_t eq_mask;
-            int master;
             uint64_t base_master;
-            bool sector_acquired_master;
-            uint32_t count;
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             size_t sector_index = d_ranges[r].get_sectorindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             //printf("tid %d\tpage %llu\tsubindex %llu\tsector_index %d\tgaddr %llu\n", (blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)page, (unsigned long long)subindex, sector_index, (unsigned long long)gaddr);
 
-            coalesce_page_array(lane, mask, r, page, sector_index, gaddr, false, eq_mask, master, count, base_master, sector_acquired_master);
+            coalesce_page_array(lane, mask, r, page, sector_index, gaddr, false, base_master);
         
             /*uint32_t temp_eq_mask = eq_mask;
             coalesce_sector(lane, temp_eq_mask, r, page, sector_index, false, eq_mask, master, sector_acquired_master);*/
@@ -1332,7 +1213,7 @@ struct array_d_t
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ret = ((T *)(base_master + subindex))[0];
-            __syncwarp(eq_mask);
+            //__syncwarp(eq_mask);
             //printf("tid: %llu\tsubindex %llu\tsector_index %llu\treturn value %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)subindex, (unsigned long long)sector_index, (unsigned long long)ret);
             
             /*if (master == lane) {
@@ -1359,23 +1240,19 @@ struct array_d_t
 #else
             uint32_t mask = __activemask();
 #endif
-            uint32_t eq_mask;
-            int master;
             uint64_t base_master;
-            bool sector_acquired_master;
-            uint32_t count;
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
             uint64_t gaddr = d_ranges[r].get_global_address(page);
             size_t sector_index = d_ranges[r].get_sectorindex(i);
 
-            coalesce_page_array(lane, mask, r, page, sector_index, gaddr, true, eq_mask, master, count, base_master, sector_acquired_master);
+            coalesce_page_array(lane, mask, r, page, sector_index, gaddr, true, base_master);
 
             //if (threadIdx.x == 63) {
             //printf("--tid: %llu\tpage: %llu\tsubindex: %llu\tbase_master: %llu\teq_mask: %x\tmaster: %llu\n", (unsigned long long) threadIdx.x, (unsigned long long) page, (unsigned long long) subindex, (unsigned long long) base_master, (unsigned) eq_mask, (unsigned long long) master);
             //}
             ((T *)(base_master + subindex))[0] = val;
-            __syncwarp(eq_mask);
+            //__syncwarp(eq_mask);
             //printf("tid: %llu\tsubindex %llu\tstored value %16x\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long)subindex, (unsigned long long)val);
             /*if (master == lane) {
                 //uint64_t cache_sector_addr = d_ranges[r].get_cache_page_addr(d_ranges[r].page_addresses[page]) + (sector_index*512);
@@ -1448,15 +1325,6 @@ struct array_d_t
 #else
             uint32_t mask = __activemask();
 #endif
-            uint32_t leader = __ffs(mask) - 1;
-            if (lane == leader)
-            {
-                page_cache_d_t *pc = d_ranges[r].cache;
-                ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-                queue = get_smid() % (pc->d_ctrls[ctrl]->n_qps);
-            }
-            ctrl = __shfl_sync(mask, ctrl, leader);
-            queue = __shfl_sync(mask, queue, leader);
 
             uint64_t page = d_ranges[r].get_page(i);
             uint64_t subindex = d_ranges[r].get_subindex(i);
@@ -1476,7 +1344,7 @@ struct array_d_t
             uint32_t count = __popc(eq_mask);
             if (master == lane)
             {
-                base = d_ranges[r].acquire_page(page, count, true, queue);
+                base = d_ranges[r].acquire_page(page, count, true);
                 base_master = base;
                 //    printf("++tid: %llu\tbase: %llu  memcpyflag_master:%llu\n", (unsigned long long) threadIdx.x, (unsigned long long) base_master, (unsigned long long) memcpyflag_master);
             }
@@ -1486,12 +1354,13 @@ struct array_d_t
             eq_mask &= __match_any_sync(mask, sector);
             master = __ffs(eq_mask) - 1;
 
-            bool sector_acquired;
+            
             bool sector_acquired_master;
             //count = __popc(eq_mask);
             if (master == lane)
             {
-                sector_acquired = d_ranges[r].acquire_sector(page, sector, __popc(eq_mask), true, ctrl, queue);
+                bool sector_acquired;
+                sector_acquired = d_ranges[r].acquire_sector(page, sector, __popc(eq_mask), true);
                 sector_acquired_master = sector_acquired;
             //                printf("++tid: %llu\tbase: %p  page:%llu\n", (unsigned long long) threadIdx.x, base_master, (unsigned long long) page);
             }
@@ -1520,10 +1389,10 @@ struct bam_ptr {
     data_page_t* page = nullptr;
     array_d_t<T>* array = nullptr;
     size_t sector_n = 0;
-    size_t start = -1;
-    size_t end = -1;
-    size_t sector_start = -1;
-    size_t sector_end = -1;
+    size_t start;
+    size_t end;
+    size_t sector_start;
+    size_t sector_end;
     int64_t range_id = -1;
     T* addr = nullptr;
     uint64_t base_master;
@@ -1683,7 +1552,7 @@ __forceinline__
 __forceinline__
     __device__
         uint32_t
-        page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_)
+        page_cache_d_t::find_slot(uint64_t address, uint64_t range_id)
 {
     //printf("tid = %llu\taddress = %llu\t in find_slot\n",(unsigned long long)(blockIdx.x*blockDim.x + threadIdx.x), (unsigned long long)address);
     bool fail = true;
@@ -1746,7 +1615,7 @@ __forceinline__
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++)
                                 {
                                     Controller *c = this->d_ctrls[ctrl];
-                                    uint32_t queue = queue_ % (c->n_qps);
+                                    uint32_t queue = get_smid() % (c->n_qps);
                                     for (int i=0; i<n_sector_states; i++) {
                                         uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
                                         for (int j=0; j<N_SECTORS_PER_STATE; j++) {
@@ -1763,7 +1632,7 @@ __forceinline__
                             {
 
                                 Controller *c = this->d_ctrls[ctrl];
-                                uint32_t queue = queue_ % (c->n_qps);
+                                uint32_t queue = get_smid() % (c->n_qps);
                                 for (int i=0; i<n_sector_states; i++) {
                                     uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
                                     for (int j=0; j<N_SECTORS_PER_STATE; j++) {
