@@ -332,7 +332,7 @@ if (CUDA_FOUND AND NOT no_cuda)
   add_subdirectory ("${benchmarks_root}/test2")
   add_subdirectory ("${benchmarks_root}/cache")
   add_subdirectory ("${benchmarks_root}/vectoradd")
-  add_subdirectory ("${benchmarks_root}/scan")
+  #add_subdirectory ("${benchmarks_root}/scan")
   add_custom_target (benchmarks DEPENDS ${benchmark_targets})
 endif ()
 
