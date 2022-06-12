@@ -118,7 +118,7 @@ void kernel_sequential(T *input, uint64_t num_elems, unsigned long long int* out
 }
 
 template<typename T>
-__global__ //__launch_bounds__(64,32)
+__global__ __launch_bounds__(64,64)
 void kernel_sequential_pc(array_d_t<T>* dr, T *input, uint64_t num_elems, unsigned long long int* output){
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x; 
 	bam_ptr<T> ptr(dr);
@@ -195,7 +195,7 @@ void kernel_stride(T *input, uint64_t num_elems, unsigned long long int* output)
 
 
 template<typename T>
-__global__ __launch_bounds__(64,32)
+__global__ __launch_bounds__(64,64)
 void kernel_sequential_warp(T *input, uint64_t n_elems,  uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -228,20 +228,26 @@ void kernel_sequential_warp(T *input, uint64_t n_elems,  uint64_t n_pages_per_wa
 }
 
 template<typename T>
-__global__ //__launch_bounds__(64,32)
-void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size, uint64_t stride) {
-
+__global__ //__launch_bounds__(64, 64)
+void kernel_sequential_warp_pc(array_d_t<T>* dr, page_cache_d_t* pdt, T *input, uint64_t n_elems, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size, uint64_t stride) {
+    volatile __shared__ page_cache_d_t pdt_sh;
+    if (threadIdx.x ==0) {
+        memcpy((void*)&pdt_sh, (void*)pdt, sizeof(*pdt));
+    }
+    __syncthreads();
+    
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    printf("tid: %llu\t shared base addr: %llu\t original base addr: %llu\n", (unsigned long long)tid, (unsigned long long)pdt_sh.base_addr, (unsigned long long)pdt->base_addr);
     const uint64_t lane = tid % 32;
     const uint64_t old_warp_id = tid / 32;
-    const uint64_t n_elems_per_page = 512 / sizeof(T);
+    const uint64_t n_elems_per_page = 4096 / sizeof(T);
     T v = 0;
     uint64_t idx =0;
-    uint64_t nep = (n_warps+stride)/stride; 
-    uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
+    const uint64_t nep = (n_warps+stride)/stride; 
+    const uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
 
     if (warp_id < n_warps) {
-		bam_ptr<T> ptr(dr);
+		bam_ptr<T> ptr(dr, &pdt_sh);
         size_t start_sector = n_pages_per_warp * warp_id;;
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
         for (size_t i = 0; i < n_pages_per_warp; i++) {
@@ -305,7 +311,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t old_warp_id = tid / 32;
-    const uint64_t n_elems_per_sector = 512 / sizeof(T);
+    const uint64_t n_elems_per_sector = 4096 / sizeof(T);
     
     uint64_t nep = (n_warps+stride)/stride; 
     uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
@@ -637,7 +643,8 @@ int main(int argc, char *argv[]) {
                 }
                 case SEQUENTIAL_WARP_PC:{
                     //printf("blockDim.x is %llu \t blocksize: %llu\n", blockDim.x, blocksize );
-                    kernel_sequential_warp_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size, settings.stride);
+                    cuda_err_chk(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
+                    kernel_sequential_warp_pc<uint64_t><<<blockDim, blocksize>>>(h_Aarray->d_array_ptr, h_pc->d_pc_ptr, a_d,n_elems, n_pages_per_warp, output_d, n_warps, pc_page_size, settings.stride);
                     break;
                 }
 
@@ -713,7 +720,7 @@ int main(int argc, char *argv[]) {
             if((type == SEQUENTIAL_WARP) || (type == SEQUENTIAL_WARP_PC) || (type == RANDOM_WARP) || (type == RANDOM_WARP_PC) || (type == POWERLAW_WARP) || (type == POWERLAW_WARP_PC)){
 				
 				//ios = n_warps*n_pages_per_warp*n_elems_per_page; 
-				ios = n_warps*n_pages_per_warp*512/sizeof(uint64_t); 
+				ios = n_warps*n_pages_per_warp*4096/sizeof(uint64_t); 
                 iops = ((double) ios*1000/ (milliseconds)); 
 				data = ios*sizeof(uint64_t); 
 				bandwidth = (((double) data*1000/(milliseconds))/(1024ULL*1024ULL*1024ULL));

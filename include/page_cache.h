@@ -321,6 +321,7 @@ struct page_cache_t
 
         this->pages_dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(cache_size, 1UL << 16), cudaDevice);
         pdt.base_addr = (uint8_t *)this->pages_dma.get()->vaddr;
+        std::cout << "pdt.base_addr " << std::dec << this->pages_dma.get()->vaddr << std::endl;
         //std::cout << "pages_dma: " << std::hex << this->pages_dma.get()->vaddr << "\t" << this->pages_dma.get()->ioaddrs[0] << std::endl;
         //std::cout << "HEREN\n";
         const uint32_t uints_per_page = ctrl.ctrl->page_size / sizeof(uint64_t);
@@ -829,7 +830,7 @@ __forceinline__
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    //read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
+                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
                     //    hexdump((void*)cache->base_addr, 512);
                     expected_state = SECTOR_DISABLE_BUSY_ENABLE_VALID << (shift_val);
                     if (write)
@@ -1396,20 +1397,27 @@ struct bam_ptr {
     int64_t range_id = -1;
     T* addr = nullptr;
     uint64_t base_master;
+    page_cache_d_t* pdt_sh;
 
     __host__ __device__
     bam_ptr(array_d_t<T>* a) { init(a); }
 
     __host__ __device__
+    bam_ptr(array_d_t<T>* a, page_cache_d_t* pc_sh) { init(a, pc_sh); }
+
+    __host__ __device__
     ~bam_ptr() { fini(); }
 
     __host__ __device__
-    void init(array_d_t<T>* a) { array = a; }
+    void init(array_d_t<T>* a) { array = a;}
+
+    __host__ __device__
+    void init(array_d_t<T>* a, page_cache_d_t* pc_sh) { array = a; pdt_sh = pc_sh;}
 
     __host__ __device__
     void fini(void) {
         if (page) {
-            //printf("tid %llu\ti %llu releasing page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
+            //printf("tid %llu\t releasing page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x));
             array->release_page(page, range_id, start);
             start = -1;
             end = -1;
@@ -1443,14 +1451,14 @@ struct bam_ptr {
     __host__ __device__
     T operator[](const size_t i) const {
         if (page) {
-            if ((i < start) || (i >= end)) {
+            if ((i < start) || (i >= end) || (i < sector_start) || (i>= sector_end)) {
                 //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
                 update_page(i);
             }
-            else if ((i < sector_start) || (i>= sector_end)) {
+            /*else if ((i < sector_start) || (i>= sector_end)) {
                 //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
                 update_sector(i);
-            }
+            }*/
         }
         else {
             //printf("tid %llu\ti %llu updating page", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x),(unsigned long long)i);
@@ -1607,17 +1615,21 @@ __forceinline__
                         if ((new_expected_state & DIRTY)) {
                             uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
                             uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-                            printf("Evicting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
-                                    (unsigned long long) previous_range, (unsigned long long)previous_address,
-                                    (unsigned long long) ctrl, (unsigned long long) index);
+                            //printf("Evicting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                            //       (unsigned long long) previous_range, (unsigned long long)previous_address,
+                            //        (unsigned long long) ctrl, (unsigned long long) index);
                             if (ctrl == ALL_CTRLS)
                             {
+                                //#pragma unroll(0)
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++)
                                 {
                                     Controller *c = this->d_ctrls[ctrl];
                                     uint32_t queue = get_smid() % (c->n_qps);
+                                    //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page, 0);
+                                    /*#pragma unroll(0)
                                     for (int i=0; i<n_sector_states; i++) {
                                         uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                        #pragma unroll(0)
                                         for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
@@ -1625,7 +1637,7 @@ __forceinline__
                                                 write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                             }
                                         }
-                                    }
+                                    }*/
                                 }
                             }
                             else
@@ -1633,8 +1645,11 @@ __forceinline__
 
                                 Controller *c = this->d_ctrls[ctrl];
                                 uint32_t queue = get_smid() % (c->n_qps);
+                                //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page), this->n_blocks_per_page, page, 0);
+                                /*#pragma unroll(0)
                                 for (int i=0; i<n_sector_states; i++) {
                                     uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                    #pragma unroll(0)
                                     for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
@@ -1642,11 +1657,12 @@ __forceinline__
                                             write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                         }
                                     }
-                                }
+                                }*/
 
                             }
 
                         }
+                        #pragma unroll(0)
                         for (int i = 0; i< n_sector_states; i++) {
                                 this->s_ranges[previous_range][previous_address*n_sector_states+i].fetch_and(ALL_SECTORS_INVALID, simt::memory_order_release);
                         }
@@ -1735,8 +1751,10 @@ __forceinline__
                                 {
                                     Controller *c = this->d_ctrls[ctrl];
                                     uint32_t queue = queue_ % (c->n_qps);
+                                    #pragma unroll(0)
                                     for (int i=0; i<n_sector_states; i++) {
                                         uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                        #pragma unroll(0)
                                         for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
@@ -1752,8 +1770,10 @@ __forceinline__
 
                                 Controller *c = this->d_ctrls[ctrl];
                                 uint32_t queue = queue_ % (c->n_qps);
+                                #pragma unroll(0)
                                 for (int i=0; i<n_sector_states; i++) {
                                     uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                    #pragma unroll(0)
                                     for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
@@ -1766,6 +1786,7 @@ __forceinline__
                             }
 
                         }
+                        #pragma unroll(0)
                         for (int i = 0; i< n_sector_states; i++) {
                             this->s_ranges[previous_range][previous_address*n_sector_states+i].fetch_and(ALL_SECTORS_INVALID, simt::memory_order_release);
                         }
@@ -1837,12 +1858,12 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     //printf("read_data tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
+    /*uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
 
     uint32_t head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
-    sq_dequeue(&qp->sq, sq_pos);
+    //sq_dequeue(&qp->sq, sq_pos);*/
     //printf("read_data entry dequeued\n");   
     put_cid(&qp->sq, cid);
     //printf("--read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);

@@ -54,6 +54,7 @@ struct Settings
     uint64_t accessType;
     uint64_t ratio;
     const char*     input;
+    uint64_t sectorsize;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -388,6 +389,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
         {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write, 2->mixed", "0"))},
         {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
+         {'S', OptionPtr(new Option<uint64_t>(sectorsize, "number", "sectorsize", "Sector size of the cacheline. Assumes power of 2", "4096"))},
     };
 
     string optionString;
@@ -484,6 +486,7 @@ Settings::Settings()
     accessType = READ;
     ratio = 100;
     input = nullptr;
+    sectorsize= 4096;
 }
 
 

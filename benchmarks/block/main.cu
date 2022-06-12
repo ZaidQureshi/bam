@@ -94,7 +94,7 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 
 */
 __global__ __launch_bounds__(64,32)
-void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
+void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment, uint64_t page_size) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t laneid = lane_id();
@@ -128,11 +128,11 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
                 access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
             }
             else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid/page_size, tid);
 
             }
             else {
-                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid/page_size, tid);
             }
         }
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -147,7 +147,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
 }
 
 __global__ __launch_bounds__(64,32)
-void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
+void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment, uint32_t page_size) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t laneid = lane_id();
@@ -180,11 +180,11 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
                 access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
             }
             else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid/page_size, tid);
 
             }
             else {
-                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
+                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid/page_size, tid);
             }
         }
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -276,9 +276,9 @@ int main(int argc, char** argv) {
 
 
         uint64_t page_size = settings.pageSize;
-        uint64_t sector_size = page_size/8;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
+        uint32_t sector_size = settings.sectorsize;
         //uint64_t n_pages = total_cache_size/page_size;
         //
         if (n_pages < n_threads) {
@@ -287,7 +287,7 @@ int main(int argc, char** argv) {
         }
 
 
-        page_cache_t h_pc(page_size, n_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
+        page_cache_t h_pc(page_size, n_pages, sector_size, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
         std::cout << "finished creating cache\n";
 
         //QueuePair* d_qp;
@@ -342,9 +342,9 @@ int main(int argc, char** argv) {
         }
         std::cout << "atlaunch kernel\n";
         if (settings.random)
-            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, sector_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
+            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, sector_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment, page_size);
         else
-            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, sector_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
+            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, sector_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment, page_size);
         Event after;
 
         //print_cache_kernel<<<1,1>>>(d_pc);
