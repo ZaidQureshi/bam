@@ -244,11 +244,12 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uin
 		bam_ptr<T> ptr(dr);
         size_t start_sector = n_pages_per_warp * warp_id;;
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
+        #pragma unroll(0)
         for (size_t i = 0; i < n_pages_per_warp; i++) {
             size_t cur_sector = start_sector + i;
             //	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
             size_t start_idx = cur_sector * n_elems_per_page + lane;
-
+            #pragma unroll(0)
             for (size_t j = 0; j < n_elems_per_page; j += WARPSIZE) {
                     //printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                     idx = start_idx + j; 
@@ -279,11 +280,12 @@ void kernel_random_warp(T *input,uint64_t n_elems, uint64_t n_pages_per_warp, un
     if (warp_id < n_warps) {
         size_t start_page = assignment[warp_id];
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
+        #pragma unroll(0)
         for (size_t i = 0; i < n_pages_per_warp; i++) {
             size_t cur_page = start_page + i;
             //	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
             size_t start_idx = cur_page * n_elems_per_page + lane;
-
+            #pragma unroll(0)
             for (size_t j = 0; j < n_elems_per_page; j += 32) {
             //		printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                     idx = start_idx + j; 
