@@ -1622,7 +1622,7 @@ __forceinline__
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
                                                 int sector = (i*n_sector_states) + j;
-                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
+                                                //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                             }
                                         }
                                     }
@@ -1639,7 +1639,7 @@ __forceinline__
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
                                             int sector = (i*n_sector_states) + j;
-                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
+                                            //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                         }
                                     }
                                 }
@@ -1741,7 +1741,7 @@ __forceinline__
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
                                                 int sector = (i*n_sector_states) + j;
-                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
+                                                //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                             }
                                         }
                                     }
@@ -1758,7 +1758,7 @@ __forceinline__
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
                                             int sector = (i*n_sector_states) + j;
-                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
+                                            //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                         }
                                     }
                                 }
