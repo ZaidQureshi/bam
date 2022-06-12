@@ -1607,17 +1607,20 @@ __forceinline__
                         if ((new_expected_state & DIRTY)) {
                             uint64_t ctrl = get_backing_ctrl_(previous_address, n_ctrls, ranges_dists[previous_range]);
                             uint64_t index = get_backing_page_(ranges_page_starts[previous_range], previous_address, n_ctrls, ranges_dists[previous_range]);
-                            printf("Evicting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
-                                    (unsigned long long) previous_range, (unsigned long long)previous_address,
-                                    (unsigned long long) ctrl, (unsigned long long) index);
+                            //printf("Evicting range_id: %llu\tpage_id: %llu\tctrl: %llx\tindex: %llu\n",
+                            //        (unsigned long long) previous_range, (unsigned long long)previous_address,
+                            //        (unsigned long long) ctrl, (unsigned long long) index);
                             if (ctrl == ALL_CTRLS)
                             {
+                                #pragma unroll(0)
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++)
                                 {
                                     Controller *c = this->d_ctrls[ctrl];
                                     uint32_t queue = get_smid() % (c->n_qps);
+                                    #pragma unroll(0)
                                     for (int i=0; i<n_sector_states; i++) {
                                         uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                        #pragma unroll(0)
                                         for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
@@ -1633,8 +1636,10 @@ __forceinline__
 
                                 Controller *c = this->d_ctrls[ctrl];
                                 uint32_t queue = get_smid() % (c->n_qps);
+                                #pragma unroll(0)
                                 for (int i=0; i<n_sector_states; i++) {
                                     uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                    #pragma unroll(0)
                                     for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
@@ -1647,6 +1652,7 @@ __forceinline__
                             }
 
                         }
+                        #pragma unroll(0)
                         for (int i = 0; i< n_sector_states; i++) {
                                 this->s_ranges[previous_range][previous_address*n_sector_states+i].fetch_and(ALL_SECTORS_INVALID, simt::memory_order_release);
                         }
@@ -1731,12 +1737,15 @@ __forceinline__
                             //        (unsigned long long) ctrl, (unsigned long long) index);
                             if (ctrl == ALL_CTRLS)
                             {
+                                #pragma unroll(0)
                                 for (ctrl = 0; ctrl < n_ctrls; ctrl++)
                                 {
                                     Controller *c = this->d_ctrls[ctrl];
                                     uint32_t queue = queue_ % (c->n_qps);
+                                    #pragma unroll(0)
                                     for (int i=0; i<n_sector_states; i++) {
                                         uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                        #pragma unroll(0)
                                         for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
@@ -1752,8 +1761,10 @@ __forceinline__
 
                                 Controller *c = this->d_ctrls[ctrl];
                                 uint32_t queue = queue_ % (c->n_qps);
+                                #pragma unroll(0)
                                 for (int i=0; i<n_sector_states; i++) {
                                     uint32_t sect_states = this->s_ranges[previous_range][previous_address*n_sector_states+i].load(simt::memory_order_acquire);
+                                    #pragma unroll(0)
                                     for (int j=0; j<N_SECTORS_PER_STATE; j++) {
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
@@ -1766,6 +1777,7 @@ __forceinline__
                             }
 
                         }
+                        #pragma unroll(0)
                         for (int i = 0; i< n_sector_states; i++) {
                             this->s_ranges[previous_range][previous_address*n_sector_states+i].fetch_and(ALL_SECTORS_INVALID, simt::memory_order_release);
                         }
