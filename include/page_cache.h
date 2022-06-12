@@ -829,7 +829,7 @@ __forceinline__
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
+                    //read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
                     //    hexdump((void*)cache->base_addr, 512);
                     expected_state = SECTOR_DISABLE_BUSY_ENABLE_VALID << (shift_val);
                     if (write)
