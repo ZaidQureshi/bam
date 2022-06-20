@@ -829,7 +829,7 @@ __forceinline__
                     c->access_counter.fetch_add(1, simt::memory_order_relaxed);
                     read_io_cnt.fetch_add(1, simt::memory_order_relaxed);
                     //printf("tid %d\t in acquire_sector reading data\n", (blockIdx.x*blockDim.x+threadIdx.x));
-                    //read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
+                    read_data(cache, &(c->d_qps[queue]), ((b_page)*cache->n_blocks_per_page) + (sector*cache->n_blocks_per_sector), cache->n_blocks_per_sector, page_trans, sector);
                     //    hexdump((void*)cache->base_addr, 512);
                     expected_state = SECTOR_DISABLE_BUSY_ENABLE_VALID << (shift_val);
                     if (write)
@@ -1397,15 +1397,19 @@ struct bam_ptr {
     T* addr = nullptr;
     uint64_t base_master;
 
+    __forceinline__
     __host__ __device__
     bam_ptr(array_d_t<T>* a) { init(a); }
 
+    __forceinline__
     __host__ __device__
     ~bam_ptr() { fini(); }
 
+    __forceinline__
     __host__ __device__
     void init(array_d_t<T>* a) { array = a; }
 
+    __forceinline__
     __host__ __device__
     void fini(void) {
         if (page) {
@@ -1420,6 +1424,7 @@ struct bam_ptr {
 
     }
 
+    __forceinline__
     __host__ __device__
     void update_page(const size_t i) {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
@@ -1430,6 +1435,7 @@ struct bam_ptr {
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
 
+    __forceinline__
     __host__ __device__
     void update_sector(const size_t i) {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
@@ -1440,6 +1446,7 @@ struct bam_ptr {
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
     }
 
+    __forceinline__
     __host__ __device__
     T operator[](const size_t i) const {
         if (page) {
@@ -1460,6 +1467,7 @@ struct bam_ptr {
         return addr[i-sector_start];
     }
 
+    __forceinline__
     __host__ __device__
     T& operator[](const size_t i) {
         if (page) {
@@ -1625,7 +1633,7 @@ __forceinline__
                                             uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                             if (sect_states & dirty_mask) {
                                                 int sector = (i*n_sector_states) + j;
-                                                //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
+                                                write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                             }
                                         }
                                     }
@@ -1644,7 +1652,7 @@ __forceinline__
                                         uint32_t dirty_mask = SECTOR_DIRTY << (SECTOR_STATUS_BITS*j);
                                         if (sect_states & dirty_mask) {
                                             int sector = (i*n_sector_states) + j;
-                                            //write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
+                                            write_data(this, (c->d_qps) + queue, (index * this->n_blocks_per_page) + (sector* this->n_blocks_per_sector), this->n_blocks_per_sector, page, sector);
                                         }
                                     }
                                 }
@@ -1854,7 +1862,7 @@ inline __device__ void read_data(page_cache_d_t *pc, QueuePair *qp, const uint64
     uint32_t head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
-    sq_dequeue(&qp->sq, sq_pos);
+    //sq_dequeue(&qp->sq, sq_pos);
     //printf("read_data entry dequeued\n");   
     put_cid(&qp->sq, cid);
     //printf("--read_data tid: %llu\tsector %llu\tprp_entry: %llu\tprp1: %llx\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long)sector, (unsigned long long) (prp_entry), (unsigned long long)prp1);

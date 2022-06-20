@@ -63,7 +63,7 @@ using error = std::runtime_error;
 using std::string;
 //const char* const ctrls_paths[] = {"/dev/libnvmpro0", "/dev/libnvmpro1", "/dev/libnvmpro2", "/dev/libnvmpro3", "/dev/libnvmpro4", "/dev/libnvmpro5", "/dev/libnvmpro6", "/dev/libnvmpro7"};
 //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
-const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
+const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm9", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8"};
 
 #define WARP_SHIFT 5
 #define WARPSIZE 32
@@ -228,13 +228,13 @@ void kernel_sequential_warp(T *input, uint64_t n_elems,  uint64_t n_pages_per_wa
 }
 
 template<typename T>
-__global__ //__launch_bounds__(64,32)
+__global__ //__launch_bounds__(128, 32)
 void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_t n_pages_per_warp, unsigned long long* sum,  uint64_t n_warps, size_t page_size, uint64_t stride) {
 
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t old_warp_id = tid / 32;
-    const uint64_t n_elems_per_page = 512 / sizeof(T);
+    const uint64_t n_elems_per_page = 4096 / sizeof(T);
     T v = 0;
     uint64_t idx =0;
     uint64_t nep = (n_warps+stride)/stride; 
@@ -244,12 +244,12 @@ void kernel_sequential_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uin
 		bam_ptr<T> ptr(dr);
         size_t start_sector = n_pages_per_warp * warp_id;;
         //	if (lane == 0) printf("start_page: %llu\n", (unsigned long long) start_page);
-        #pragma unroll(0)
+        //#pragma unroll(0)
         for (size_t i = 0; i < n_pages_per_warp; i++) {
             size_t cur_sector = start_sector + i;
             //	    printf("warp_id: %llu\tcur_page: %llu\n", (unsigned long long) warp_id, (unsigned long long) cur_page);
             size_t start_idx = cur_sector * n_elems_per_page + lane;
-            #pragma unroll(0)
+            //#pragma unroll(0)
             for (size_t j = 0; j < n_elems_per_page; j += WARPSIZE) {
                     //printf("startidx: %llu\n", (unsigned long long) (start_idx+j));
                     idx = start_idx + j; 
@@ -307,7 +307,7 @@ void kernel_random_warp_pc(array_d_t<T>* dr, T *input, uint64_t n_elems, uint64_
     const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint64_t lane = tid % 32;
     const uint64_t old_warp_id = tid / 32;
-    const uint64_t n_elems_per_sector = 512 / sizeof(T);
+    const uint64_t n_elems_per_sector = 4096 / sizeof(T);
     
     uint64_t nep = (n_warps+stride)/stride; 
     uint64_t warp_id = (old_warp_id/nep) + ((old_warp_id % nep)* stride);
@@ -545,11 +545,12 @@ int main(int argc, char *argv[]) {
             //std::random_device rd;  //Will be used to obtain a seed for the random number engine
             //std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
             //std::uniform_int_distribution<uint64_t> distrib(0, n_data_pages);
-
+            uint32_t chunks_4kb = n_data_pages * ceil((1.0f*pc_page_size)/4096);
+            srand(0);
             for(uint64_t i=0; i< n_warps; i++){
                 //uint64_t page = distrib(gen); 
-                uint64_t n_sectors = n_data_pages * ceil((1.0f*pc_page_size)/sector_size);
-                uint64_t page = rand() % (n_sectors); 
+                //uint64_t n_sectors = n_data_pages * ceil((1.0f*pc_page_size)/sector_size);
+                uint64_t page = rand() % (chunks_4kb); 
                 assignment_h[i] = page; 
                 //printf("%llu \t", page);
             }
@@ -715,7 +716,7 @@ int main(int argc, char *argv[]) {
             if((type == SEQUENTIAL_WARP) || (type == SEQUENTIAL_WARP_PC) || (type == RANDOM_WARP) || (type == RANDOM_WARP_PC) || (type == POWERLAW_WARP) || (type == POWERLAW_WARP_PC)){
 				
 				//ios = n_warps*n_pages_per_warp*n_elems_per_page; 
-				ios = n_warps*n_pages_per_warp*512/sizeof(uint64_t); 
+				ios = n_warps*n_pages_per_warp*4096/sizeof(uint64_t); 
                 iops = ((double) ios*1000/ (milliseconds)); 
 				data = ios*sizeof(uint64_t); 
 				bandwidth = (((double) data*1000/(milliseconds))/(1024ULL*1024ULL*1024ULL));
@@ -723,7 +724,7 @@ int main(int argc, char *argv[]) {
 			    avgbandwidth = (((double) data*1000/(avgtime))/(1024ULL*1024ULL*1024ULL));
             }
 
-			if(mem == BAFS_DIRECT) {
+			if(mem == BAFS_DIRECT && titr==0) {
                  h_Aarray->print_reset_stats();
                  cuda_err_chk(cudaDeviceSynchronize());
             }
