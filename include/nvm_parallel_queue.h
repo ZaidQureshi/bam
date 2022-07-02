@@ -165,7 +165,7 @@ uint32_t move_head_sq(nvm_queue_t* q, uint32_t cur_head) {
 typedef ulonglong4 copy_type;
 
 inline __device__
-uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
+uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, simt::atomic<uint64_t, simt::thread_scope_device>* pc_tail =NULL, uint64_t * cur_pc_tail) {
 
     //uint32_t mask = __activemask();
     //uint32_t active_count = __popc(mask);
@@ -293,6 +293,9 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd) {
                 if (tail_move_count) {
                     uint32_t new_tail = cur_tail + tail_move_count;
                     uint32_t new_db = (new_tail) & (sq->qs_minus_1);
+                    if (pc_tail) {
+                        *cur_pc_tail = pc_tail->load(simt::memory_order_acquire);
+                    }
                     *(sq->db) = new_db;
 
                     //sq->tail_copy.store(new_tail, simt::memory_order_release);

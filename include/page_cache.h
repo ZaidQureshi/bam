@@ -525,6 +525,9 @@ struct page_cache_d_t {
     data_dist_t* ranges_dists;
     simt::atomic<uint64_t, simt::thread_scope_device>* ctrl_counter;
 
+    simt::atomic<uint64_t, simt::thread_scope_device> q_head;
+    simt::atomic<uint64_t, simt::thread_scope_device> q_tail;
+    simt::atomic<uint64_t, simt::thread_scope_device> q_lock;
 
     Controller** d_ctrls;
     uint64_t n_ctrls;
@@ -680,6 +683,9 @@ struct page_cache_t {
         ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
         pdt.page_size = ps;
+        pdt.q_head = 0;
+        pdt.q_tail = 0;
+        pdt.q_lock = 0;
         pdt.page_size_minus_1 = ps - 1;
         pdt.n_pages = np;
         pdt.ctrl_page_size = ctrl.ctrl->page_size;
@@ -1923,6 +1929,52 @@ inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, cons
 
 }
 
+inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, nvm_cmd_t* cmd, const uint16_t cid, const uint64_t pc_pos, const uint64_t pc_prev_head) {
+    nvm_cmd_rw_blks(cmd, starting_lba, 1);
+    unsigned int ns = 8;
+    do {
+        //check if new head past pc_pos
+        //cur_pc_head == new head
+        //prev_pc_head == old head
+        //pc_pos == position i wanna move the head past
+        uint64_t cur_pc_head = pc->q_head.load(simt::memory_order_relaxed);
+        //sec == true when cur_pc_head past pc_pos
+        bool sec = ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) ||
+            ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) ||
+            ((pc_pos < cur_pc_head) && (cur_pc_head < prev_pc_head));
+
+        if (sec) break;
+
+        //if not
+        uint64_t qlv = pc->q_lock.load(simt::memory_order_relaxed);
+        //got lock
+        if (qlv == 0) {
+            qlv = pc->q_lock.fetch_or(1, simt::memory_order_acquire);
+            if (qlv == 0) {
+                uint64_t cur_pc_tail;// = pc->q_tail.load(simt::memory_order_acquire);
+
+                uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd, &pc->q_tail, &cur_pc_tail);
+                uint32_t head;
+                uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+                pc->q_head.store(cur_pc_tail, simt::memory_order_release);
+                pc->q_lock.fetch_and(0, simt::memory_order_release);
+                cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+
+
+
+                break;
+            }
+        }
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+         __nanosleep(ns);
+         if (ns < 256) {
+             ns *= 2;
+         }
+#endif
+    } while(true);
+
+}
+
 inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
@@ -1947,10 +1999,17 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
     uint32_t head;
+    uint64_t pc_pos;
+    uint64_t pc_prev_head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+    pc_prev_head = pc->q_head.load(simt::memory_order_acq_rel);
+    pc_pos = pc->q_tail.fetch_add(1, simt::memory_order_acq_rel);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     //sq_dequeue(&qp->sq, sq_pos);
 
+
+
+    enqueue_second(pc, qp, starting_lba, prp1, prp2, pc_pos, pc_prev_head);
 
 
 
