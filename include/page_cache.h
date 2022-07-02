@@ -525,9 +525,9 @@ struct page_cache_d_t {
     data_dist_t* ranges_dists;
     simt::atomic<uint64_t, simt::thread_scope_device>* ctrl_counter;
 
-    simt::atomic<uint64_t, simt::thread_scope_device> q_head;
-    simt::atomic<uint64_t, simt::thread_scope_device> q_tail;
-    simt::atomic<uint64_t, simt::thread_scope_device> q_lock;
+    simt::atomic<uint64_t, simt::thread_scope_device>* q_head;
+    simt::atomic<uint64_t, simt::thread_scope_device>* q_tail;
+    simt::atomic<uint64_t, simt::thread_scope_device>* q_lock;
 
     Controller** d_ctrls;
     uint64_t n_ctrls;
@@ -653,7 +653,9 @@ struct page_cache_t {
 
     BufferPtr page_ticket_buf;
     BufferPtr ctrl_counter_buf;
-
+    BufferPtr q_head_buf;
+    BufferPtr q_tail_buf;
+    BufferPtr q_lock_buf;
 
 
     void flush_cache() {
@@ -681,11 +683,14 @@ struct page_cache_t {
     page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
 
         ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        q_head_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        q_tail_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        q_lock_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
         pdt.page_size = ps;
-        pdt.q_head = 0;
-        pdt.q_tail = 0;
-        pdt.q_lock = 0;
+        pdt.q_head = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_head_buf.get();
+        pdt.q_tail = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_tail_buf.get();
+        pdt.q_lock = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_lock_buf.get();
         pdt.page_size_minus_1 = ps - 1;
         pdt.n_pages = np;
         pdt.ctrl_page_size = ctrl.ctrl->page_size;
