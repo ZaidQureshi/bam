@@ -528,6 +528,7 @@ struct page_cache_d_t {
     simt::atomic<uint64_t, simt::thread_scope_device>* q_head;
     simt::atomic<uint64_t, simt::thread_scope_device>* q_tail;
     simt::atomic<uint64_t, simt::thread_scope_device>* q_lock;
+    simt::atomic<uint64_t, simt::thread_scope_device>* extra_reads;
 
     Controller** d_ctrls;
     uint64_t n_ctrls;
@@ -542,6 +543,8 @@ struct page_cache_d_t {
     __forceinline__
     __device__
     uint32_t find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
+
+
 };
 
 
@@ -656,7 +659,16 @@ struct page_cache_t {
     BufferPtr q_head_buf;
     BufferPtr q_tail_buf;
     BufferPtr q_lock_buf;
+    BufferPtr extra_reads_buf;
 
+    void print_reset_stats(void) {
+        uint64_t v = 0;
+        cuda_err_chk(cudaMemcpy(&v, pdt.extra_reads, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
+
+        cuda_err_chl(cudaMemset(pdt.extra_reads, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
+
+        printf("Cache Extra Reads: %llu\n", v);
+    }
 
     void flush_cache() {
         size_t threads = 64;
@@ -686,11 +698,13 @@ struct page_cache_t {
         q_head_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         q_tail_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         q_lock_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        extra_reads_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
         pdt.page_size = ps;
         pdt.q_head = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_head_buf.get();
         pdt.q_tail = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_tail_buf.get();
         pdt.q_lock = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_lock_buf.get();
+        pdt.extra_reads = (simt::atomic<uint64_t, simt::thread_scope_device>*)extra_reads_buf.get();
         pdt.page_size_minus_1 = ps - 1;
         pdt.n_pages = np;
         pdt.ctrl_page_size = ctrl.ctrl->page_size;
@@ -1961,8 +1975,10 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
                 uint16_t sq_pos = sq_enqueue(&qp->sq, cmd, pc->q_tail, &cur_pc_tail);
                 uint32_t head;
                 uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+
                 pc->q_head->store(cur_pc_tail, simt::memory_order_release);
                 pc->q_lock->fetch_and(0, simt::memory_order_release);
+                pc->extra_reads->fetch_add(1, simt::memory_order_relaxed);
                 cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
 
 
