@@ -272,6 +272,9 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, simt::atomic<uint64_t, simt
     } while(!proceed);
     */
     //sq->tickets[pos].val.store(id + 1, simt::memory_order_release);
+    if (pc_tail) {
+        *cur_pc_tail = pc_tail->load(simt::memory_order_relaxed);
+    }
     sq->tail_mark[pos].val.store(LOCKED, simt::memory_order_release);
     /*     while (((pos+1) & sq->qs_minus_1) == (sq->head.load(simt::memory_order_acquire) & (sq->qs_minus_1))) { */
 /* #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__)) */
@@ -293,9 +296,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, simt::atomic<uint64_t, simt
                 if (tail_move_count) {
                     uint32_t new_tail = cur_tail + tail_move_count;
                     uint32_t new_db = (new_tail) & (sq->qs_minus_1);
-                    if (pc_tail) {
-                        *cur_pc_tail = pc_tail->load(simt::memory_order_acquire);
-                    }
+
                     *(sq->db) = new_db;
 
                     //sq->tail_copy.store(new_tail, simt::memory_order_release);
@@ -317,6 +318,7 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, simt::atomic<uint64_t, simt
         }
 
     }
+
 
 
     sq->tickets[pos].val.fetch_add(1, simt::memory_order_acq_rel);

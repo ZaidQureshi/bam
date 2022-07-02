@@ -1977,7 +1977,7 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
                 uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
 
                 pc->q_head->store(cur_pc_tail, simt::memory_order_release);
-                pc->q_lock->fetch_and(0, simt::memory_order_release);
+                pc->q_lock->store(0, simt::memory_order_release);
                 pc->extra_reads->fetch_add(1, simt::memory_order_relaxed);
                 cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
 
