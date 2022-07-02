@@ -1941,7 +1941,7 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
         //sec == true when cur_pc_head past pc_pos
         bool sec = ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) ||
             ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) ||
-            ((pc_pos < cur_pc_head) && (cur_pc_head < prev_pc_head));
+            ((pc_pos < cur_pc_head) && (cur_pc_head < pc_prev_head));
 
         if (sec) break;
 
@@ -1953,7 +1953,7 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
             if (qlv == 0) {
                 uint64_t cur_pc_tail;// = pc->q_tail.load(simt::memory_order_acquire);
 
-                uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd, &pc->q_tail, &cur_pc_tail);
+                uint16_t sq_pos = sq_enqueue(&qp->sq, cmd, &pc->q_tail, &cur_pc_tail);
                 uint32_t head;
                 uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
                 pc->q_head.store(cur_pc_tail, simt::memory_order_release);
@@ -2008,8 +2008,8 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     //sq_dequeue(&qp->sq, sq_pos);
 
 
-
-    enqueue_second(pc, qp, starting_lba, prp1, prp2, pc_pos, pc_prev_head);
+    //enqueue_second(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, nvm_cmd_t* cmd, const uint16_t cid, const uint64_t pc_pos, const uint64_t pc_prev_head)
+    enqueue_second(pc, qp, starting_lba, &cmd, cid, pc_pos, pc_prev_head);
 
 
 
