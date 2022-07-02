@@ -1973,13 +1973,13 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
                 uint64_t cur_pc_tail;// = pc->q_tail.load(simt::memory_order_acquire);
 
                 uint16_t sq_pos = sq_enqueue(&qp->sq, cmd, pc->q_tail, &cur_pc_tail);
-                uint32_t head;
-                uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+                uint32_t head, head_;
+                uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
 
                 pc->q_head->store(cur_pc_tail, simt::memory_order_release);
                 pc->q_lock->fetch_and(0, simt::memory_order_release);
                 pc->extra_reads->fetch_add(1, simt::memory_order_relaxed);
-                cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+                cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
 
 
 
@@ -2019,14 +2019,15 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head;
+    uint32_t head, head_;
     uint64_t pc_pos;
     uint64_t pc_prev_head;
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
+
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
     qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
     pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
     pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
     //sq_dequeue(&qp->sq, sq_pos);
 
 
@@ -2053,8 +2054,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
     ////printf("cid: %u\n", (unsigned int) cid);
-    // //printf("write_data startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
-    //        (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
+
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
@@ -2065,16 +2065,21 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head;
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+    uint32_t head, head_;
+    uint64_t pc_pos;
+    uint64_t pc_prev_head;
+
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
+    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
+    pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
+    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
     //sq_dequeue(&qp->sq, sq_pos);
 
 
 
 
     put_cid(&qp->sq, cid);
-
 
 }
 
