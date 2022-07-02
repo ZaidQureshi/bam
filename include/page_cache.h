@@ -1942,7 +1942,7 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
         //cur_pc_head == new head
         //prev_pc_head == old head
         //pc_pos == position i wanna move the head past
-        uint64_t cur_pc_head = pc->q_head.load(simt::memory_order_relaxed);
+        uint64_t cur_pc_head = pc->q_head->load(simt::memory_order_relaxed);
         //sec == true when cur_pc_head past pc_pos
         bool sec = ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) ||
             ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) ||
@@ -1951,18 +1951,18 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
         if (sec) break;
 
         //if not
-        uint64_t qlv = pc->q_lock.load(simt::memory_order_relaxed);
+        uint64_t qlv = pc->q_lock->load(simt::memory_order_relaxed);
         //got lock
         if (qlv == 0) {
-            qlv = pc->q_lock.fetch_or(1, simt::memory_order_acquire);
+            qlv = pc->q_lock->fetch_or(1, simt::memory_order_acquire);
             if (qlv == 0) {
                 uint64_t cur_pc_tail;// = pc->q_tail.load(simt::memory_order_acquire);
 
-                uint16_t sq_pos = sq_enqueue(&qp->sq, cmd, &pc->q_tail, &cur_pc_tail);
+                uint16_t sq_pos = sq_enqueue(&qp->sq, cmd, pc->q_tail, &cur_pc_tail);
                 uint32_t head;
                 uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
-                pc->q_head.store(cur_pc_tail, simt::memory_order_release);
-                pc->q_lock.fetch_and(0, simt::memory_order_release);
+                pc->q_head->store(cur_pc_tail, simt::memory_order_release);
+                pc->q_lock->fetch_and(0, simt::memory_order_release);
                 cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
 
 
@@ -2007,8 +2007,8 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     uint64_t pc_pos;
     uint64_t pc_prev_head;
     uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
-    pc_prev_head = pc->q_head.load(simt::memory_order_acq_rel);
-    pc_pos = pc->q_tail.fetch_add(1, simt::memory_order_acq_rel);
+    pc_prev_head = pc->q_head->load(simt::memory_order_acq_rel);
+    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
     //sq_dequeue(&qp->sq, sq_pos);
 
