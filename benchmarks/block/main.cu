@@ -362,6 +362,7 @@ int main(int argc, char** argv) {
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
         std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
         std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
+        h_pc.print_reset_stats();
         //std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
         //std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);
