@@ -296,7 +296,9 @@ uint16_t sq_enqueue(nvm_queue_t* sq, nvm_cmd_t* cmd, simt::atomic<uint64_t, simt
                 if (tail_move_count) {
                     uint32_t new_tail = cur_tail + tail_move_count;
                     uint32_t new_db = (new_tail) & (sq->qs_minus_1);
-
+                    if (pc_tail) {
+                        *cur_pc_tail = pc_tail->load(simt::memory_order_acquire);
+                    }
                     *(sq->db) = new_db;
 
                     //sq->tail_copy.store(new_tail, simt::memory_order_release);
