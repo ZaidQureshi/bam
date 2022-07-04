@@ -1725,13 +1725,13 @@ int main(int argc, char *argv[]) {
                  level++;
 
                  cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(uint64_t), cudaMemcpyDeviceToHost));
-                 //auto end = std::chrono::system_clock::now();
-                 //if(mem == BAFS_DIRECT) {
-                 //     h_array->print_reset_stats();
+                 auto end = std::chrono::system_clock::now();
+                 if(mem == BAFS_DIRECT) {
+                      h_array->print_reset_stats();
 
-                 // }
-                 //auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                 //std::cout << "Iter "<< iter << " Time: " << elapsed.count() << " ms" << std::endl;
+                 }
+                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                 std::cout << "Iter "<< iter << " Time: " << elapsed.count() << " ms" << std::endl;
 
                  //break;
              } while(changed_h);

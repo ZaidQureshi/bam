@@ -800,6 +800,15 @@ __forceinline__
 
     do {
         //original_state = page_states[page_index].sector_states[sector_index].load(simt::memory_order_acquire);
+        unsigned int ns = 8;
+        while (((sector_states[page_index*(cache->n_sector_states) + sector_index].load(simt::memory_order_relaxed) & mask) >> shift_val) == SECTOR_BUSY) {
+            #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+            __nanosleep(ns);
+            if (ns < 256) {
+                ns *= 2;
+            }
+            #endif        
+        }
         st = sector_states[page_index*(cache->n_sector_states) + sector_index].load(simt::memory_order_acquire);
         st = (st & mask) >> (shift_val);
         //printf("tid %llu\toriginal state %16x\tpage_index %llu\tsector_index %llu\tsector_number %llu\n", (unsigned long long)(blockIdx.x*blockDim.x+threadIdx.x), (unsigned long long) original_state,(unsigned long long)page_index, (unsigned long long)sector_index, (unsigned long long)sector_number);
@@ -873,6 +882,16 @@ __forceinline__
     read_state =page_states[index].state.fetch_add(count, simt::memory_order_acquire);
     do
     {
+        unsigned int ns = 8;
+        while (((page_states[index].state.load(simt::memory_order_relaxed) >> (CNT_SHIFT + 1))  & 0x03) & BUSY != 0) {
+            #if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+            __nanosleep(ns);
+            if (ns < 256) {
+                ns *= 2;
+            }
+            #endif
+        }
+        read_state =page_states[index].state.load(simt::memory_order_acquire);
         st = (read_state >> (CNT_SHIFT + 1)) & 0x03;
         //expected_state = page_states[index].state.load(simt::memory_order_acquire);
         switch (st)
@@ -910,7 +929,7 @@ __forceinline__
         default:
             break;
         }
-        read_state =page_states[index].state.load(simt::memory_order_acquire);
+        
 
     } while (fail);
     return 0;
@@ -1507,6 +1526,7 @@ struct array_t
         std::vector<range_d_t<T>> rdt(adt.n_ranges);
         //range_d_t<T>* rdt = new range_d_t<T>[adt.n_ranges];
         cuda_err_chk(cudaMemcpy(rdt.data(), adt.d_ranges, adt.n_ranges * sizeof(range_d_t<T>), cudaMemcpyDeviceToHost));
+
         for (size_t i = 0; i < adt.n_ranges; i++)
         {
 

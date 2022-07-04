@@ -1425,6 +1425,9 @@ int main(int argc, char *argv[]) {
                 changed_h = false;
                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
                 auto itrstart = std::chrono::system_clock::now();
+                /*cudaEvent_t itrstart, itrend;
+                float itrmilliseconds;
+                cuda_err_chk(cudaEventRecord(itrstart, 0));*/
 
                 switch (type) {
                     case BASELINE:
@@ -1513,6 +1516,10 @@ int main(int argc, char *argv[]) {
                 //cuda_err_chk(cudaMemcpy(&totalcount_h, totalcount_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
                 //printf("totalcount: %llu\n", totalcount_h);
 
+                /*cuda_err_chk(cudaEventRecord(itrend, 0));
+                cuda_err_chk(cudaEventSynchronize(itrend));
+                cuda_err_chk(cudaEventElapsedTime(&itrmilliseconds, itrstart, itrend));*/
+
                 cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
                 bool *temp = curr_visit_d;
                 curr_visit_d = next_visit_d;
@@ -1524,10 +1531,10 @@ int main(int argc, char *argv[]) {
 	            //std::chrono::duration<double> elapsed_seconds = itrend-itrstart;
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(itrend - itrstart);
 
-                //if(mem == BAFS_DIRECT) {
-                //         h_array->print_reset_stats();
-		        // printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
-                //}
+                /*if(mem == BAFS_DIRECT) {
+                    h_array->print_reset_stats();
+		            printf("CC SSD: %d PageSize: %d itrTime: %f\n", settings.n_ctrls, settings.pageSize, (double)elapsed.count()); 
+                }*/
 
                 if(type == BASELINE){
                     //cuda_err_chk(cudaMemcpy(vertexVisitCount_h.data(), vertexVisitCount_d, vertex_count*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
@@ -1617,7 +1624,7 @@ int main(int argc, char *argv[]) {
                     //if (itr != std::end(vertexVisitCount_h)){
                             auto degreeexists = std::distance(vertexVisitCount_h.begin(), itr);
                             auto average = std::accumulate(vertexVisitCount_h.begin(), vertexVisitCount_h.end(),0.0)/ degreeexists; 
-                            printf("\nActive vertex: %llu : Average: %f  Max: %llu min: %llu itrTime:%f ms\n\n\n", (unsigned long long int)degreeexists, (float) average, vertexVisitCount_h[0],vertexVisitCount_h[degreeexists-1], (double)elapsed.count());
+                            //printf("\nActive vertex: %llu : Average: %f  Max: %llu min: %llu itrTime:%f ms\n\n\n", (unsigned long long int)degreeexists, (float) average, vertexVisitCount_h[0],vertexVisitCount_h[degreeexists-1], (double)elapsed.count());
                     //}
                 } 
 
