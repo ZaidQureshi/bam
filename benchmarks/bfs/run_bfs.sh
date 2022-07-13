@@ -46,10 +46,10 @@ IMPLTYPE=20
 for ((gfid=0; gfid<NUMDATASET; gfid++))
 do
     echo "++++++++++++++++++ ${GraphFileArray[gfid]} located at offset ${GraphFileOffset[gfid]} ++++++++++++++++++"
-    for S in 4096 512    ##baseline, coalesced, frontier, frontier coaslesced.
+    for S in 4096    ##baseline, coalesced, frontier, frontier coaslesced.
     do
         echo "++++++++++++++++++ $S Sector size ++++++++++++++++++"
-        for P in 4096 32768
+        for P in 65536
         do
             echo "++++++++++++++++++ $P Page size ++++++++++++++++++"
             for ((C=1; C<=$CTRL; C++))
