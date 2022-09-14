@@ -146,6 +146,7 @@ typedef struct
     padded_struct* head_mark;
     padded_struct* tail_mark;
     padded_struct* cid;
+    padded_struct* pos_locks;
 
     uint16_t* clean_cid;
     uint32_t qs_minus_1;

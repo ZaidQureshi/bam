@@ -144,7 +144,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
 
 }
 
-__global__ __launch_bounds__(64,32)
+__global__ //__launch_bounds__(64,32)
 void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -362,6 +362,7 @@ int main(int argc, char** argv) {
         double bandwidth = (((double)data)/(elapsed/1000000))/(1024ULL*1024ULL*1024ULL);
         std::cout << std::dec << "Elapsed Time: " << elapsed << "\tNumber of Ops: "<< ios << "\tData Size (bytes): " << data << std::endl;
         std::cout << std::dec << "Ops/sec: " << iops << "\tEffective Bandwidth(GB/S): " << bandwidth << std::endl;
+        h_pc.print_reset_stats();
         //std::cout << std::dec << ctrls[0]->ns.lba_data_size << std::endl;
 
         //std::ofstream ofile("../data", std::ios::binary | std::ios::trunc);

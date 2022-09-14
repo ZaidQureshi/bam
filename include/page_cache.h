@@ -525,6 +525,10 @@ struct page_cache_d_t {
     data_dist_t* ranges_dists;
     simt::atomic<uint64_t, simt::thread_scope_device>* ctrl_counter;
 
+    simt::atomic<uint64_t, simt::thread_scope_device>* q_head;
+    simt::atomic<uint64_t, simt::thread_scope_device>* q_tail;
+    simt::atomic<uint64_t, simt::thread_scope_device>* q_lock;
+    simt::atomic<uint64_t, simt::thread_scope_device>* extra_reads;
 
     Controller** d_ctrls;
     uint64_t n_ctrls;
@@ -539,6 +543,8 @@ struct page_cache_d_t {
     __forceinline__
     __device__
     uint32_t find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_);
+
+
 };
 
 
@@ -650,8 +656,19 @@ struct page_cache_t {
 
     BufferPtr page_ticket_buf;
     BufferPtr ctrl_counter_buf;
+    BufferPtr q_head_buf;
+    BufferPtr q_tail_buf;
+    BufferPtr q_lock_buf;
+    BufferPtr extra_reads_buf;
 
+    void print_reset_stats(void) {
+        uint64_t v = 0;
+        cuda_err_chk(cudaMemcpy(&v, pdt.extra_reads, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaMemcpyDeviceToHost));
 
+        cuda_err_chk(cudaMemset(pdt.extra_reads, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
+
+        printf("Cache Extra Reads: %llu\n", v);
+    }
 
     void flush_cache() {
         size_t threads = 64;
@@ -678,8 +695,16 @@ struct page_cache_t {
     page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
 
         ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        q_head_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        q_tail_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        q_lock_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
+        extra_reads_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
         pdt.ctrl_counter = (simt::atomic<uint64_t, simt::thread_scope_device>*)ctrl_counter_buf.get();
         pdt.page_size = ps;
+        pdt.q_head = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_head_buf.get();
+        pdt.q_tail = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_tail_buf.get();
+        pdt.q_lock = (simt::atomic<uint64_t, simt::thread_scope_device>*)q_lock_buf.get();
+        pdt.extra_reads = (simt::atomic<uint64_t, simt::thread_scope_device>*)extra_reads_buf.get();
         pdt.page_size_minus_1 = ps - 1;
         pdt.n_pages = np;
         pdt.ctrl_page_size = ctrl.ctrl->page_size;
@@ -1923,6 +1948,54 @@ inline __device__ void access_data_async(page_cache_d_t* pc, QueuePair* qp, cons
 
 }
 
+inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, nvm_cmd_t* cmd, const uint16_t cid, const uint64_t pc_pos, const uint64_t pc_prev_head) {
+    nvm_cmd_rw_blks(cmd, starting_lba, 1);
+    unsigned int ns = 8;
+    do {
+        //check if new head past pc_pos
+        //cur_pc_head == new head
+        //prev_pc_head == old head
+        //pc_pos == position i wanna move the head past
+        uint64_t cur_pc_head = pc->q_head->load(simt::memory_order_relaxed);
+        //sec == true when cur_pc_head past pc_pos
+        bool sec = ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) ||
+            ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) ||
+            ((pc_pos < cur_pc_head) && (cur_pc_head < pc_prev_head));
+
+        if (sec) break;
+
+        //if not
+        uint64_t qlv = pc->q_lock->load(simt::memory_order_relaxed);
+        //got lock
+        if (qlv == 0) {
+            qlv = pc->q_lock->fetch_or(1, simt::memory_order_acquire);
+            if (qlv == 0) {
+                uint64_t cur_pc_tail;// = pc->q_tail.load(simt::memory_order_acquire);
+
+                uint16_t sq_pos = sq_enqueue(&qp->sq, cmd, pc->q_tail, &cur_pc_tail);
+                uint32_t head, head_;
+                uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
+
+                pc->q_head->store(cur_pc_tail, simt::memory_order_release);
+                pc->q_lock->store(0, simt::memory_order_release);
+                pc->extra_reads->fetch_add(1, simt::memory_order_relaxed);
+                cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
+
+
+
+                break;
+            }
+        }
+#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 700 || !defined(__CUDA_ARCH__))
+         __nanosleep(ns);
+         if (ns < 256) {
+             ns *= 2;
+         }
+#endif
+    } while(true);
+
+}
+
 inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
     //uint64_t starting_lba = starting_byte >> qp->block_size_log;
     //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
@@ -1946,11 +2019,22 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head;
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+    uint32_t head, head_;
+    uint64_t pc_pos;
+    uint64_t pc_prev_head;
+
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
+
+    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
+    pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
+    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
+
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
     //sq_dequeue(&qp->sq, sq_pos);
 
+
+    //enqueue_second(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, nvm_cmd_t* cmd, const uint16_t cid, const uint64_t pc_pos, const uint64_t pc_prev_head)
+    enqueue_second(pc, qp, starting_lba, &cmd, cid, pc_pos, pc_prev_head);
 
 
 
@@ -1972,8 +2056,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
     ////printf("cid: %u\n", (unsigned int) cid);
-    // //printf("write_data startinglba: %llu\tn_blocks: %llu\tpc_entry: %llu\tdata[0]: %llu\n", (unsigned long long) starting_lba, (unsigned long long) n_blocks, pc_entry,
-    //        (unsigned long long) (((unsigned*)(pc->base_addr + (pc_entry*pc->page_size)))[0]));
+
 
     nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
@@ -1984,16 +2067,21 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head;
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head);
+    uint32_t head, head_;
+    uint64_t pc_pos;
+    uint64_t pc_prev_head;
+
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
+    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
+    pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
+    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
     //sq_dequeue(&qp->sq, sq_pos);
 
 
 
 
     put_cid(&qp->sq, cid);
-
 
 }
 

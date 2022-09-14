@@ -46,7 +46,7 @@ struct QueuePair
     //BufferPtr           cq_tickets;
     BufferPtr           cq_head_mark;
     //BufferPtr           cq_tail_mark;
-
+    BufferPtr           cq_pos_locks;
     //BufferPtr           cq_clean_cid;
 
 
@@ -77,6 +77,8 @@ struct QueuePair
         //this->cq.tail_mark = (padded_struct*) this->cq_tail_mark.get();
         this->cq.qs_minus_1 = this->cq.qs - 1;
         this->cq.qs_log2 = (uint32_t) std::log2(this->cq.qs);
+        this->cq_pos_locks = createBuffer(this->cq.qs * sizeof(padded_struct), cudaDevice);
+        this->cq.pos_locks = (padded_struct*) this->cq_pos_locks.get();
 
         //this->cq_clean_cid = createBuffer(this->cq.qs * sizeof(uint16_t), cudaDevice);
        // this->cq.clean_cid = (uint16_t*) this->cq_clean_cid.get();
