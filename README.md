@@ -230,3 +230,7 @@ If you use BaM or concepts of BaM in your work, please cite the following three 
 
 ```
 
+# Contributions 
+
+Please check the Contribution.md file for more details.
+
