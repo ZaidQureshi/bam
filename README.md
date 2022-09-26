@@ -231,5 +231,5 @@ If you use BaM or concepts or derviate codebase of BaM in your work, please cite
 
 # Contributions 
 
-Please check the Contribution.md file for more details.
+Please check the [Contribution.md](https://github.com/ZaidQureshi/gpudirect-nvme/blob/master/CONTRIBUTION.md) file for more details.
 
