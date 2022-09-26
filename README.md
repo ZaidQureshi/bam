@@ -1,6 +1,7 @@
 # BaM: A Case for Enabling Fine-grain High Throughput GPU-Orchestrated Access to Storage
 
 ===============================================================================
+
 This is the opencourse implementation of BaM system (ASPLOS'23). We are still working on updating the README as we prepare for AoE. 
 
 The codebase builds on top of a opensource codebase by Jonas Markussen
@@ -203,7 +204,7 @@ Disclaimer: The NVMe SSD I was using supports 128 queues each with 1024 depth. H
 
 # Citations 
 
-If you use BaM or concepts of BaM in your work, please cite the following three articles. 
+If you use BaM or concepts or derviate codebase of BaM in your work, please cite the following three articles. 
 
 ```
 @inproceedings{bamasplos,
