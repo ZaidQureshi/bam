@@ -1,7 +1,5 @@
 # BaM: A Case for Enabling Fine-grain High Throughput GPU-Orchestrated Access to Storage
 
-===============================================================================
-
 This is the opencourse implementation of BaM system (ASPLOS'23). We are still working on updating the README as we prepare for AoE. 
 
 The codebase builds on top of a opensource codebase by Jonas Markussen
