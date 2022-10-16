@@ -263,6 +263,7 @@ void kernel_baseline_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 }
 
 __global__ 
+//void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, unsigned long long int* totalcount_d) {
 void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -275,6 +276,7 @@ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
 
        for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
            if (i >= start) {
+               //atomicAdd(&(totalcount_d[0]), 1);
                const EdgeT next = edgeList[i];
                cc_compute(warpIdx, comp, next, next_visit, changed);
 
@@ -285,7 +287,7 @@ void kernel_coalesce(bool *curr_visit, bool *next_visit, uint64_t vertex_count, 
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -310,7 +312,7 @@ void kernel_coalesce_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_vi
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -332,7 +334,7 @@ void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *nex
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 //void kernel_coalesce_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
 void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
@@ -353,8 +355,9 @@ void kernel_coalesce_ptr_noalign_pc(array_d_t<uint64_t>* da, bool *curr_visit, b
 
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
-__global__ __launch_bounds__(128,16)
-void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t num_elems_in_cl){
+__global__ //__launch_bounds__(128,16)
+//void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -371,25 +374,32 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
     uint64_t end   = vertexList[cur_vertexid+1];
     bool stop      = false;
 
-    while(!stop){
+    // uint64_t itr = 0;
+    if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
+       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+        while(!stop){
         //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
-        if (cur_vertexid < vertex_count) {
             //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
             if(end >= clend){
                 end  = clend;
                 stop = true;
+     //           printf("called end >=clend and end is:%llu\n", end);
             }
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+       //              uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+       //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = edgeList[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
                }
             }
+            // itr++; 
             
             //this implies there are more vertices to compute in the cacheline. So repeat the loop.
             if(end < clend){
                 cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
                 if(cur_vertexid < vertex_count){
                     start        = vertexList[cur_vertexid]; 
                     end          = vertexList[cur_vertexid+1]; 
@@ -398,16 +408,17 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
                     stop = true; 
                 }
             }
-        } else {
-            stop = true; 
         }
     }
 }
+ 
+
 
 //TODO: change launch parameters. The number of warps to be launched equal to the number of cachelines. Each warp works on a cacheline. 
 //TODO: make it templated. 
-__global__ __launch_bounds__(128,16)
-void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint32_t num_elems_in_cl){
+__global__ //__launch_bounds__(128,16)
+//void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, unsigned long long int *totalcount_d, uint64_t n_pages){
+void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t* first_vertex, uint64_t num_elems_in_cl, uint64_t n_pages){
     //const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -425,25 +436,32 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
     bool stop      = false;
     bam_ptr<uint64_t> ptr(da);
 
-    while(!stop){
+    // uint64_t itr = 0;
+    if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
+       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+        while(!stop){
         //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
-        if (cur_vertexid < vertex_count) {
             //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
             if(end >= clend){
                 end  = clend;
                 stop = true;
+     //           printf("called end >=clend and end is:%llu\n", end);
             }
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
+       //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
+       //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = ptr[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
                }
             }
+            // itr++; 
             
             //this implies there are more vertices to compute in the cacheline. So repeat the loop.
             if(end < clend){
                 cur_vertexid = cur_vertexid + 1; //go to next elem in the vertexlist
+                for (;(cur_vertexid < vertex_count) && (end == vertexList[cur_vertexid+1]);cur_vertexid++) {}
                 if(cur_vertexid < vertex_count){
                     start        = vertexList[cur_vertexid]; 
                     end          = vertexList[cur_vertexid+1]; 
@@ -452,8 +470,6 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
                     stop = true; 
                 }
             }
-        } else {
-            stop = true; 
         }
     }
 }
@@ -462,12 +478,11 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 //TODO: winnerList is initialized to UINT64MAX
 // launch params - number of vertices and each thread does a scatter operation. 
 __global__ __launch_bounds__(128,16)
-void kernel_first_vertex_step1(uint64_t vertex_count, uint64_t *vertexList, uint32_t num_elems_in_cl, unsigned long long int *winnerList){
+void kernel_first_vertex_step1(uint64_t vertex_count, uint64_t *vertexList, uint64_t num_elems_in_cl, unsigned long long int *winnerList){
    const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
 
    if(tid < vertex_count){
        unsigned long long int clid = (unsigned long long int) vertexList[tid]/(unsigned long long int)num_elems_in_cl;
-
        atomicMin(&(winnerList[clid]), tid);
    }
 }
@@ -477,7 +492,7 @@ void kernel_first_vertex_step1(uint64_t vertex_count, uint64_t *vertexList, uint
 //TODO: Templatize the kernel for clstart and clend.
 //TODO: launch param: number of CL lines in the data. 
 __global__ __launch_bounds__(128,16)
-void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsigned long long int *winnerList, uint32_t num_elems_in_cl, uint64_t *firstVertexList){
+void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsigned long long int *winnerList, uint64_t num_elems_in_cl, uint64_t *firstVertexList){
 
     const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
     
@@ -491,16 +506,36 @@ void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsi
 
             uint64_t winVertval = vertexList[wid];
 
-            if((winVertval % num_elems_in_cl) == 0){
-                firstVertexList[tid] = wid; 
+            uint64_t fringes = winVertval % num_elems_in_cl;
+            if((fringes == 0)){
+                firstVertexList[tid] = wid;
+                bool backtrack = false; 
+                uint64_t i =1; 
+                while(!backtrack){
+     //               printf("I got called : %llu\n", i);
+                    backtrack = true; 
+                    int64_t tmptid = (int64_t)tid- (int64_t)i;
+                    if(tmptid>=0){
+                        uint64_t pwid = winnerList[tid-i]; 
+                        if(pwid == UINT64MAX){
+                            backtrack  = false; 
+                            firstVertexList[tid-i] = wid-1; 
+                        }
+                        else {
+                            backtrack = true; 
+                        }
+                    }
+                    i++; 
+                }
             } else {
                 wid                  = wid - 1; 
                 uint64_t currVertval = vertexList[wid]; 
-                uint64_t nsize       = winVertval - currVertval; 
+                uint64_t nsize       = winVertval - currVertval - fringes; 
 
                 uint64_t backtrackItr = (nsize + num_elems_in_cl)/num_elems_in_cl; 
                 for(uint64_t i = 0; i < backtrackItr ; i++){
-                    firstVertexList[tid-i] = wid; //TODO: does this required to be atomicMin?  
+                    if( (tid-i)>=0 )
+                       firstVertexList[tid-i] = wid; //TODO: does this required to be atomicMin?  
                 }
             }
         }
@@ -529,52 +564,10 @@ void kernel_verify(uint64_t count, unsigned long long int *list, uint64_t condva
     }
 }
 
+ 
 
 
-/*
-
-
-
-//TODO: Templatize the kernel for clstart and clend.
-__global__ __launch_bounds__(128,16)
-void kernel_genfirst_vertex(uint64_t vertex_count, uint64_t *vertexList, uint64_t *firstvertexList, uint32_t clsize){
-   const uint64_t tid = blockDim.x * blockIdx.x + threadIdx.x; 
-
-    const uint64_t clstart = tid*clsize/sizeof(uint64_t); 
-    const uint64_t clend   = (tid+1)*clsize/sizeof(uint64_t); 
-
-    uint64_t curIdx = tid; 
-    bool stop       = false; 
-
-    uint64_t curVertVal  = vertexList[curIdx];
-    //uint64_t prevVertVal = curVertVal; 
-
-    // we can get each vertex list which cacheline it belongs to by dividing the vertexlist by cacheline size and perhaps use that to reduce the search overhead. 
-    // also have to think about what happens if your curIdx init is not right. 
-    while(!stop){
-
-        if(curVertVal == clstart){
-            stop = true; 
-            firstvertexList[tid] = curIdx; 
-        }
-        else if(curVertVal < clstart){
-            stop = false;
-            curIdx = curIdx + 1; 
-            curVertVal = vertexList[curIdx];
-        }
-        //curVertVal > clstart
-        else {
-            
-//dont know how to stop 
-
-
-        }
-    }
-}
-*/
-
-
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -598,16 +591,16 @@ void kernel_coalesce_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t coarse) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
     const uint64_t laneIdx = tid & ((1 << WARP_SHIFT) - 1);
-    
+    bam_ptr<uint64_t> ptr(da);
+
     for(uint64_t j = 0; j < coarse; j++){
         uint64_t cwarpIdx = warpIdx*coarse+j; 
         if (cwarpIdx < vertex_count && curr_visit[cwarpIdx] == true) {
-            bam_ptr<uint64_t> ptr(da);
             const uint64_t start = vertexList[cwarpIdx];
             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
             const uint64_t end = vertexList[cwarpIdx+1];
@@ -660,7 +653,7 @@ void kernel_coalesce_hash(bool *curr_visit, bool *next_visit, uint64_t vertex_co
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, int sm_count) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 //    const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -697,7 +690,7 @@ void kernel_coalesce_hash_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, int sm_count) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
@@ -768,7 +761,7 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, int sm_count) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
 //    const uint64_t warpIdx = oldtid >> WARP_SHIFT;
@@ -807,7 +800,7 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool
 }
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_coarse(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
@@ -839,12 +832,13 @@ void kernel_coalesce_hash_coarse(bool *curr_visit, bool *next_visit, uint64_t ve
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
     const uint64_t oldtid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldwarpIdx = oldtid >> WARP_SHIFT;
     const uint64_t laneIdx = oldtid & ((1 << WARP_SHIFT) - 1);
     uint64_t STRIDE = stride;//sm_count * MAXWARP;
+    bam_ptr<uint64_t> ptr(da);
     
     const uint64_t nep = (vertex_count+(STRIDE*coarse))/(STRIDE*coarse); 
     uint64_t cwarpIdx = (oldwarpIdx/nep) + ((oldwarpIdx % nep)*(STRIDE));
@@ -854,7 +848,6 @@ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visi
         if (warpIdx < vertex_count){ 
            
            if(curr_visit[warpIdx] == true) {
-                bam_ptr<uint64_t> ptr(da);
                 const uint64_t start = vertexList[warpIdx];
                 const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
                 const uint64_t end = vertexList[warpIdx+1];
@@ -870,7 +863,7 @@ void kernel_coalesce_hash_coarse_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visi
     }
 }
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_half(bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t stride) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldhalfwarpIdx = tid >> 4;
@@ -899,7 +892,7 @@ void kernel_coalesce_hash_half(bool *curr_visit, bool *next_visit, uint64_t vert
 
 
 
-__global__ __launch_bounds__(128,16)
+__global__ //__launch_bounds__(128,16)
 void kernel_coalesce_hash_half_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed, uint64_t pc_page_size, uint64_t coarse, uint64_t stride) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t oldhalfwarpIdx = tid >> 4;
@@ -965,7 +958,7 @@ __global__ void kernel_coalesce_chunk(bool *curr_visit, bool *next_visit, uint64
 }
 
 
-__global__ __launch_bounds__(1024,2)
+__global__ //__launch_bounds__(1024,2)
 void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *next_visit, uint64_t vertex_count, uint64_t *vertexList, EdgeT *edgeList, unsigned long long *comp, bool *changed) {
     const uint64_t tid = blockDim.x * BLOCK_NUM * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x;
     const uint64_t warpIdx = tid >> WARP_SHIFT;
@@ -1103,6 +1096,7 @@ int main(int argc, char *argv[]) {
         std::cout << filename << std::endl;
         fprintf(stderr, "File %s\n", filename.c_str());
 
+        
         // Read files
         file.open(vertex_file.c_str(), std::ios::in | std::ios::binary);
         if (!file.is_open()) {
@@ -1112,8 +1106,12 @@ int main(int argc, char *argv[]) {
 
         file.read((char*)(&vertex_count), 8);
         file.read((char*)(&typeT), 8);
-
         vertex_count--;
+        
+        /*        
+        vertex_count = 19;
+        edge_count = 41; 
+        */
 
         printf("Vertex: %llu, ", vertex_count);
         vertex_size = (vertex_count+1) * sizeof(uint64_t);
@@ -1123,6 +1121,14 @@ int main(int argc, char *argv[]) {
         file.read((char*)vertexList_h, vertex_size);
         file.close();
 
+        /*
+        uint64_t  edgesample[] ={1,2,0,2,3,4,0,1,3,4,1,2,4,1,2,3,4,6,0,0,1,2,3,4,5,6,7,8,9,10,12,13,14,15,16,17,18,0,1,2,3}; 
+        uint64_t  vertsample[] ={0,2,6,10,13,13,13,16,18,19,19,19,19,19,19,19,19,19,37,41} ;
+
+        for(int vi = 0; vi < vertex_count+1; vi++)
+            vertexList_h[vi] = vertsample[vi];
+        */
+
         file.open(edge_file.c_str(), std::ios::in | std::ios::binary);
         if (!file.is_open()) {
             printf("edge file open failed\n");
@@ -1131,6 +1137,7 @@ int main(int argc, char *argv[]) {
 
         file.read((char*)(&edge_count), 8);
         file.read((char*)(&typeT), 8);
+        
 
         printf("Edge: %llu\n", edge_count);
         fflush(stdout);
@@ -1143,6 +1150,10 @@ int main(int argc, char *argv[]) {
             case GPUMEM:
                 edgeList_h = (EdgeT*)malloc(edge_size);
                 file.read((char*)edgeList_h, edge_size);
+                /*
+                for(int ei = 0; ei < edge_count; ei++)
+                    edgeList_h[ei] = edgesample[ei];
+                */
                 cuda_err_chk(cudaMalloc((void**)&edgeList_d, edge_size));
                 break;
             case UVM_READONLY:
@@ -1345,35 +1356,35 @@ int main(int argc, char *argv[]) {
 
         uint64_t *firstVertexList_d;
         unsigned long long  int *winnerList_d; 
-        uint32_t num_elems_in_cl = (uint32_t) pc_page_size / (sizeof(uint64_t));
+        uint64_t num_elems_in_cl = (uint32_t) pc_page_size / (sizeof(uint64_t));
         //preprocessing for the optimized implementation.
         if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
-            
-            cuda_err_chk(cudaMalloc((void**)&winnerList_d, vertex_count * sizeof(unsigned long long int)));
-            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, vertex_count * sizeof(unsigned long long int)));
+            n_pages = (edge_count+num_elems_in_cl) / num_elems_in_cl;
+            cuda_err_chk(cudaMalloc((void**)&winnerList_d,   (n_pages)* sizeof(unsigned long long int)));
+            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, (n_pages)* sizeof(unsigned long long int)));
             //printf("UNIT64MAX is: %llu\n", UINT64MAX);
-            //uint64_t nblocks = (vertex_count+numthreads)/numthreads;
+            //uint64_t nblocks = (n_pages+numthreads)/numthreads;
             //dim3 verifyBlockDim(nblocks); 
-            //kernel_verify<<<verifyBlockDim,numthreads>>>(vertex_count,winnerList_d, UINT64MAX, 1);
+            //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages,winnerList_d, UINT64MAX, 1);
 
-            cuda_err_chk(cudaDeviceSynchronize());
-            
-            printf("Allocating %f MB for FirstVertexList\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)));
+            // cuda_err_chk(cudaDeviceSynchronize());
+            //num_elems_in_cl  = 6;
+            printf("Allocating %f MB for FirstVertexList with n_pages: %llu numelemspercl: %llu\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)), n_pages, num_elems_in_cl);
             cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_pages * sizeof(uint64_t)));
 
-            printf("Launching step1 in generation of FirstVertexList\n");
-            uint64_t nblocks_step1 = (vertex_count+numthreads)/numthreads; 
+            uint64_t nblocks_step1 = (vertex_count+1+numthreads)/numthreads; 
             uint64_t nblocks_step2 = (n_pages+numthreads)/numthreads; 
+            printf("Launching step1 in generation of FirstVertexList: numblocks: %llu numthreads: %llu\n", nblocks_step1, numthreads);
             dim3 step1blockdim(nblocks_step1);
             dim3 step2blockdim(nblocks_step2);
-            kernel_first_vertex_step1<<<step1blockdim,numthreads>>>(vertex_count, vertexList_d, num_elems_in_cl, winnerList_d);
+            kernel_first_vertex_step1<<<step1blockdim,numthreads>>>(vertex_count+1, vertexList_d, num_elems_in_cl, winnerList_d);
             //uint64_t *winnerList_h; 
-            //uint64_t copysize = vertex_count * sizeof(unsigned long long int);
+            //uint64_t copysize = (n_pages) * sizeof(unsigned long long int);
             //winnerList_h = (uint64_t*)malloc(copysize);
             //cuda_err_chk(cudaMemcpy((void**)winnerList_h, (void**)winnerList_d, copysize, cudaMemcpyDeviceToHost));
-            //printf("First few values\n");
-            //for(uint64_t i=0; i< 25; i++){
-            //    printf("%llu\n", winnerList_h[i]);
+            //printf("winnerlist values: \n");
+            //for(uint64_t i=0; i< n_pages; i++){
+            //      printf("i: %llu, winner: %llu\n",i, winnerList_h[i]);
             //}
             //printf("\n");
             kernel_first_vertex_step2<<<step2blockdim,numthreads>>>(n_pages, vertexList_d, winnerList_d, num_elems_in_cl, firstVertexList_d);
@@ -1382,18 +1393,20 @@ int main(int argc, char *argv[]) {
             //uint64_t copysize2 = n_pages * sizeof(unsigned long long int);
             //firstVertexList_h = (uint64_t*) malloc(copysize2); 
             //cuda_err_chk(cudaMemcpy((void**)firstVertexList_h, (void**)firstVertexList_d, copysize2, cudaMemcpyDeviceToHost));
-            //printf("First few values\n");
-            //for(uint64_t i=0; i< 25; i++){
+            //printf("Firstvertex values\n");
+            //for(uint64_t i=0; i< n_pages; i++){
             //    printf("%llu\n", firstVertexList_h[i]);
             //}
-            //uint64_t nblocks = (n_pages+numthreads)/numthreads;
+            uint64_t nblocks = (n_pages+numthreads)/numthreads;
             //dim3 verifyBlockDim(nblocks); 
             //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages, (unsigned long long int*) firstVertexList_d, UINT64MAX, 2);
-
+            
             cuda_err_chk(cudaDeviceSynchronize());
+            cuda_err_chk(cudaFree(winnerList_d));
+            //free(winnerList_h);
         }
 
-        for(int titr=0; titr<1; titr+=1){
+        for(int titr=0; titr<2; titr+=1){
             iter = 0;
             cuda_err_chk(cudaEventRecord(start, 0));
             // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
@@ -1402,6 +1415,11 @@ int main(int argc, char *argv[]) {
            printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
             // Run CC
             do {
+                //unsigned long long int totalcount_h=0; 
+                //unsigned long long int *totalcount_d;
+                //cuda_err_chk(cudaMalloc((void**)&totalcount_d, sizeof(unsigned long long int)));
+                //cuda_err_chk(cudaMemcpy(totalcount_d, &totalcount_h, sizeof(unsigned long long int), cudaMemcpyHostToDevice));
+                
                 changed_h = false;
                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
                 auto itrstart = std::chrono::system_clock::now();
@@ -1411,6 +1429,7 @@ int main(int argc, char *argv[]) {
                         kernel_baseline<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, vertexVisitCount_d, largebin, binelems, neigBin);
                         break;
                     case COALESCE:
+                        //kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, totalcount_d);
                         kernel_coalesce<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d);
                         break;
                     case COALESCE_CHUNK:
@@ -1464,7 +1483,7 @@ int main(int argc, char *argv[]) {
                     //     kernel_coalesce_chunk_hash_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, properties.multiProcessorCount);
                     //    break;
                     case COALESCE_HASH_HALF:
-                        kernel_coalesce_hash_half<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.stride);
+                        kernel_coalesce_hash_half<<<blockDim, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, settings.stride);                        
                         break;
                     case COALESCE_HASH_HALF_PTR_PC:
                         //printf("blockDim: %d %d numthreads: %d\n", blockDim.x,blockDim.y, numthreads);
@@ -1474,12 +1493,14 @@ int main(int argc, char *argv[]) {
                         preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         break;
                     case OPTIMIZED:
-                        printf("Launching optimized kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
-                        kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                        //printf("Launching optimized kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        //kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
+                        kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
                         break;
                     case OPTIMIZED_PC:
-                        printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
-                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl);
+                        //printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        //kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
+                        kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
                         break;
 
                     default:
@@ -1487,6 +1508,8 @@ int main(int argc, char *argv[]) {
                         exit(1);
                         break;
                 }
+                //cuda_err_chk(cudaMemcpy(&totalcount_h, totalcount_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
+                //printf("totalcount: %llu\n", totalcount_h);
 
                 cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
                 bool *temp = curr_visit_d;
@@ -1651,7 +1674,11 @@ int main(int argc, char *argv[]) {
         cuda_err_chk(cudaFree(vertexVisitCount_d));
         if(mem!=BAFS_DIRECT)
             cuda_err_chk(cudaFree(edgeList_d));
-
+        if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
+            cuda_err_chk(cudaFree(firstVertexList_d));
+            // free(firstVertexList_h);
+        }
+            
         for (size_t i = 0 ; i < settings.n_ctrls; i++)
              delete ctrls[i];
 

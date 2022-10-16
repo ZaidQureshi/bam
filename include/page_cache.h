@@ -1110,8 +1110,6 @@ __forceinline__
 __device__
 uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue) {
     uint64_t index = pg;
-    uint64_t expected_state = VALID;
-    uint64_t new_state = VALID;
     //uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
     //access_cnt.fetch_add(count, simt::memory_order_relaxed);
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
@@ -1119,12 +1117,9 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
     unsigned int ns = 8;
     //bool miss = false;
     //T ret;
-    uint64_t j = 0;
     uint64_t read_state,st,st_new;
     read_state = pages[index].state.fetch_add(count, simt::memory_order_acquire);
     do {
-        bool pass = false;
-
         st = (read_state >> (CNT_SHIFT+1)) & 0x03;
 
         switch (st) {
@@ -1158,7 +1153,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
                 //     __nanosleep(100);
                 //miss_cnt.fetch_add(count, simt::memory_order_relaxed);
                 miss_cnt.fetch_add(count, simt::memory_order_relaxed);
-                new_state = VALID;
+                //new_state = VALID;
                 if (write)
                     pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
                 //new_state |= DIRTY;
@@ -1506,7 +1501,6 @@ struct array_d_t {
 #endif
             uint32_t eq_mask;
             int master;
-            uint64_t base_master;
             uint32_t count;
             uint64_t page = r_->get_page(i);
             uint64_t gaddr = r_->get_global_address(page);
@@ -1823,7 +1817,6 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
                 uint32_t previous_range = previous_global_address & n_ranges_mask;
                 uint32_t previous_address = previous_global_address >> n_ranges_bits;
                 //uint32_t new_state = BUSY;
-                bool pass = false;
                 //if ((previous_range >= range_cap) || (previous_address >= n_pages))
                 //    //printf("prev_ga: %llu\tprev_range: %llu\tprev_add: %llu\trange_cap: %llu\tn_pages: %llu\n", (unsigned long long) previous_global_address, (unsigned long long) previous_range, (unsigned long long) previous_address,
                 //           (unsigned long long) range_cap, (unsigned long long) n_pages);
