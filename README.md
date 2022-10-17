@@ -189,6 +189,20 @@ sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=26214
 Disclaimer: The NVMe SSD I was using supports 128 queues each with 1024 depth. However, even if your SSD supports less number of queues and/or less depth the system will automatically use the numbers reported by your device.
 
 
+
+# Example Applications
+
+BaM is evaluated on several applications and datasets. A limited set of them are released to public in `benchmarks` folder. 
+
+**Microbenchmarks** Several microbenchmarks are provided in `benchmarks` folder. `array` benchmark evaluated the performance of `array` abstraction, `block` benchmark is akin to `fio` and evaluates the performance of `BaM` I/O stack. `cache` and `pattern` benchmark evaluates the performance of BaM cache across different access patterns. `readwrite` benchmarks evaluates the reading and writing very large datasets to single SSDs (multiple SSD write is not enabled in the application despite BaM supporting it). 
+
+**VectorAdd, Scan and Reduction** These benchmarks test the performance of extremely large operations on array for given compute primitives. Dataset is randomly generated. 
+
+**Graph Benchmarks** Initial implementation of graph benchmarks are taken from EMOGI (https://github.com/illinois-impact/EMOGI). We use the same dataset used in EMOGI and write them into SSDs using `benchmark/readwrite` application. BFS, CC, SSSP and PageRank benchmarks are implemented. BFS and CC workloads are extensively studied while SSSP and PageRank studies in progress.  
+
+**Your application** One can use any of these example benchmark and implement their application using `bam::array` abstraction. Feel free to reach out over Github issues incase if you run into issue or require additional insights on how to best use BaM in your codebase. 
+
+
 # Citations 
 
 If you use BaM or concepts or derviate codebase of BaM in your work, please cite the following articles. 
