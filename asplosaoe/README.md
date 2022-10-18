@@ -32,7 +32,7 @@ First, we get the required software dependencies and run `cmake`.
 ```
 $ git submodule update --init --recursive
 $ mkdir -p build; cd build
-$ cmake ..                               # log is [here](./cmake.log)
+$ cmake ..
 ```
 The cmake log is available [here](./cmake.log).
 
@@ -84,7 +84,7 @@ $ sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262
 Here, we launch a GPU kernel with 262144 threads to access 2 Samsung 980 Pro SSDs, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
 The expected log is available [here](./nvm_block_bench_2_sam.log).
 
-### Running with the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with 2 Samsung 980 Pro SSDs
+### Running the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with 2 Samsung 980 Pro SSDs
 From the `build` directory, we can run the stack benchmark.
 ```
 $ sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=2 --num_queues=128 --random=false
@@ -105,7 +105,7 @@ $ sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262
 Here, we launch a GPU kernel with 262144 threads to access a Intel Optane SSD, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
 The expected log is available [here](./nvm_block_bench_1_intel.log).
 
-### Running with the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with a Intel Optane SSD
+### Running the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with a Intel Optane SSD
 From the `build` directory, we can run the stack benchmark.
 ```
 $ sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=1 --num_queues=128 --random=false --ssd=1
