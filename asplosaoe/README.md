@@ -20,3 +20,29 @@ This README.md provides necessarily command line arguments required to establish
 The README.md is structured such that we go over each Figures in the paper individually, describe if they are runnable in this mini-prototype system and what to expect to see as output from the experiments. 
 If  you run into any troubles during the AoE process, please reach out over comments in HotCRP page. 
 
+
+
+## Goal 1: BaM codebase is function and Build and driver installation log
+
+
+```
+$ git submodule update --init --recursive
+$ mkdir -p build; cd build
+$ cmake ..
+$ make libnvm -j                         # builds library
+$ make benchmarks -j                     # builds benchmark program
+$ cd module
+$ make -j                                # build kernel modules
+$ sudo make reload                       # default we have loaded the drivers, this will reload the drivers again. 
+```
+
+Log can be found here: 
+cmake.log
+build_libnvm.log
+build_benchmarks.log 
+build_kernel_modules.log
+load_driver.log
+
+
+
+
