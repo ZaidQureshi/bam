@@ -48,6 +48,7 @@ struct Settings
     size_t pageSize;
     uint64_t numElems;
     bool random;
+    uint64_t ssdtype;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -379,6 +380,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'o', OptionPtr(new Option<const char*>(output, "path", "output", "output read data to file"))},
         //{'s', OptionPtr(new Option<uint64_t>(startBlock, "offset", "offset", "number of blocks to offset", "0"))},
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))}
+        {'S', OptionPtr(new Range(ssdtype, 0, 2, "ssd", "type of SSD to use 0->Samsung, 1->Intel", "0"))},
     };
 
     string optionString;
@@ -472,6 +474,7 @@ Settings::Settings()
     pageSize = 4096;
     numElems = 2147483648;
     random = true;
+    ssdtype = 0;
 }
 
 
