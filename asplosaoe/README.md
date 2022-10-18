@@ -72,7 +72,7 @@ From the `build` directory, we can run the abstraction and cache benchmark.
 $ sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=1 --num_queues=128 --random=false
 ```
 Here, we launch a GPU kernel with 1 Million threads to access 1 Samsung 980 Pro SSD through a 512MB cache made up of 512-byte cache-lines, where each thread makes an access for a 64-bit value, where we have 128 NVMe queues with each queue is 1024 deep.
-The expected log is available [here](./nvm_array_bench.log).
+The expected log is available [here](./nvm_array_bench.log#22).
 
 ## Goal 2: BaM is functional with multiple SSDs - up to 2 SSDs can be used in the provided system
 
@@ -120,6 +120,7 @@ The expected log is available [here](./nvm_array_bench_2SSDs.log).
 The previous applications all were microbenchmarks for different components of the BaM stack.
 Now we show that BaM can be used by real applications with real datasets, namely the breadth-first search (BFS) and connected components (CC) graph analytics applications with a real world dataset.
 The datasets are already loaded on the SSDs in the provided system to make it easy for the reviewers to evaluate.
+For these experiments, BaM is using 4KB cache-lines and an 8GB cache.
 
 ### Running the BFS application on the MOLIERE_2016 dataset with 1 Intel Optane SSD
 From the `build` directory, we can run the BFS benchmark.
