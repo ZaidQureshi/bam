@@ -11,7 +11,7 @@ Primarily, we want to establish following key things:
 
 1) BaM is functional with a single SSD and supports the contributions described in the paper
     * Evaluation for Figure 4 as an example
-2) BaM is functional with multiple SSDs (up to 2 SSD can be tested on this system)
+2) BaM is functional with multiple SSDs - up to 2 SSD can be tested on this system
     * Evaluation for Figures 4 and 7 as examples
 3) BaM is functional with different types of SSDs - consumer-grade Samsung 980 Pro and datacenter-grade Intel Optane SSDs are available in the system. 
     * Evaluation for Figure 9 as an example
