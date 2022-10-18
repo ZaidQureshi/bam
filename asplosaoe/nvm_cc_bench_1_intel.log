@@ -1,5 +1,5 @@
 # With Single Intel Optane SSD wih 4KB cacheline size (page_size) and 8GB BaM Cache. 
-sudo ./bin/nvm-cc-bench -f /home/vsm2/bafsdata/GAP-kron.bel -l 0 --impl_type 20 --memalloc 6 --src 58720242 --n_ctrls 1 -p 4096 --gpu 0 --threads 128 -M $((8*1024*1024*1024)) -P 128 -C 8
+sudo ./bin/nvm-cc-bench -f /home/vsm2/bafsdata/GAP-kron.bel -l 0 --impl_type 20 --memalloc 6 --src 58720242 --n_ctrls 1 -p 4096 --gpu 0 --threads 128 -M $((8*1024*1024*1024)) -P 128 -C 8 -S 1
 /home/vsm2/bafsdata/GAP-kron.bel
 File /home/vsm2/bafsdata/GAP-kron.bel
 Vertex: 134217726, Edge: 4223264644
