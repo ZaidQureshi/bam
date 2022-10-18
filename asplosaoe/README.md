@@ -18,12 +18,12 @@ Primarily, we want to establish following key things:
 4) BaM can be used by different applications - microbenchmarks and graph applications (w/ datasets) are provided for AoE.
     * Evaluation for Figures 5, 6, and 7 as examples 
 
-
 This README.md provides necessarily command line arguments required to establish above mentioned goals. 
 The README.md is structured such that we go over each Figures in the paper individually, describe if they are runnable in this mini-prototype system and what to expect to see as output from the experiments. 
-If  you run into any troubles during the AoE process, please reach out over comments in HotCRP page. 
+If you run into any troubles during the AoE process, please reach out over comments in HotCRP page. 
 
-
+The expected output for each command (or group of commands) is provided as a separate log file and linked appropriately.
+Everything in the log should match except performance numbers as we are not going for the resutls reproduced badege.
 
 ## Goal 1: BaM is functional with a single Samsung 980 Pro SSD - the codebase builds and the components (I/O stack, cache, application APIs) are functionally usable
 
