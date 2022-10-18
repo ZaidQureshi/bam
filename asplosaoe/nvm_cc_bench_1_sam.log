@@ -1,0 +1,34 @@
+# With Single Samsung 980 pro SSD with 4KB cacheline size (page_size) and 8GB BaM Cache.  
+sudo ./bin/nvm-cc-bench -f /home/vsm2/bafsdata/GAP-kron.bel -l 0 --impl_type 20 --memalloc 6 --src 58720242 --n_ctrls 1 -p 4096 --gpu 1 --threads 128 -M $((8*1024*1024*1024)) -P 128 -C 8
+/home/vsm2/bafsdata/GAP-kron.bel
+File /home/vsm2/bafsdata/GAP-kron.bel
+Vertex: 134217726, Edge: 4223264644
+Allocation finished
+page size: 4096, pc_entries: 2097152
+SQs: 129	CQs: 129	n_qps: 128
+Controllers Created
+Initialization done
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7fbcd8010000	48020410000
+HEREN
+Cond1
+200000 8 1 200000
+Finish Making Page Cache
+Page cache initialized
+total cc iterations: 4
+total components: 71164263
+total time: 25175.816406 ms
+#READ IOs: 16524749	#Accesses:1270205169	#Misses:354066640	Miss Rate:0.278748	#Hits: 916138529	Hit Rate:0.721252	CLSize:4096
+*********************************
+
+CC 0 Graph:/home/vsm2/bafsdata/GAP-kron.bel 	 Impl: 20 	 SSD: 1 	 CL: 4096 	 Cache: 8589934592 	 Stride: 128 	 Coarse: 8 	 TotalTime 25175.816406 ms
+total cc iterations: 4
+total components: 71164263
+total time: 25073.535156 ms
+#READ IOs: 16502707	#Accesses:1270205134	#Misses:353845039	Miss Rate:0.278573	#Hits: 916360095	Hit Rate:0.721427	CLSize:4096
+*********************************
+
+CC 1 Graph:/home/vsm2/bafsdata/GAP-kron.bel 	 Impl: 20 	 SSD: 1 	 CL: 4096 	 Cache: 8589934592 	 Stride: 128 	 Coarse: 8 	 TotalTime 25073.535156 ms
+
+
