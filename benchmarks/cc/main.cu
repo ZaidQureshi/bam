@@ -1412,7 +1412,7 @@ int main(int argc, char *argv[]) {
             // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
             //          fflush(stdout);
 
-           printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
+           // printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
             // Run CC
             do {
                 //unsigned long long int totalcount_h=0; 

@@ -1571,7 +1571,7 @@ int main(int argc, char *argv[]) {
              // Run BFS
              changed_h = 1;
 
-             printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
+             //printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
              
              do {
                  uint64_t active = changed_h;
