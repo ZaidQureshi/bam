@@ -25,7 +25,7 @@ If  you run into any troubles during the AoE process, please reach out over comm
 
 
 
-## Goal 1: BaM is functional with a single SSD - the codebase builds and the components (I/O stack, cache, application APIs) are functionally usable
+## Goal 1: BaM is functional with a single Samsung 980 Pro SSD - the codebase builds and the components (I/O stack, cache, application APIs) are functionally usable
 
 ### Building the codebase
 First, we get the required software dependencies and run `cmake`.
@@ -63,7 +63,7 @@ From the `build` directory, we can run the I/O stack benchmark, similar to an `f
 ```
 $ sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=0 --n_ctrls=1 --num_queues=128 --random=true
 ```
-Here, we launch a GPU kernel with 262144 threads to access 1 SSD, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
+Here, we launch a GPU kernel with 262144 threads to access 1 Samsung 980 Pro SSD, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
 The expected log is available [here](./nvm_block_bench.log).
 
 ### Running with the complete BaM stack (high-level `array` abstraction, cache and I/O stack)
@@ -71,31 +71,66 @@ From the `build` directory, we can run the abstraction and cache benchmark.
 ```
 $ sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=1 --num_queues=128 --random=false
 ```
-Here, we launch a GPU kernel with 1 Million threads to access 1 SSD through a 512MB cache made up of 512-byte cache-lines, where each thread makes an access for a 64-bit value, where we have 128 NVMe queues with each queue is 1024 deep.
+Here, we launch a GPU kernel with 1 Million threads to access 1 Samsung 980 Pro SSD through a 512MB cache made up of 512-byte cache-lines, where each thread makes an access for a 64-bit value, where we have 128 NVMe queues with each queue is 1024 deep.
 The expected log is available [here](./nvm_array_bench.log).
 
 ## Goal 2: BaM is functional with multiple SSDs - up to 2 SSDs can be used in the provided system
 
-### Running the I/O stack component with 2 SSDs
+### Running the I/O stack component with 2 Samsung 980 Pro SSDs
 From the `build` directory, we can run the I/O stack benchmark, similar to an `fio` benchmark.
 ```
 $ sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=0 --n_ctrls=2 --num_queues=128 --random=true
 ```
-Here, we launch a GPU kernel with 262144 threads to access 2 SSDs, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
+Here, we launch a GPU kernel with 262144 threads to access 2 Samsung 980 Pro SSDs, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
 The expected log is available [here](./nvm_block_bench_2SSDs.log).
 
-### Running with the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with 2 SSDs
-From the `build` directory, we can run the abstraction and cache benchmark.
+### Running with the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with 2 Samsung 980 Pro SSDs
+From the `build` directory, we can run the stack benchmark.
 ```
 $ sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=2 --num_queues=128 --random=false
 ```
-Here, we launch a GPU kernel with 1 Million threads to access 2 SSDs through a 512MB cache made up of 512-byte cache-lines, where each thread makes an access for a 64-bit value, where we have 128 NVMe queues with each queue is 1024 deep.
+Here, we launch a GPU kernel with 1 Million threads to access 2 Samsung 980 Pro SSDs through a 512MB cache made up of 512-byte cache-lines, where each thread makes an access for a 64-bit value, where we have 128 NVMe queues with each queue is 1024 deep.
 The expected log is available [here](./nvm_array_bench_2SSDs.log).
 
 ## Goal 3: BaM is functional with different types of SSDs -  the provided system consists of 2 different types of SSDs
 
-## Goal 4: BaM can be used by different applications - microbenchmarks and the graph analytics applications (BFS and CC) are provided
-**Note: The graph analytics application implementation in BaM is proprietary so it is not shared**
+The previous benchmarks all were using consumer grade Samsung 980 Pro SSDs. 
+Now we show BaM running benchmarks with the datacenter grade Intel Optane SSDs, by setting the value for the `--ssd`for each application to `1`.
+
+### Running the I/O stack component with a Intel Optane SSD
+From the `build` directory, we can run the I/O stack benchmark, similar to an `fio` benchmark.
+```
+$ sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=0 --n_ctrls=1 --num_queues=128 --random=true --ssd=1
+```
+Here, we launch a GPU kernel with 262144 threads to access a Intel Optane SSD, where each thread makes one I/O request for a 512-byte block, where we have 128 NVMe queues with each queue is 1024 deep.
+The expected log is available [here](./nvm_block_bench_2SSDs.log).
+
+### Running with the complete BaM stack (high-level `array` abstraction, cache and I/O stack) with a Intel Optane SSD
+From the `build` directory, we can run the stack benchmark.
+```
+$ sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=1 --num_queues=128 --random=false --ssd=1
+```
+Here, we launch a GPU kernel with 1 Million threads to access a Intel Optane through a 512MB cache made up of 512-byte cache-lines, where each thread makes an access for a 64-bit value, where we have 128 NVMe queues with each queue is 1024 deep.
+The expected log is available [here](./nvm_array_bench_2SSDs.log).
 
 
+## Goal 4: BaM can be used by different applications - the graph analytics applications (BFS and CC) are provided
+**Note: The data analytics application implementation in BaM is proprietary so it is not shared**
 
+The previous applications all were microbenchmarks for different components of the BaM stack.
+Now we show that BaM can be used by real applications with real datasets, namely the breadth-first search (BFS) and connected components (CC) graph analytics applications with a real world dataset.
+The datasets are already loaded on the SSDs in the provided system to make it easy for the reviewers to evaluate.
+
+### Running the BFS application on the MOLIERE_2016 dataset with 1 Intel Optane SSD
+From the `build` directory, we can run the BFS benchmark.
+```
+$ sudo ./bin/nvm-bfs-bench -f /home/vsm2/bafsdata/MOLIERE_2016.bel  -l 240518168576 --impl_type 20 --memalloc 6 --src 13229860 --n_ctrls 1 -p 4096 --gpu 0 --threads 128 -C 8 -M $((8*1024*1024*1024)) --ssd=1
+```
+The expected log is available [here](./nvm_array_bench_2SSDs.log).
+
+### Running the CC application on the GAP_kron dataset with 1 Intel Optane SSD
+From the `build` directory, we can run the CC benchmark.
+```
+$ sudo ./bin/nvm-cc-bench -f /home/vsm2/bafsdata/GAP-kron.bel -l 0 --impl_type 20 --memalloc 6 --src 58720242 --n_ctrls 1 -p 4096 --gpu 0 --threads 128 -M $((8*1024*1024*1024)) -P 128 -C 8 --ssd=1
+```
+The expected log is available [here](./nvm_array_bench_2SSDs.log). 
