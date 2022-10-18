@@ -1,0 +1,71 @@
+make -j 
+Scanning dependencies of target libnvm
+[ 10%] Building CXX object CMakeFiles/libnvm.dir/src/dma.cpp.o
+[ 20%] Building CXX object CMakeFiles/libnvm.dir/src/ctrl.cpp.o
+[ 30%] Building CXX object CMakeFiles/libnvm.dir/src/admin.cpp.o
+[ 40%] Building CXX object CMakeFiles/libnvm.dir/src/error.cpp.o
+[ 50%] Building CXX object CMakeFiles/libnvm.dir/src/mutex.cpp.o
+[ 60%] Building CXX object CMakeFiles/libnvm.dir/src/linux/dma.cpp.o
+[ 70%] Building CXX object CMakeFiles/libnvm.dir/src/linux/device.cpp.o
+[ 80%] Building CXX object CMakeFiles/libnvm.dir/src/queue.cpp.o
+[ 90%] Building CXX object CMakeFiles/libnvm.dir/src/rpc.cpp.o
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/admin.cpp:1:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/ctrl.cpp:1:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/include/nvm_util.h:8,
+                 from /home/vsm2/work/bam/src/dprintf.h:6,
+                 from /home/vsm2/work/bam/src/mutex.cpp:7:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/rpc.cpp:10:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/queue.cpp:1:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/linux/device.cpp:5:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/include/nvm_error.h:10,
+                 from /home/vsm2/work/bam/src/error.cpp:1:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/linux/dma.cpp:11:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vsm2/work/bam/include/nvm_types.h:10,
+                 from /home/vsm2/work/bam/src/dma.cpp:7:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:89: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX shared library lib/libnvm.so
+[100%] Built target libnvm
+

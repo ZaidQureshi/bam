@@ -667,7 +667,7 @@ struct page_cache_t {
 
         cuda_err_chk(cudaMemset(pdt.extra_reads, 0, sizeof(simt::atomic<uint64_t, simt::thread_scope_device>)));
 
-        printf("Cache Extra Reads: %llu\n", v);
+//        printf("Cache Extra Reads: %llu\n", v);
     }
 
     void flush_cache() {

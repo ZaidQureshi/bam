@@ -1,0 +1,25 @@
+
+
+sudo ./bin/nvm-cache-bench -k 1 -p 2097152 -P 4096 -n 1 -t 1048576 -b 64 -d 1024 -q 135 -T 1 -e 8589934592 --gpu=0 -r 0
+SQs: 135	CQs: 135	n_qps: 135
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7f6022010000	58022010000
+HEREN
+Cond1
+200000 8 1 200000
+Finish Making Page Cache
+finished creating cache
+finished creating range
+n_elems_per_page: 200
+atlaunch kernel
+0000:6E:00.0
+#READ IOs: 32768	#Accesses:1048576	#Misses:1048576	Miss Rate:1	#Hits: 0	Hit Rate:0	CLSize:4096
+*********************************
+Itr:0 type: 0 Elapsed Time: 21351.4	Number of Read Ops: 16777216	Data Size (bytes): 134217728Read Ops/sec: 7.85766e+08	Effective Bandwidth(GB/S): 5.85441
+ID:0 	type:0 	n_warps:32768 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 16777216 	IOPs: 785765697.813752 	data:134217728 	bandwidth: 5.854411 GBps 	time: 21351.423264
+#READ IOs: 0	#Accesses:1048576	#Misses:0	Miss Rate:0	#Hits: 1048576	Hit Rate:1	CLSize:4096
+*********************************
+Itr:1 type: 0 Elapsed Time: 738.304	Number of Read Ops: 16777216	Data Size (bytes): 134217728Read Ops/sec: 2.2724e+10	Effective Bandwidth(GB/S): 169.307
+ID:1 	type:0 	n_warps:32768 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 16777216 	IOPs: 22723993868.146492 	data:134217728 	bandwidth: 169.306948 GBps 	time: 738.304019
+
