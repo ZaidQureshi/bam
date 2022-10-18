@@ -18,12 +18,12 @@ Primarily, we want to establish following key things:
 4) BaM can be used by different applications - microbenchmarks and graph applications (w/ datasets) are provided for AoE.
     * Evaluation for Figures 5, 6, and 7 as examples 
 
-
 This README.md provides necessarily command line arguments required to establish above mentioned goals. 
 The README.md is structured such that we go over each Figures in the paper individually, describe if they are runnable in this mini-prototype system and what to expect to see as output from the experiments. 
-If  you run into any troubles during the AoE process, please reach out over comments in HotCRP page. 
+If you run into any troubles during the AoE process, please reach out over comments in HotCRP page. 
 
-
+The expected output for each command (or group of commands) is provided as a separate log file and linked appropriately.
+Everything in the log should match except performance numbers as we are not going for the resutls reproduced badege.
 
 ## Goal 1: BaM is functional with a single Samsung 980 Pro SSD - the codebase builds and the components (I/O stack, cache, application APIs) are functionally usable
 
@@ -118,7 +118,7 @@ The expected log is available [here](./nvm_array_bench_1_intel.log).
 **Note: The data analytics application implementation in BaM is proprietary so it is not shared**
 
 The previous applications all were microbenchmarks for different components of the BaM stack.
-Now we show that BaM can be used by real applications with real datasets, namely the breadth-first search (BFS) and connected components (CC) graph analytics applications with a real world dataset.
+Now we show that BaM can be used by real applications, namely the breadth-first search (BFS) and connected components (CC) graph analytics applications, with real world datasets.
 The datasets are already loaded on the SSDs in the provided system to make it easy for the reviewers to evaluate.
 For these experiments, BaM is using 4KB cache-lines and an 8GB cache.
 
