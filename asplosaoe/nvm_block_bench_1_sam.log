@@ -1,0 +1,16 @@
+# With Single Samsung 980 pro SSD with 4KB cacheline size (page_size) 
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=4096 --num_blks=2097152 --gpu=2 --n_ctrls=1 --num_queues=128 --random=true
+SQs: 129	CQs: 129	n_qps: 128
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7f09e4010000	3f020410000
+HEREN
+Cond1
+40000 8 1 40000
+Finish Making Page Cache
+finished creating cache
+0000:BA:00.0
+atlaunch kernel
+Elapsed Time: 328288	Number of Ops: 262144	Data Size (bytes): 1073741824
+Ops/sec: 798519	Effective Bandwidth(GB/S): 3.04611
+
