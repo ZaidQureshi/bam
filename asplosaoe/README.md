@@ -118,7 +118,7 @@ The expected log is available [here](./nvm_array_bench_1_intel.log).
 **Note: The data analytics application implementation in BaM is proprietary so it is not shared**
 
 The previous applications all were microbenchmarks for different components of the BaM stack.
-Now we show that BaM can be used by real applications with real datasets, namely the breadth-first search (BFS) and connected components (CC) graph analytics applications with a real world dataset.
+Now we show that BaM can be used by real applications, namely the breadth-first search (BFS) and connected components (CC) graph analytics applications, with real world datasets.
 The datasets are already loaded on the SSDs in the provided system to make it easy for the reviewers to evaluate.
 For these experiments, BaM is using 4KB cache-lines and an 8GB cache.
 
