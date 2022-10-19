@@ -347,6 +347,8 @@ template<typename T, size_t n = 32, simt::thread_scope _scope = simt::thread_sco
 struct bam_ptr_tlb {
     tlb<T,n,_scope,loc>* tlb_ = nullptr;
     array_d_t<T>* array = nullptr;
+    range_d_t<T>* range;
+    size_t page;
     size_t start = 0;
     size_t end = 0;
     size_t gid = 0;
@@ -382,8 +384,6 @@ struct bam_ptr_tlb {
         ////printf("++++acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
 //            (unsigned long long) i, (unsigned long long) page, (unsigned long long) start, (unsigned long long) end, (unsigned long long) range_id);
         fini(); //destructor
-        range_d_t<T>* range;
-        size_t page;
         array->get_page_gid(i, range, page, gid);
         addr = (T*) tlb_->acquire(i, gid, start, end, range, page);
 //        //printf("----acquire: i: %llu\tpage: %llu\tstart: %llu\tend: %llu\trange: %llu\n",
@@ -404,6 +404,7 @@ struct bam_ptr_tlb {
     T& operator[](const size_t i) {
         if ((i < start) || (i >= end)) {
             update_page(i);
+            range->mark_page_dirty(page);
         }
         return addr[i-start];
     }
@@ -477,6 +478,7 @@ struct bam_ptr {
     T& operator[](const size_t i) {
         if ((i < start) || (i >= end)) {
             update_page(i);
+            page->state.fetch_or(DIRTY, simt::memory_order_relaxed);
         }
         return addr[i-start];
     }
@@ -954,7 +956,9 @@ struct range_d_t {
     __forceinline__
     __device__
     uint64_t get_cache_page_addr(const uint32_t page_trans) const;
-
+    __forceinline__
+    __device__
+    void mark_page_dirty(const size_t index);
 };
 
 template <typename T>
@@ -1102,6 +1106,13 @@ __forceinline__
 __device__
 uint64_t range_d_t<T>::get_cache_page_addr(const uint32_t page_trans) const {
     return ((uint64_t)((cache.base_addr+(page_trans * cache.page_size))));
+}
+
+template <typename T>
+__forceinline__
+__device__
+void range_d_t<T>::mark_page_dirty(const size_t index) {
+    pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
 }
 
 
