@@ -8,6 +8,6 @@ find_package (CUDA 8.0 REQUIRED)
 
 
 
-make_benchmark (test2-benchmark-module test2-bench "main.cu;")
+make_benchmark (vectoradd-benchmark-module vectoradd-bench "main.cu;")
 
-make_benchmark_choice (test2-benchmark test2-benchmark-smartio test2-benchmark-module)
+make_benchmark_choice (vectoradd-benchmark vectoradd-benchmark-smartio vectoradd-benchmark-module)

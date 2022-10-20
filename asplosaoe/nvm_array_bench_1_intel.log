@@ -1,0 +1,19 @@
+# With Single Intel Optane SSD wih 512B cacheline size (page_size)
+sudo ./bin/nvm-array-bench --threads=$((1024*1024)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=512 --gpu=0 --n_ctrls=1 --num_queues=128 --random=false -S 1
+SQs: 135	CQs: 135	n_qps: 128
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7fc41c010000	58020410000
+HEREN
+Cond1
+100000 8 8 20000
+Finish Making Page Cache
+finished creating cache
+finished creating range
+atlaunch kernel
+0000:6E:00.0
+#READ IOs: 16384	#Accesses:1048576	#Misses:524288	Miss Rate:0.5	#Hits: 524288	Hit Rate:0.5	CLSize:512
+*********************************
+Elapsed Time: 3572.74	Number of Read Ops: 1048576	Data Size (bytes): 8388608
+Read Ops/sec: 2.93494e+08	Effective Bandwidth(GB/S): 2.1867
+

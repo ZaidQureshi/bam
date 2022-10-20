@@ -46,6 +46,8 @@ struct Settings
     uint32_t        bus;
     uint32_t        devfn;
     uint64_t stride;
+    uint64_t coarse;
+    uint64_t tsize;
     uint32_t n_ctrls;
     size_t blkSize;
     size_t queueDepth;
@@ -55,6 +57,7 @@ struct Settings
     size_t repeat;
     size_t src;
     uint64_t maxPageCacheSize;
+    uint64_t ssdtype;
     Settings();
     void parseArguments(int argc, char** argv);
 
@@ -383,7 +386,10 @@ void Settings::parseArguments(int argc, char** argv)
         {'q', OptionPtr(new Range(numQueues, 1, 65536, "num_queues", "number of queues per controller", "1"))},
         {'M', OptionPtr(new Option<uint64_t>(maxPageCacheSize, "number", "maxPCSize", "Maximum Page Cache size in bytes", "8589934592"))},
         {'P', OptionPtr(new Option<uint64_t>(stride, "number", "STRIDE", "Hashing stride factor for bfs coal. It is calculated as P = stride. Assumes power of 2", "1"))},
+        {'C', OptionPtr(new Option<uint64_t>(coarse, "number", "COARSE", "Thread coarsening factor", "1"))},
+        {'T', OptionPtr(new Option<uint64_t>(tsize, "number", "TileSize", "CLAware tile size", "4096"))},
 //        {'e', OptionPtr(new Range(numElems, 1, (uint64_t)std::numeric_limits<uint64_t>::max, "num_elems", "number of 64-bit elements in backing array", "2147483648"))},
+        {'S', OptionPtr(new Range(ssdtype, 0, 2, "ssd", "type of SSD to use 0->Samsung, 1->Intel", "0"))},
     };
 
     string optionString;
@@ -483,7 +489,10 @@ Settings::Settings()
     repeat = 32;
     src = 0;
     stride = 1;
+    coarse = 1;
+    tsize = 0; 
     maxPageCacheSize = 8589934592;
+    ssdtype = 0;
 }
 
 

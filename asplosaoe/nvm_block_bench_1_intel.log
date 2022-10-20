@@ -1,0 +1,17 @@
+# With Single Intel Optane SSD wih 512B cacheline size (page_size)
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=0 --n_ctrls=1 --num_queues=128 --random=true -S 1
+SQs: 135	CQs: 135	n_qps: 128
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7f8afc010000	58020410000
+HEREN
+Cond1
+40000 8 8 8000
+Finish Making Page Cache
+finished creating cache
+0000:6E:00.0
+atlaunch kernel
+Elapsed Time: 53459.9	Number of Ops: 262144	Data Size (bytes): 134217728
+Ops/sec: 4.90356e+06	Effective Bandwidth(GB/S): 2.3382
+
+

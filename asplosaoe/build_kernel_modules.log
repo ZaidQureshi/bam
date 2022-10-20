@@ -1,0 +1,13 @@
+make -j 
+make -C /lib/modules/5.8.0-63-generic/build M=/home/vsm2/work/bam/build2/module modules
+make[1]: Entering directory '/usr/src/linux-headers-5.8.0-63-generic'
+  CC [M]  /home/vsm2/work/bam/build2/module/pci.o
+  CC [M]  /home/vsm2/work/bam/build2/module/list.o
+  CC [M]  /home/vsm2/work/bam/build2/module/ctrl.o
+  CC [M]  /home/vsm2/work/bam/build2/module/map.o
+  LD [M]  /home/vsm2/work/bam/build2/module/libnvm.o
+  MODPOST /home/vsm2/work/bam/build2/module/Module.symvers
+  CC [M]  /home/vsm2/work/bam/build2/module/libnvm.mod.o
+  LD [M]  /home/vsm2/work/bam/build2/module/libnvm.ko
+make[1]: Leaving directory '/usr/src/linux-headers-5.8.0-63-generic'
+

@@ -1,0 +1,1952 @@
+make benchmarks -j 
+[ 29%] Built target libnvm
+[ 32%] Building NVCC (Device) object benchmarks/block/CMakeFiles/block-benchmark-module.dir/block-benchmark-module_generated_main.cu.o
+[ 35%] Building NVCC (Device) object benchmarks/readwrite/CMakeFiles/readwrite-benchmark-module.dir/readwrite-benchmark-module_generated_main.cu.o
+[ 38%] Building NVCC (Device) object benchmarks/array/CMakeFiles/array-benchmark-module.dir/array-benchmark-module_generated_main.cu.o
+[ 41%] Building NVCC (Device) object benchmarks/pattern/CMakeFiles/pattern-benchmark-module.dir/pattern-benchmark-module_generated_main.cu.o
+[ 44%] Building NVCC (Device) object benchmarks/sssp_float/CMakeFiles/sssp_float-benchmark-module.dir/sssp_float-benchmark-module_generated_main.cu.o
+[ 47%] Building NVCC (Device) object benchmarks/vectoradd/CMakeFiles/vectoradd-benchmark-module.dir/vectoradd-benchmark-module_generated_main.cu.o
+[ 50%] Building NVCC (Device) object benchmarks/cache/CMakeFiles/cache-benchmark-module.dir/cache-benchmark-module_generated_main.cu.o
+[ 52%] Building NVCC (Device) object benchmarks/iodepth-block/CMakeFiles/iodepth-block-benchmark-module.dir/iodepth-block-benchmark-module_generated_main.cu.o
+[ 55%] Building NVCC (Device) object benchmarks/bfs/CMakeFiles/bfs-benchmark-module.dir/bfs-benchmark-module_generated_main.cu.o
+[ 58%] Building NVCC (Device) object benchmarks/cc/CMakeFiles/cc-benchmark-module.dir/cc-benchmark-module_generated_main.cu.o
+[ 61%] Building NVCC (Device) object benchmarks/sssp/CMakeFiles/sssp-benchmark-module.dir/sssp-benchmark-module_generated_main.cu.o
+[ 64%] Building NVCC (Device) object benchmarks/pagerank/CMakeFiles/pagerank-benchmark-module.dir/pagerank-benchmark-module_generated_main.cu.o
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/array/main.cu(118): warning #177-D: variable "total_cache_size" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/array/main.cu(126): warning #177-D: variable "d_pc" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/benchmarks/array/main.cu(132): warning #177-D: variable "d_range" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(170): warning #181-D: argument is incompatible with corresponding format string conversion
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(291): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(291): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/block/main.cu(103): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(341): warning #225-D: the format string ends before this argument
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/block/main.cu(154): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(318): warning #550-D: variable "ft" was set but never used
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(154): warning #177-D: variable "total_cache_size" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(424): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(161): warning #177-D: variable "d_pc" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(453): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(168): warning #177-D: variable "d_range" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(179): warning #177-D: variable "gran" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(178): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(260): warning #177-D: variable "n_blocks" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(220): warning #177-D: variable "laneIdx" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(355): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(362): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(537): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(462): warning #61-D: integer operation result is out of range
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(719): warning #177-D: variable "end" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(750): warning #177-D: variable "i" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(704): warning #177-D: variable "memref" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(789): warning #177-D: variable "i" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(947): warning #177-D: variable "comp_src" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(982): warning #177-D: variable "comp_src" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(224): warning #177-D: variable "pad" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(227): warning #177-D: variable "c_h" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(227): warning #177-D: variable "c_d" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(228): warning #177-D: variable "n_elems" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(228): warning #177-D: variable "n_size" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(229): warning #177-D: variable "typeT" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1509): warning #69-D: integer conversion resulted in truncation
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1545): warning #177-D: variable "nblocks" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(1364): warning #69-D: integer conversion resulted in truncation
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(1400): warning #177-D: variable "nblocks" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1292): warning #177-D: variable "globalvisitedcount_h" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu(467): warning #177-D: variable "edgeList_dtmp" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+(1596): here
+            instantiation of "T array_d_t<T>::operator[](size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/array/main.cu(48): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu(154): here
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(125): warning #177-D: variable "opcode" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(103): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(177): warning #177-D: variable "opcode" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(155): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+(1596): here
+            instantiation of "T array_d_t<T>::operator[](size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/cache/main.cu(69): here
+            instantiation of "void random_access_warp(array_d_t<T> *, uint64_t, unsigned long long *, uint64_t, uint64_t *, uint64_t, size_t, uint64_t) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/cache/main.cu(209): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1477): here
+            instantiation of "void *array_d_t<T>::acquire_page(size_t, data_page_t *&, size_t &, size_t &, int64_t &) const [with T=uint64_t]" 
+(450): here
+            instantiation of "T *bam_ptr<T>::update_page(size_t) [with T=uint64_t]" 
+(479): here
+            instantiation of "T &bam_ptr<T>::operator[](size_t) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(112): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/sssp/main.cu(134): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(326): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu(152): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/cc/main.cu(190): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1477): here
+            instantiation of "void *array_d_t<T>::acquire_page(size_t, data_page_t *&, size_t &, size_t &, int64_t &) const [with T=uint64_t]" 
+(450): here
+            instantiation of "T *bam_ptr<T>::update_page(size_t) [with T=uint64_t]" 
+(479): here
+            instantiation of "T &bam_ptr<T>::operator[](size_t) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/pattern/main.cu(128): here
+            instantiation of "void kernel_sequential_pc(array_d_t<T> *, T *, uint64_t, unsigned long long *) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/pattern/main.cu(628): here
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(170): warning #181-D: argument is incompatible with corresponding format string conversion
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(291): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(291): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(341): warning #225-D: the format string ends before this argument
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(318): warning #550-D: variable "ft" was set but never used
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(424): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(453): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(260): warning #177-D: variable "n_blocks" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/block/main.cu(103): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/block/main.cu(154): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(125): warning #177-D: variable "opcode" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(103): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(177): warning #177-D: variable "opcode" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu(155): warning #177-D: variable "bid" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/array/main.cu(118): warning #177-D: variable "total_cache_size" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/array/main.cu(126): warning #177-D: variable "d_pc" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/array/main.cu(132): warning #177-D: variable "d_range" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+(1596): here
+            instantiation of "T array_d_t<T>::operator[](size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/array/main.cu(48): here
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(154): warning #177-D: variable "total_cache_size" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(161): warning #177-D: variable "d_pc" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(168): warning #177-D: variable "d_range" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cache/main.cu(179): warning #177-D: variable "gran" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+(1596): here
+            instantiation of "T array_d_t<T>::operator[](size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/cache/main.cu(69): here
+            instantiation of "void random_access_warp(array_d_t<T> *, uint64_t, unsigned long long *, uint64_t, uint64_t *, uint64_t, size_t, uint64_t) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/cache/main.cu(209): here
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu(467): warning #177-D: variable "edgeList_dtmp" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1477): here
+            instantiation of "void *array_d_t<T>::acquire_page(size_t, data_page_t *&, size_t &, size_t &, int64_t &) const [with T=uint64_t]" 
+(450): here
+            instantiation of "T *bam_ptr<T>::update_page(size_t) [with T=uint64_t]" 
+(479): here
+            instantiation of "T &bam_ptr<T>::operator[](size_t) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/pattern/main.cu(128): here
+            instantiation of "void kernel_sequential_pc(array_d_t<T> *, T *, uint64_t, unsigned long long *) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/pattern/main.cu(628): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu(152): here
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(355): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(362): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(462): warning #61-D: integer operation result is out of range
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(224): warning #177-D: variable "pad" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(227): warning #177-D: variable "c_h" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(227): warning #177-D: variable "c_d" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(228): warning #177-D: variable "n_elems" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(228): warning #177-D: variable "n_size" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(229): warning #177-D: variable "typeT" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1477): here
+            instantiation of "void *array_d_t<T>::acquire_page(size_t, data_page_t *&, size_t &, size_t &, int64_t &) const [with T=uint64_t]" 
+(450): here
+            instantiation of "T *bam_ptr<T>::update_page(size_t) [with T=uint64_t]" 
+(479): here
+            instantiation of "T &bam_ptr<T>::operator[](size_t) [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(112): here
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(291): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(291): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu(154): here
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(424): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu(453): warning #1143-D: arithmetic on pointer to void or function type
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/sssp/main.cu(134): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/readwrite/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/readwrite/settings.h:258:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  258 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:226:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘void*’ [-Wformat=]
+  226 |                 fprintf(stderr,"Input file map failed %d\n",map_in);
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~
+      |                                               |
+      |                                               void*
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:281:8: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 2 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
+  281 |         printf("n_tsteps: %lu, n_telem: %llu, n_pages:%llu\n", n_tsteps, n_telem, n_pages);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~
+      |                                                        |
+      |                                                        uint32_t {aka unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:281:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:281:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:284:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  284 |             printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           ~~~~~~~~~~~~~~~~~~~~
+      |                                                                               |
+      |                                                                               size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:288:8: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 2 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
+  288 |                printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
+      |        ^       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~
+      |                                                                                                     |
+      |                                                                                                     uint32_t {aka unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:288:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:288:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:288:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 6 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:288:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 7 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:291:54: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  291 |                cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
+      |                                               ~~~~~~~^~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:291:66: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  291 |                cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
+      |                                              ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:333:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘void*’ [-Wformat=]
+  333 |                         fprintf(stderr,"Output file map failed: %d\n",map_out);
+      |                 ^       ~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                                 |
+      |                                                 void*
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:341:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  341 |                 printf("Reading NVMe contents from %llu to file\n", settings.ofileoffset, read_f);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~
+      |                                                              |
+      |                                                              size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:341:8: warning: too many arguments for format [-Wformat-extra-args]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:347:8: warning: format ‘%lu’ expects argument of type ‘long unsigned int’, but argument 2 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
+  347 |                     printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~
+      |                                                                                                     |
+      |                                                                                                     uint32_t {aka unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:347:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:347:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:347:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 6 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:347:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 7 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:381:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  381 |                 printf("Written file size: %llu\n", sz);
+      |        ^        ~~~~~~~~~~~~~~~~~~  ~~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:415:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘void*’ [-Wformat=]
+  415 |                        fprintf(stderr,"Input file map failed %d\n",map_orig);
+      |                 ^      ~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~
+      |                                               |
+      |                                               void*
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:424:25: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  424 |                memcpy(orig_h, map_orig+settings.ifileoffset, orig_sz);
+      |                ~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:441:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘void*’ [-Wformat=]
+  441 |                        fprintf(stderr,"Input file map failed %d\n",map_nvme);
+      |                 ^      ~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~
+      |                                               |
+      |                                               void*
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:447:17: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  447 |                    fprintf(stderr,"Orig and NVMe file are of different sizes: orig: %llu and nvme: %llu\n Continuing...\n",orig_sz, nvme_sz);
+      |                 ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                                                                                           |
+      |                                                                                                           size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:447:17: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/readwrite/main.cu:453:25: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+  453 |                memcpy(nvme_h, map_nvme+settings.ifileoffset, nvme_sz);
+      |                ~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/readwrite/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/readwrite/settings.h:344:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  344 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/block/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/block/settings.h:255:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  255 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(178): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(220): warning #177-D: variable "laneIdx" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/block/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/block/main.cu:245:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘void*’ [-Wformat=]
+  245 |                 fprintf(stderr,"Input file map failed %d\n",map_in);
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~
+      |                                               |
+      |                                               void*
+/home/vsm2/work/bam/benchmarks/block/main.cu:337:49: warning: comparison of integer expressions of different signedness: ‘int’ and ‘uint64_t’ {aka ‘long unsigned int’} [-Wsign-compare]
+  337 |                 access_assignment[i] = (((rand() % 100) + 1) <= settings.ratio) ? NVM_IO_READ : NVM_IO_WRITE;
+      |                            ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1509): warning #69-D: integer conversion resulted in truncation
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1545): warning #177-D: variable "nblocks" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1292): warning #177-D: variable "globalvisitedcount_h" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(326): here
+
+/home/vsm2/work/bam/benchmarks/block/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/block/settings.h:341:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  341 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/iodepth-block/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/iodepth-block/settings.h:255:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  255 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu:247:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘void*’ [-Wformat=]
+  247 |                 fprintf(stderr,"Input file map failed %d\n",map_in);
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~
+      |                                               |
+      |                                               void*
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu:339:49: warning: comparison of integer expressions of different signedness: ‘int’ and ‘uint64_t’ {aka ‘long unsigned int’} [-Wsign-compare]
+  339 |                 access_assignment[i] = (((rand() % 100) + 1) <= settings.ratio) ? NVM_IO_READ : NVM_IO_WRITE;
+      |                            ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/iodepth-block/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/iodepth-block/settings.h:341:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  341 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h(1774): warning #177-D: variable "ns" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(1775): warning #177-D: variable "j" was declared but never referenced
+
+/home/vsm2/work/bam/include/page_cache.h(2064): warning #550-D: variable "pc_pos" was set but never used
+
+/home/vsm2/work/bam/include/page_cache.h(2065): warning #550-D: variable "pc_prev_head" was set but never used
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(537): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(719): warning #177-D: variable "end" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(750): warning #177-D: variable "i" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(704): warning #177-D: variable "memref" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(789): warning #177-D: variable "i" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(947): warning #177-D: variable "comp_src" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(982): warning #177-D: variable "comp_src" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(1364): warning #69-D: integer conversion resulted in truncation
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(1400): warning #177-D: variable "nblocks" was declared but never referenced
+
+/home/vsm2/work/bam/benchmarks/array/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/array/settings.h:249:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  249 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+          detected during:
+            instantiation of "void array_d_t<T>::coalesce_page(uint32_t, uint32_t, int64_t, uint64_t, uint64_t, __nv_bool, uint32_t &, int &, uint32_t &, uint64_t &) const [with T=uint64_t]" 
+(1544): here
+            instantiation of "T array_d_t<T>::seq_read(size_t) const [with T=uint64_t]" 
+/home/vsm2/work/bam/benchmarks/cc/main.cu(190): here
+
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/array/main.cu:131:171:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/benchmarks/array/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/array/settings.h:335:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  335 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+Scanning dependencies of target readwrite-benchmark-module
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+[ 67%] Linking CXX executable ../../bin/nvm-readwrite-bench
+/home/vsm2/work/bam/benchmarks/block/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/block/main.cu:356:12: warning: ‘map_in’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  356 |             cuda_err_chk(cudaMemcpy(map_in, h_pc.pdt.base_addr,  std::min((uint64_t)sb_in.st_size, total_cache_size), cudaMemcpyDeviceToHost));
+      |            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                          
+/home/vsm2/work/bam/benchmarks/block/main.cu:230:7: note: ‘map_in’ was declared here
+  230 |         void* map_in;
+      |       ^ ~~~~
+[ 67%] Built target readwrite-benchmark-module
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu:392:12: warning: ‘map_in’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  392 |             cuda_err_chk(cudaMemcpy(map_in, h_pc.pdt.base_addr,  std::min((uint64_t)sb_in.st_size, total_cache_size), cudaMemcpyDeviceToHost));
+      |            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                                  
+/home/vsm2/work/bam/benchmarks/iodepth-block/main.cu:232:7: note: ‘map_in’ was declared here
+  232 |         void* map_in;
+      |       ^ ~~~~
+Scanning dependencies of target block-benchmark-module
+[ 70%] Linking CXX executable ../../bin/nvm-block-bench
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[ 70%] Built target block-benchmark-module
+/home/vsm2/work/bam/benchmarks/cache/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/cache/settings.h:258:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  258 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/cache/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/cache/main.cu:227:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  227 |   printf("ID:%d \t type:%d \t n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \t bandwidth: %f GBps \t time: %f\n",id, settings.random,  n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, elapsed);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~
+      |                                                                                                                                                                            |
+      |                                                                                                                                                                            uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cache/main.cu:227:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cache/main.cu:227:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 5 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cache/main.cu:227:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 6 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cache/main.cu:227:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 7 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cache/main.cu:227:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/cache/main.cu:167:153:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+Scanning dependencies of target iodepth-block-benchmark-module
+[ 73%] Linking CXX executable ../../bin/nvm-iodepth-block-bench
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/cache/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/cache/settings.h:344:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  344 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/pattern/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/pattern/settings.h:266:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  266 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+[ 73%] Built target iodepth-block-benchmark-module
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/pattern/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:403:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  403 |         printf("Total elements: %llu \n", n_elems);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                   |
+      |                                   uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:454:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  454 |                     printf("A file fread failed: %llu \t %llu\n", count_4k_aligned, n_elems+2);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~
+      |                                               |
+      |                                               uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:454:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:489:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  489 |                 printf("numblocks:%llu \n", numblocks);
+      |        ^        ~~~~~~~~~~  ~~~~~~~~~
+      |                             |
+      |                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:503:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  503 |                      printf("n_warps: %llu \t n_pc_pages:%llu \n", n_warps, n_pc_pages);
+      |        ^             ~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                               |
+      |                                               uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:503:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:505:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  505 |                  printf("n_warps: %llu \t numblocks:%llu \n", n_warps, numblocks);
+      |        ^         ~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                              |
+      |                                              uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:505:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:517:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  517 |                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                             |
+      |                                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:517:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:530:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  530 |             printf("I am called %llu\n", n_data_pages);
+      |        ^    ~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                              |
+      |                              uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘int’ [-Wformat=]
+  725 |    printf("P:%d Impl: %llu \t SSD: %llu \t n_warps:%llu \t n_pages_per_warp: %llu \t n_elems_per_page:%llu \t ios: %llu \t IOPs: %f \t data:%llu \t bandwidth: %f GBps \t avgiops: %f \t avgbandwidth: %f \n",titr, type, settings.n_ctrls, n_warps, n_pages_per_warp, n_elems_per_page, ios, iops, data, bandwidth, avgiops, avgbandwidth );
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        ~~~~
+      |                                                                                                                                                                                                                      |
+      |                                                                                                                                                                                                                      int
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint32_t’ {aka ‘unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 5 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 6 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 7 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 8 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:725:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 10 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:597:223:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+Scanning dependencies of target array-benchmark-module
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[ 76%] Linking CXX executable ../../bin/nvm-array-bench
+/home/vsm2/work/bam/benchmarks/pattern/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/pattern/settings.h:352:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  352 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/pagerank/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/pagerank/settings.h:258:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  258 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+[ 76%] Built target array-benchmark-module
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:523:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  523 |         printf("Vertex: %llu, ", vertex_count);
+      |        ^~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:540:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  540 |         printf("Edge: %llu\n", edge_count);
+      |        ^~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                        |
+      |                        uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:569:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  569 |                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:571:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  571 |                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:619:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  619 |                      printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:621:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  621 |                      printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:558:8: warning: enumeration value ‘UVM_READONLY_NVLINK’ not handled in switch [-Wswitch]
+  558 |         switch (mem) {
+      |        ^
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:558:8: warning: enumeration value ‘UVM_DIRECT_NVLINK’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:558:8: warning: enumeration value ‘DRAGON_MAP’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:681:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  681 |             printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                             |
+      |                                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:681:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:767:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  767 |                   printf("\nPageRank SSD: %d \t PageSize: %d \t ItrTime %f ms\n", settings.n_ctrls, settings.pageSize,(double)elapsed.count());
+      |        ^          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                    ~~~~~~~~~~~~~~~~~
+      |                                                                                            |
+      |                                                                                            size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:781:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  781 |         printf("\nPageRank Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t TotalTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, milliseconds);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                            ~~~~~~~~~~~~~~~~~
+      |                                                                                                                                              |
+      |                                                                                                                                              size_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:693:222:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/pagerank/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/pagerank/settings.h:344:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  344 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(355): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(362): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu(462): warning #61-D: integer operation result is out of range
+
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/sssp/settings.h:259:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  259 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/sssp_float/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/sssp_float/settings.h:259:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  259 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/sssp/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:396:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  396 |         printf("Vertex: %llu, ", vertex_count);
+      |        ^~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:414:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  414 |         printf("Edge: %llu, ", edge_count);
+      |        ^~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                        |
+      |                        uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:431:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  431 |         printf("Weight: %llu\n", weight_count);
+      |        ^~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:465:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  465 |                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:467:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  467 |                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:562:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  562 |                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:564:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  564 |                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:438:8: warning: enumeration value ‘UVM_READONLY_NVLINK’ not handled in switch [-Wswitch]
+  438 |         switch (mem) {
+      |        ^
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:438:8: warning: enumeration value ‘UVM_DIRECT_NVLINK’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:438:8: warning: enumeration value ‘DRAGON_MAP’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:621:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  621 |                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                             |
+      |                                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:621:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:685:6: warning: variable ‘start’ set but not used [-Wunused-but-set-variable]
+  685 |                 auto start = std::chrono::system_clock::now();
+      |      ^    
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:716:6: warning: variable ‘end’ set but not used [-Wunused-but-set-variable]
+  716 |                 auto end = std::chrono::system_clock::now();
+      |      ^  
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:732:8: warning: format ‘%u’ expects argument of type ‘unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  732 |                   printf("src %*u, ", 10, src);
+      |        ^                ~~~
+      |                         |
+      |                         uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:787:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  787 |         printf("\nSSSP Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                            ~~~~~~~~~~~~~~~~~
+      |                                                                                                                                        |
+      |                                                                                                                                        size_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:416:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  416 |         printf("Vertex: %llu, ", vertex_count);
+      |        ^~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:434:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  434 |         printf("Edge: %llu, ", edge_count);
+      |        ^~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                        |
+      |                        uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:451:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  451 |         printf("Weight: %llu\n", weight_count);
+      |        ^~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:485:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  485 |                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:487:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  487 |                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:513:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  513 |                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:515:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  515 |                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:458:8: warning: enumeration value ‘UVM_READONLY_NVLINK’ not handled in switch [-Wswitch]
+  458 |         switch (mem) {
+      |        ^
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:458:8: warning: enumeration value ‘UVM_DIRECT_NVLINK’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:458:8: warning: enumeration value ‘DRAGON_MAP’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:580:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  580 |                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                             |
+      |                                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:580:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:652:224:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:653:221:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:646:6: warning: variable ‘start’ set but not used [-Wunused-but-set-variable]
+  646 |                 auto start = std::chrono::system_clock::now();
+      |      ^    
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:677:6: warning: variable ‘end’ set but not used [-Wunused-but-set-variable]
+  677 |                 auto end = std::chrono::system_clock::now();
+      |      ^  
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:693:8: warning: format ‘%u’ expects argument of type ‘unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  693 |                   printf("src %*u, ", 10, src);
+      |        ^                ~~~
+      |                         |
+      |                         uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:748:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  748 |         printf("\nSSSP_F Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                            ~~~~~~~~~~~~~~~~~
+      |                                                                                                                                          |
+      |                                                                                                                                          size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/vectoradd/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/vectoradd/settings.h:264:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  264 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:611:224:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = float; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:612:218:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:266:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  266 |         printf("Total elements: %llu \n", n_elems);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                   |
+      |                                   uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:355:60: warning: comparison of unsigned expression < 0 is always false [-Wtype-limits]
+  355 |                 if (fread(a_d, sizeof(uint64_t), count_4k_aligned, fa_tmp) <0) {
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:356:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  356 |                     printf("A file fread failed: %llu \t %llu\n", count_4k_aligned, n_elems+2);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~
+      |                                               |
+      |                                               uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:356:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:362:60: warning: comparison of unsigned expression < 0 is always false [-Wtype-limits]
+  362 |                 if (fread(b_d, sizeof(uint64_t), count_4k_aligned, fb_tmp) <0) {
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:302:8: warning: enumeration value ‘UVM_READONLY_NVLINK’ not handled in switch [-Wswitch]
+  302 |         switch (mem) {
+      |        ^
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:302:8: warning: enumeration value ‘UVM_DIRECT_NVLINK’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:438:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  438 |                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                             |
+      |                                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:438:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:462:47: warning: integer overflow in expression of type ‘int’ results in ‘0’ [-Woverflow]
+  462 |         uint64_t cfileoffset = 720*1024*1024*1024;
+      |                         ~~~~~~~~~~~~~~~~~~~~~~^~~~  
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:490:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘unsigned int’ [-Wformat=]
+  490 |                     printf("launching baseline: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                                                                                            |
+      |                                                                                            unsigned int
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:490:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘unsigned int’ [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:490:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:495:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘unsigned int’ [-Wformat=]
+  495 |                     printf("launching baseline_pc: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                                                                                               |
+      |                                                                                               unsigned int
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:495:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘unsigned int’ [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:495:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:504:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘unsigned int’ [-Wformat=]
+  504 |                     printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                                                                            |
+      |                                                                            unsigned int
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:504:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:509:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘unsigned int’ [-Wformat=]
+  509 |                     printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                                                                            |
+      |                                                                            unsigned int
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:509:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:543:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 7 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+  543 |             printf("\nVA %d A:%s \t B:%s Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %llu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), b_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, milliseconds);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                                                        ~~~~~~~~~~~~~~~~~
+      |                                                                                                                                                                                                 |
+      |                                                                                                                                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:543:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 8 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:543:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:466:220:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/benchmarks/sssp/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/sssp/settings.h:345:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  345 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp_float/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/sssp_float/settings.h:345:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  345 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/vectoradd/settings.h:350:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  350 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/pattern/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:738:8: warning: ‘h_Aarray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  738 |             delete h_Aarray;
+      |        ^    ~~~
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:592:27: note: ‘h_Aarray’ was declared here
+  592 |         array_t<uint64_t>* h_Aarray;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:737:8: warning: ‘h_Arange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  737 |             delete h_Arange;
+      |        ^    ~~~
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:590:27: note: ‘h_Arange’ was declared here
+  590 |         range_t<uint64_t>* h_Arange;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:736:8: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  736 |             delete h_pc;
+      |        ^   
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:589:15: note: ‘h_pc’ was declared here
+  589 |         page_cache_t* h_pc;
+      |               ^~~~
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:731:5: warning: ‘a_h’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  731 |            free(a_h);
+      |     ^    
+/home/vsm2/work/bam/benchmarks/pattern/main.cu:368:11: note: ‘a_h’ was declared here
+  368 |     uint64_t *a_h, *a_d;
+      |           ^~~
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:796:8: warning: ‘h_array’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  796 |             delete h_array;
+      |        ^    ~~
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:688:27: note: ‘h_array’ was declared here
+  688 |         array_t<uint64_t>* h_array;
+      |                           ^~~~~~~
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:795:8: warning: ‘h_range’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  795 |             delete h_range;
+      |        ^    ~~
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:686:27: note: ‘h_range’ was declared here
+  686 |         range_t<uint64_t>* h_range;
+      |                           ^~~~~~~
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:794:8: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  794 |             delete h_pc;
+      |        ^   
+/home/vsm2/work/bam/benchmarks/pagerank/main.cu:685:15: note: ‘h_pc’ was declared here
+  685 |         page_cache_t* h_pc;
+      |               ^~~~
+Scanning dependencies of target cache-benchmark-module
+[ 79%] Linking CXX executable ../../bin/nvm-cache-bench
+[ 79%] Built target cache-benchmark-module
+Scanning dependencies of target pattern-benchmark-module
+[ 82%] Linking CXX executable ../../bin/nvm-pattern-bench
+[ 82%] Built target pattern-benchmark-module
+Scanning dependencies of target pagerank-benchmark-module
+[ 85%] Linking CXX executable ../../bin/nvm-pagerank-bench
+[ 85%] Built target pagerank-benchmark-module
+/home/vsm2/work/bam/benchmarks/sssp/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:804:8: warning: ‘h_warray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  804 |                 delete h_warray;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:642:22: note: ‘h_warray’ was declared here
+  642 |         array_t<WeightT>* h_warray;
+      |                      ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:801:8: warning: ‘h_earray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  801 |                 delete h_earray;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:641:27: note: ‘h_earray’ was declared here
+  641 |         array_t<uint64_t>* h_earray;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:803:8: warning: ‘h_wrange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  803 |                 delete h_wrange;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:638:22: note: ‘h_wrange’ was declared here
+  638 |         range_t<WeightT>* h_wrange;
+      |                      ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:800:8: warning: ‘h_erange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  800 |                 delete h_erange;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:637:27: note: ‘h_erange’ was declared here
+  637 |         range_t<uint64_t>* h_erange;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:799:8: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  799 |                 delete h_pc;
+      |        ^   
+/home/vsm2/work/bam/benchmarks/sssp/main.cu:635:15: note: ‘h_pc’ was declared here
+  635 |         page_cache_t* h_pc;
+      |               ^~~~
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:767:8: warning: ‘h_warray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  767 |                 delete h_warray;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:601:19: note: ‘h_warray’ was declared here
+  601 |         array_t<WeightT>* h_warray;
+      |                   ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:764:8: warning: ‘h_earray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  764 |                 delete h_earray;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:600:27: note: ‘h_earray’ was declared here
+  600 |         array_t<uint64_t>* h_earray;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:766:8: warning: ‘h_wrange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  766 |                 delete h_wrange;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:597:19: note: ‘h_wrange’ was declared here
+  597 |         range_t<WeightT>* h_wrange;
+      |                   ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:763:8: warning: ‘h_erange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  763 |                 delete h_erange;
+      |        ^       
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:596:27: note: ‘h_erange’ was declared here
+  596 |         range_t<uint64_t>* h_erange;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:762:8: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  762 |                 delete h_pc;
+      |        ^   
+/home/vsm2/work/bam/benchmarks/sssp_float/main.cu:594:15: note: ‘h_pc’ was declared here
+  594 |         page_cache_t* h_pc;
+      |               ^~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:496:87: warning: ‘h_Carray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  496 |                     kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, h_Carray->d_array_ptr, sum_d);
+      |                                                                 ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                 
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:459:27: note: ‘h_Carray’ was declared here
+  459 |         array_t<uint64_t>* h_Carray;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:558:8: warning: ‘h_Barray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  558 |             delete h_Barray;
+      |        ^    ~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:458:27: note: ‘h_Barray’ was declared here
+  458 |         array_t<uint64_t>* h_Barray;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:557:8: warning: ‘h_Aarray’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  557 |             delete h_Aarray;
+      |        ^    ~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:457:27: note: ‘h_Aarray’ was declared here
+  457 |         array_t<uint64_t>* h_Aarray;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:556:8: warning: ‘h_Brange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  556 |             delete h_Brange;
+      |        ^    ~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:452:27: note: ‘h_Brange’ was declared here
+  452 |         range_t<uint64_t>* h_Brange;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:555:8: warning: ‘h_Arange’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  555 |             delete h_Arange;
+      |        ^    ~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:451:27: note: ‘h_Arange’ was declared here
+  451 |         range_t<uint64_t>* h_Arange;
+      |                           ^~~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:450:15: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  450 |         page_cache_t* h_pc;
+      |               ^~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:414:10: warning: ‘n_warps’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  414 |         uint64_t n_warps;
+      |          ^~~~~~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:549:5: warning: ‘b_h’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  549 |            free(b_h);
+      |     ^    
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:226:11: note: ‘b_h’ was declared here
+  226 |     uint64_t *b_h, *b_d;
+      |           ^~~
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:548:5: warning: ‘a_h’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  548 |            free(a_h);
+      |     ^    
+/home/vsm2/work/bam/benchmarks/vectoradd/main.cu:225:11: note: ‘a_h’ was declared here
+  225 |     uint64_t *a_h, *a_d;
+      |           ^~~
+Scanning dependencies of target sssp-benchmark-module
+[ 88%] Linking CXX executable ../../bin/nvm-sssp-bench
+Scanning dependencies of target sssp_float-benchmark-module
+[ 91%] Linking CXX executable ../../bin/nvm-sssp_float-bench
+Scanning dependencies of target vectoradd-benchmark-module
+[ 91%] Built target sssp-benchmark-module
+[ 94%] Linking CXX executable ../../bin/nvm-vectoradd-bench
+[ 94%] Built target sssp_float-benchmark-module
+[ 94%] Built target vectoradd-benchmark-module
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(178): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/bfs/main.cu(1509): warning #69-D: integer conversion resulted in truncation
+
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/bfs/settings.h:261:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  261 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/bfs/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1252:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1252 |          printf("Vertex: %llu, ", vertex_count);
+      |        ^ ~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1277:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1277 |          printf("Edge: %llu\n", edge_count);
+      |        ^ ~~~~~~~~~~~~  ~~~~~~~~~~
+      |                        |
+      |                        uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1319:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1319 |                      printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1321:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1321 |                      printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1453:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1453 |                 printf("page size: %d, pc_entries: %llu tile_size:%llu\n", pc_page_size, pc_pages, tile_size);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                                            |
+      |                                                            uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1453:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1453:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1505:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1505 |             printf("n_tiles: %llu num_elems_in_tile:%llu \n", n_tiles, num_elems_in_cl);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                                   |
+      |                                                   uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1505:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1507:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1507 |             printf("n_tiles: %llu num_elems_in_tile:%llu \n", n_tiles, num_elems_in_cl);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~
+      |                                                   |
+      |                                                   uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1507:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1509:38: warning: overflow in conversion from ‘long unsigned int’ to ‘int’ changes value from ‘18446744073709551615’ to ‘-1’ [-Woverflow]
+ 1509 |             cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, (n_tiles)* sizeof(unsigned long long int)));
+      |                                      ^~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1517:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1517 |             printf("Allocating %f MB for FirstVertexList with n_tiles: %llu numelemspercl: %llu\n", ((double)n_tiles*sizeof(uint64_t)/(1024*1024)), n_tiles, num_elems_in_cl);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                                            ~~~~~~~
+      |                                                                                                                                                   |
+      |                                                                                                                                                   uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1517:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1522:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1522 |             printf("Launching step1 in generation of FirstVertexList: numblocks: %llu numthreads: %llu\n", nblocks_step1, numthreads);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~
+      |                                                                                                |
+      |                                                                                                uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1522:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1580:6: warning: variable ‘start’ set but not used [-Wunused-but-set-variable]
+ 1580 |                  auto start = std::chrono::system_clock::now();
+      |      ^    
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1742:8: warning: format ‘%u’ expects argument of type ‘unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1742 |                  printf("src %*u, ", 10, src);
+      |        ^         ~      ~~~
+      |                         |
+      |                         uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1758:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 6 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1758 |              printf("\nBFS-%d Graph:%s \t Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %llu \t Coarse: %d \t AvgTime %f ms\n", i, filename.c_str(), type, settings.n_ctrls, settings.pageSize, settings.maxPageCacheSize, settings.stride, settings.coarse, milliseconds);
+      |        ^     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                               ~~~~~~~~~~~~~~~~~
+      |                                                                                                                                                                                    |
+      |                                                                                                                                                                                    size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1758:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 7 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1758:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 8 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1758:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1481:222:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/bfs/settings.h:347:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  347 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h(1125): warning #546-D: transfer of control bypasses initialization of:
+            variable "page_trans"
+(1173): here
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(537): warning #186-D: pointless comparison of unsigned integer with zero
+
+/home/vsm2/work/bam/benchmarks/cc/main.cu(1364): warning #69-D: integer conversion resulted in truncation
+
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic: In function ‘void simt::v1::atomic_thread_fence_simt(simt::v1::memory_order, simt::v1::thread_scope)’:
+/home/vsm2/work/bam/include/freestanding/include/simt/atomic:208:69: warning: unused parameter ‘_S’ [-Wunused-parameter]
+  208 | inline __host__ __device__ void atomic_thread_fence_simt(memory_order __m, thread_scope _S = thread_scope_system) {
+      |                                                        ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/cc/settings.h: In static member function ‘static std::string Settings::usageString(const string&)’:
+/home/vsm2/work/bam/benchmarks/cc/settings.h:262:54: warning: unused parameter ‘name’ [-Wunused-parameter]
+  262 | string Settings::usageString(const string& name)
+      |                                   ~~~~~~~~~~~~~~     ^   
+/home/vsm2/work/bam/include/page_cache.h: In member function ‘void page_cache_t::print_reset_stats()’:
+/home/vsm2/work/bam/include/page_cache.h:670:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  670 |         printf("Cache Extra Reads: %llu\n", v);
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~  ~
+      |                                     |
+      |                                     uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘page_cache_t::page_cache_t(uint64_t, uint64_t, uint32_t, const Controller&, uint64_t, const std::vector<Controller*>&)’:
+/home/vsm2/work/bam/include/page_cache.h:757:41: warning: ‘new’ of type ‘cache_page_t’ with extended alignment 32 [-Waligned-new=]
+  757 |         cache_page_t* tps = new cache_page_t[np];
+      |                                         ^
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:757:41: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h: In constructor ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t)’:
+/home/vsm2/work/bam/include/page_cache.h:1000:37: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                                     ^
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:37: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/benchmarks/cc/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1116:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1116 |         printf("Vertex: %llu, ", vertex_count);
+      |        ^~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                          |
+      |                          uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1142:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1142 |         printf("Edge: %llu\n", edge_count);
+      |        ^~~~~~~~~~~~~~  ~~~~~~~~~~
+      |                        |
+      |                        uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1166:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1166 |                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                 |
+      |                                                                                 size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1168:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1168 |                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~
+      |                                                                                   |
+      |                                                                                   size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1149:8: warning: enumeration value ‘UVM_READONLY_NVLINK’ not handled in switch [-Wswitch]
+ 1149 |         switch (mem) {
+      |        ^
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1149:8: warning: enumeration value ‘UVM_DIRECT_NVLINK’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1149:8: warning: enumeration value ‘DRAGON_MAP’ not handled in switch [-Wswitch]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1328:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1328 |                 printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+      |        ^        ~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~
+      |                                             |
+      |                                             uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1328:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1364:38: warning: overflow in conversion from ‘long unsigned int’ to ‘int’ changes value from ‘18446744073709551615’ to ‘-1’ [-Woverflow]
+ 1364 |             cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, (n_pages)* sizeof(unsigned long long int)));
+      |                                      ^~~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1372:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1372 |             printf("Allocating %f MB for FirstVertexList with n_pages: %llu numelemspercl: %llu\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)), n_pages, num_elems_in_cl);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                                            ~~~~~~~
+      |                                                                                                                                                   |
+      |                                                                                                                                                   uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1372:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1377:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1377 |             printf("Launching step1 in generation of FirstVertexList: numblocks: %llu numthreads: %llu\n", nblocks_step1, numthreads);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~
+      |                                                                                                |
+      |                                                                                                uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1377:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 3 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1542:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1542 |                         printf("\t %llu", vertexList_h[i]);
+      |        ^                ~~~~~~~~~
+      |                                 |
+      |                                 uint64_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1557:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘__gnu_cxx::__alloc_traits<std::allocator<long unsigned int>, long unsigned int>::value_type’ {aka ‘long unsigned int’} [-Wformat=]
+ 1557 |                         printf("\t %llu", outarray_h[i]);
+      |        ^        
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1567:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 2 has type ‘__gnu_cxx::__alloc_traits<std::allocator<long unsigned int>, long unsigned int>::value_type’ {aka ‘long unsigned int’} [-Wformat=]
+ 1567 |                         printf("\t %llu", outarray_h[i]);
+      |        ^        
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1575:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘long int’ [-Wformat=]
+ 1575 |                     printf("Avg Actual :%f \t avg total: %f no_of_actual_pages:%llu\n", avgactual, avgtotal, tmp1 );
+      |        ^            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                       ~~~~
+      |                                                                                          |
+      |                                                                                          long int
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1644:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 6 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1644 |             printf("\nCC %d Graph:%s \t Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %d \t Coarse: %d \t TotalTime %f ms\n", titr, filename.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, settings.coarse,  milliseconds);
+      |        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                                  ~~~~~~~~~~~~~~~~~
+      |                                                                                                                                                                                      |
+      |                                                                                                                                                                                      size_t {aka long unsigned int}
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1644:8: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 7 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1644:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 8 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1644:8: warning: format ‘%d’ expects argument of type ‘int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+/home/vsm2/work/bam/include/page_cache.h: In instantiation of ‘range_t<T>::range_t(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, page_cache_t*, uint32_t, data_dist_t) [with T = long unsigned int; uint64_t = long unsigned int; uint32_t = unsigned int]’:
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1348:222:   required from here
+/home/vsm2/work/bam/include/page_cache.h:1000:19: warning: ‘new’ of type ‘data_page_t’ with extended alignment 32 [-Waligned-new=]
+ 1000 |     data_page_t* ts = new data_page_t[s];
+      |                   ^~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: uses ‘void* operator new [](std::size_t)’, which does not have an alignment parameter
+/home/vsm2/work/bam/include/page_cache.h:1000:19: note: use ‘-faligned-new’ to enable C++17 over-aligned new support
+/home/vsm2/work/bam/include/page_cache.h:981:101: warning: unused parameter ‘p_size’ [-Wunused-parameter]
+  981 | range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist) {
+      |                                                                                            ~~~~~~~~~^~~~~~
+/home/vsm2/work/bam/benchmarks/cc/settings.h: At global scope:
+/home/vsm2/work/bam/benchmarks/cc/settings.h:348:13: warning: ‘void verifyNumberOfThreads(size_t)’ defined but not used [-Wunused-function]
+  348 | static void verifyNumberOfThreads(size_t numThreads)
+      |             ^~~~~~~~~~~~~~~~~~~~~
+/home/vsm2/work/bam/include/buffer.h:132:13: warning: ‘void getDeviceMemory(int, void*&, size_t)’ defined but not used [-Wunused-function]
+  132 | static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+      |             ^~~~~~~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1764:8: warning: ‘h_array’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1764 |             delete h_array;
+      |        ^    ~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1475:27: note: ‘h_array’ was declared here
+ 1475 |          array_t<uint64_t>* h_array;
+      |                           ^~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1763:8: warning: ‘h_range’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1763 |             delete h_range;
+      |        ^    ~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1473:27: note: ‘h_range’ was declared here
+ 1473 |          range_t<uint64_t>* h_range;
+      |                           ^~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1762:415: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1762 |          if((type==BASELINE_PC)||(type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)||(type==FRONTIER_BASELINE_PC)||(type == FRONTIER_COALESCE_PC) || (type== FRONTIER_COALESCE_PTR_PC) ||(type == COALESCE_COARSE_PTR_PC) ||(type == COALESCE_HASH_PTR_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){            delete h_pc;
+      |                                                                                                                                                                                                                                                                                                                                                                                                                               ^   
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1472:15: note: ‘h_pc’ was declared here
+ 1472 |          page_cache_t* h_pc;
+      |               ^~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1447:35: warning: ‘numblocks’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1447 |          dim3 blockDim(BLOCK_NUM, (numblocks+BLOCK_NUM)/BLOCK_NUM);
+      |                        ~~~~~~~~~~~^~~~~~~~~~
+/home/vsm2/work/bam/benchmarks/bfs/main.cu:1188:10: note: ‘numblocks’ was declared here
+ 1188 |     uint64_t numblocks, numthreads;
+      |          ^~~~~~~~~
+Scanning dependencies of target bfs-benchmark-module
+[ 97%] Linking CXX executable ../../bin/nvm-bfs-bench
+[ 97%] Built target bfs-benchmark-module
+/home/vsm2/work/bam/benchmarks/cc/main.cu: In function ‘int main(int, char**)’:
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1662:8: warning: ‘h_array’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1662 |             delete h_array;
+      |        ^    ~~
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1343:27: note: ‘h_array’ was declared here
+ 1343 |         array_t<uint64_t>* h_array;
+      |                           ^~~~~~~
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1661:8: warning: ‘h_range’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1661 |             delete h_range;
+      |        ^    ~~
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1341:27: note: ‘h_range’ was declared here
+ 1341 |         range_t<uint64_t>* h_range;
+      |                           ^~~~~~~
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1660:8: warning: ‘h_pc’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+ 1660 |             delete h_pc;
+      |        ^   
+/home/vsm2/work/bam/benchmarks/cc/main.cu:1340:15: note: ‘h_pc’ was declared here
+ 1340 |         page_cache_t* h_pc;
+      |               ^~~~
+Scanning dependencies of target cc-benchmark-module
+[100%] Linking CXX executable ../../bin/nvm-cc-bench
+[100%] Built target cc-benchmark-module
+Scanning dependencies of target benchmarks
+[100%] Built target benchmarks
+

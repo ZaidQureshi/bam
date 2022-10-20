@@ -1,0 +1,35 @@
+# With Single Intel Optane SSD wih 4KB cacheline size (page_size) and 8GB BaM Cache. 
+sudo ./bin/nvm-cc-bench -f /home/vsm2/bafsdata/GAP-kron.bel -l 0 --impl_type 20 --memalloc 6 --src 58720242 --n_ctrls 1 -p 4096 --gpu 0 --threads 128 -M $((8*1024*1024*1024)) -P 128 -C 8 -S 1
+/home/vsm2/bafsdata/GAP-kron.bel
+File /home/vsm2/bafsdata/GAP-kron.bel
+Vertex: 134217726, Edge: 4223264644
+Allocation finished
+page size: 4096, pc_entries: 2097152
+SQs: 135	CQs: 135	n_qps: 128
+Controllers Created
+Initialization done
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7fb9d8010000	58020410000
+HEREN
+Cond1
+200000 8 1 200000
+Finish Making Page Cache
+Page cache initialized
+Hash Stride: 128 Coarse: 8
+total cc iterations: 4
+total components: 71164263
+total time: 10821.237305 ms
+#READ IOs: 16524764	#Accesses:1270205174	#Misses:354511917	Miss Rate:0.279098	#Hits: 915693257	Hit Rate:0.720902	CLSize:4096
+*********************************
+
+CC 0 Graph:/home/vsm2/bafsdata/GAP-kron.bel 	Impl: 20 	SSD: 1 	CL: 4096 	Cache: 8589934592 	Stride: 128 	Coarse: 8 	TotalTime 10821.237305 ms
+Hash Stride: 128 Coarse: 8
+total cc iterations: 4
+total components: 71164263
+total time: 10806.666992 ms
+#READ IOs: 16502729	#Accesses:1270205148	#Misses:353968164	Miss Rate:0.27867	#Hits: 916236984	Hit Rate:0.72133	CLSize:4096
+*********************************
+
+CC 1 Graph:/home/vsm2/bafsdata/GAP-kron.bel 	Impl: 20 	SSD: 1 	CL: 4096 	Cache: 8589934592 	Stride: 128 	Coarse: 8 	TotalTime 10806.666992 ms
+

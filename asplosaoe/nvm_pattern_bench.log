@@ -1,0 +1,63 @@
+
+sudo ./bin/nvm-pattern-bench --input_a=/home/vsm2/bafsdata/GAP-kron.bel --memalloc=6 --threads=4194304 --n_elems=137438953472 --impl_type=3 --blk_size=128 --queue_depth=1024 --num_queues=135 --page_size=4096 --n_ctrls=1 
+A: /home/vsm2/bafsdata/GAP-kron.bel.dst
+Total elements: 137438953472 
+n_warps: 131072 	numblocks:65536 
+page size: 4096, pc_entries: 2097152
+Allocation finished
+SQs: 135	CQs: 135	n_qps: 135
+Controllers Created
+Initialization done
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7efc30010000	58022010000
+HEREN
+Cond1
+200000 8 1 200000
+Finish Making Page Cache
+Page cache initialized
+val in gpu: 1663758813 
+#READ IOs: 131072	#Accesses:4194304	#Misses:4194304	Miss Rate:1	#Hits: 0	Hit Rate:0	CLSize:4096
+*********************************
+P:0 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 797566000.672973 	data:536870912 	bandwidth: 5.942330 GBps 	avgiops: inf 	avgbandwidth: inf 
+val in gpu: 915100374 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:1 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 49799391758.371330 	data:536870912 	bandwidth: 371.034382 GBps 	avgiops: 49799391758.371330 	avgbandwidth: 371.034382 
+val in gpu: 1624408235 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:2 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50451116401.548798 	data:536870912 	bandwidth: 375.890109 GBps 	avgiops: 50123133430.321938 	avgbandwidth: 373.446445 
+val in gpu: 2059900224 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:3 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50334868706.078766 	data:536870912 	bandwidth: 375.023996 GBps 	avgiops: 50193512158.904495 	avgbandwidth: 373.970808 
+val in gpu: 1631163370 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:4 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 49989322239.155258 	data:536870912 	bandwidth: 372.449474 GBps 	avgiops: 50142308454.389557 	avgbandwidth: 373.589310 
+val in gpu: 1097009717 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:5 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 49610899066.537041 	data:536870912 	bandwidth: 369.630002 GBps 	avgiops: 50035116879.830650 	avgbandwidth: 372.790671 
+val in gpu: 1091665284 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:6 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50257667401.372787 	data:536870912 	bandwidth: 374.448802 GBps 	avgiops: 50072073142.439964 	avgbandwidth: 373.066017 
+val in gpu: 344527228 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:7 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50373558369.068062 	data:536870912 	bandwidth: 375.312257 GBps 	avgiops: 50114918776.908516 	avgbandwidth: 373.385241 
+val in gpu: 774151880 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:8 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50373558369.068062 	data:536870912 	bandwidth: 375.312257 GBps 	avgiops: 50147105619.755478 	avgbandwidth: 373.625052 
+val in gpu: 310116501 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:9 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50027482318.761513 	data:536870912 	bandwidth: 372.733789 GBps 	avgiops: 50133783914.451157 	avgbandwidth: 373.525798 
+val in gpu: 1850572170 
+#READ IOs: 0	#Accesses:4194304	#Misses:0	Miss Rate:0	#Hits: 4194304	Hit Rate:1	CLSize:4096
+*********************************
+P:10 Impl: 3 	SSD: 1 	n_warps:131072 	n_pages_per_warp: 1 	n_elems_per_page:512 	ios: 67108864 	IOPs: 50296238429.055405 	data:536870912 	bandwidth: 374.736178 GBps 	avgiops: 50149982572.562210 	avgbandwidth: 373.646487 
+

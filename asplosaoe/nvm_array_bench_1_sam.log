@@ -1,0 +1,18 @@
+# With Single Samsung 980 pro SSD with 4KB cacheline size (page_size) 
+sudo ./bin/nvm-array-bench --threads=$((1024*1024*128)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=4096 --gpu=2 --n_ctrls=1 --num_queues=128 --random=false
+SQs: 129	CQs: 129	n_qps: 128
+n_ranges_bits: 6
+n_ranges_mask: 63
+pages_dma: 0x7f3752010000	3f020410000
+HEREN
+Cond1
+100000 8 1 100000
+Finish Making Page Cache
+finished creating cache
+finished creating range
+atlaunch kernel
+0000:BA:00.0
+#READ IOs: 262144	#Accesses:134217728	#Misses:8388608	Miss Rate:0.0625	#Hits: 125829120	Hit Rate:0.9375	CLSize:4096
+*********************************
+Elapsed Time: 525437	Number of Read Ops: 134217728	Data Size (bytes): 1073741824
+Read Ops/sec: 2.5544e+08	Effective Bandwidth(GB/S): 1.90318
