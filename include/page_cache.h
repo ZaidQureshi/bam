@@ -692,6 +692,9 @@ struct page_cache_t {
 
     }
 
+    //Default constructor
+    page_cache_t() = default;
+
     page_cache_t(const uint64_t ps, const uint64_t np, const uint32_t cudaDevice, const Controller& ctrl, const uint64_t max_range, const std::vector<Controller*>& ctrls) {
 
         ctrl_counter_buf = createBuffer(sizeof(simt::atomic<uint64_t, simt::thread_scope_device>), cudaDevice);
@@ -955,6 +958,28 @@ struct range_d_t {
     __device__
     uint64_t get_cache_page_addr(const uint32_t page_trans) const;
 
+   range_d_t<T>& operator=(const range_d_t<T>& rhs) {
+      	index_start = rhs.index_start;
+    	count = rhs.count;
+        range_id = rhs.range_id;
+        page_start_offset = rhs.page_start_offset;
+        index_start = rhs.index_start;
+        page_size = rhs.page_size;
+        page_start = rhs.page_start;
+        page_count = rhs.page_count;
+        n_elems_per_page = rhs.n_elems_per_page;
+        dist = rhs.dist;
+        src = rhs.src;
+	pages = rhs.pages;
+	cache = rhs.cache;
+
+
+      access_cnt.store(rhs.access_cnt.load());
+      miss_cnt.store(rhs.miss_cnt.load());
+      hit_cnt.store(rhs.hit_cnt.load());
+      read_io_cnt.store(rhs.read_io_cnt.load());
+
+   }
 };
 
 template <typename T>
@@ -973,6 +998,7 @@ struct range_t {
 
     range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint64_t pso, uint64_t p_size, page_cache_t* c_h, uint32_t cudaDevice, data_dist_t dist = REPLICATE);
 
+    range_t() = default;
 
 
 };
@@ -1754,6 +1780,7 @@ struct array_t {
         cuda_err_chk(cudaMemcpy(d_array_ptr, &adt, sizeof(array_d_t<T>), cudaMemcpyHostToDevice));
     }
 
+    array_t() = default;
 };
 
 __forceinline__
