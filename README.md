@@ -194,13 +194,13 @@ Ops/sec: 1.54596e+06	Effective Bandwidth(GB/S): 0.73717
 If you want to run a large GPU kernel on GPU 5 with many threads (262144 threads grouped into GPU block size of 64) each making 1 random request to the first 2097152 NVME blocks, an NVMe IO read size of 512 bytes (page_size), 128 NVMe queues each 1024 elements deep, you would run the following command:
 
 ```
-sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=5 --n_ctrls=1 --num_queues=128 --random=true
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=0 --n_ctrls=1 --num_queues=128 --random=true
 ```
 
 If you want to run the same benchmark but now with each thread accessing the array sequentially, you would run the following command:
 
 ```
-sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=5 --n_ctrls=1 --num_queues=128 --random=false
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=512 --num_blks=2097152 --gpu=0 --n_ctrls=1 --num_queues=128 --random=false
 ```
 
 Disclaimer: The NVMe SSD I was using supports 128 queues each with 1024 depth. However, even if your SSD supports less number of queues and/or less depth the system will automatically use the numbers reported by your device if you specify larger numbers.
