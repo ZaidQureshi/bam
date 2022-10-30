@@ -1,5 +1,5 @@
 # With Two Samsung 980 pro SSD with 4KB cacheline size (page_size)
-sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=4096 --num_blks=2097152 --gpu=2 --n_ctrls=2 --num_queues=128 --random=true
+sudo ./bin/nvm-block-bench --threads=262144 --blk_size=64 --reqs=1 --pages=262144 --queue_depth=1024  --page_size=4096 --num_blks=2097152 --gpu=0 --n_ctrls=2 --num_queues=128 --random=true
 SQs: 129	CQs: 129	n_qps: 128
 SQs: 129	CQs: 129	n_qps: 128
 n_ranges_bits: 6

@@ -1,5 +1,5 @@
 # With Two Samsung 980 pro SSD with 4KB cacheline size (page_size)
-sudo ./bin/nvm-array-bench --threads=$((1024*1024*128)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=4096 --gpu=2 --n_ctrls=2 --num_queues=128 --random=false
+sudo ./bin/nvm-array-bench --threads=$((1024*1024*128)) --blk_size=64 --reqs=1 --pages=$((1024*1024)) --queue_depth=1024  --page_size=4096 --gpu=0 --n_ctrls=2 --num_queues=128 --random=false
 SQs: 129	CQs: 129	n_qps: 128
 SQs: 129	CQs: 129	n_qps: 128
 n_ranges_bits: 6
