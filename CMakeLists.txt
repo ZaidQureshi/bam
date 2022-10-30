@@ -129,7 +129,7 @@ set (fio_output "${CMAKE_BINARY_DIR}/fio")
 
 
 # Set include directories
-include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/freestanding/include" "/usr/local/cuda/include")
+include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/freestanding/include")
 if (sisci_include)
     include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${sisci_include}" "${sisci_include}/dis")
 endif ()
