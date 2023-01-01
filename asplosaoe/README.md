@@ -27,7 +27,7 @@ Everything in the log should match except performance numbers as we are not goin
 
 ## Goal 1: BaM is functional with a single Samsung 980 Pro SSD - the codebase builds and the components (I/O stack, cache, application APIs) are functionally usable
 
-### Building the codebase
+### Compiling
 First, we get the required software dependencies and run `cmake`.
 ```
 $ git submodule update --init --recursive
