@@ -487,7 +487,7 @@ struct bam_ptr {
 typedef struct __align__(32) {
     simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock; //state
     //
-    uint32_t page_translation;
+    uint64_t page_translation;
     uint8_t pad[32-8];
 
 } __attribute__((aligned (32))) cache_page_t;
@@ -586,10 +586,10 @@ void __flush(page_cache_d_t* pc) {
     uint64_t page = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (page < pc->n_pages) {
-        uint32_t previous_global_address = pc->cache_pages[page].page_translation;
+        uint64_t previous_global_address = pc->cache_pages[page].page_translation;
         //uint8_t previous_range = this->cache_pages[page].range_id;
-        uint32_t previous_range = previous_global_address & pc->n_ranges_mask;
-        uint32_t previous_address = previous_global_address >> pc->n_ranges_bits;
+        uint64_t previous_range = previous_global_address & pc->n_ranges_mask;
+        uint64_t previous_address = previous_global_address >> pc->n_ranges_bits;
         //uint32_t new_state = BUSY;
 
         uint32_t expected_state = pc->ranges[previous_range][previous_address].state.load(simt::memory_order_relaxed);
