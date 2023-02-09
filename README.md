@@ -1,4 +1,4 @@
-# BaM: A Case for Enabling Fine-grain High Throughput GPU-Orchestrated Access to Storage
+# GPU-Initiated On-Demand High-Throughput Storage Access in the BaM System Architecture
 
 **This is the opencourse implementation of BaM system (ASPLOS'23). We are still working on updating the README. Contributions to the codebase are most welcome**
 
@@ -230,7 +230,7 @@ If you use BaM or concepts or derviate codebase of BaM in your work, please cite
 ```
 @inproceedings{bamasplos,
     author = {Qureshi, Zaid and Mailthody, Vikram Sharma and Gelado, Isaac and Min, Seung Won and Masood, Amna and Park, Jeongmin and Xiong, Jinjun and Newburn, CJ and Vainbrand, Dmitri and Chung, I-Hsin and Garland, Michael and Dally, William and Hwu, Wen-mei},
-     title = {BaM: A Case for Enabling Fine-grain High Throughput GPU-Orchestrated Access to Storage},
+     title = {GPU-Initiated On-Demand High-Throughput Storage Access in the BaM System Architecture},
      year = {2023},
      booktitle = {Proceedings of the Twenty-Eigth International Conference on Architectural Support for Programming Languages and Operating Systems},
      series = {ASPLOS '23}
