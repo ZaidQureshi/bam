@@ -1,6 +1,6 @@
 # GPU-Initiated On-Demand High-Throughput Storage Access in the BaM System Architecture
 
-**This is the opencourse implementation of BaM system (ASPLOS'23). We are still working on updating the README. Contributions to the codebase are most welcome**
+**This is the opencourse implementation of BaM system (ASPLOS'23). Contributions to the codebase are most welcome**
 
 Abstract
 -------------------------------------------------------------------------------
@@ -16,8 +16,6 @@ Hardware/System Requirements
 -------------------------------------------------------------------------------
 This code base requires specific type of hardware and specific system configuration to be functional and performant.
 
-#### FOR ASPLOS AOE: ALL OF THESE CONFIGURATIONS ARE ALREADY SET APPROPRIATELY ON THE PROVIDED MACHINE!
-
 ### Hardware Requirements ###
 * A x86 system supporting PCIe P2P
 * A NVMe SSD. Any NVMe SSD will do.
@@ -28,6 +26,7 @@ This code base requires specific type of hardware and specific system configurat
 * A system that can support `Above 4G Decoding` for PCIe devices.
   * This is needed to address more than 4GB of memory for PCIe devices, specifically GPU memory.
   * This is a feature that might need to be ENABLED in the BIOS of the system.
+  * For high throughput implementation, we recommend using a PCIe switch to connect the GPU and SSDs in your server. Going over IOMMU degrades performance. 
 
 ### System Configurations ###
 * As mentioned above, `Above 4G Decoding` needs to be ENABLED in the BIOS
@@ -103,7 +102,6 @@ $ make
 
 Loading/Unloading the Kernel Module
 -------------------------------------------------------------------------------
-#### FOR ASPLOS AOE: THE MODULE FOR THE SSDS NEEDED FOR TESTING IS ALREADY LOADED! NOT AS MANY SSDS AS USED IN THE PAPER ARE AVAILABLE AS THIS IS A MINIATURE SYSTEM USED FOR TESTING!
 
 In order to be able to use the custom kernel module for the NVMe device, we need to first unbind
 the NVMe device from the default Linux NVMe driver.
@@ -126,8 +124,6 @@ To unbind the NVMe driver for this device we need to do the following as the `ro
 # echo -n "0000:65:00.0" > /sys/bus/pci/devices/0000\:65\:00.0/driver/unbind
 ```
 Please do this for each NVMe device you want to use with this system.
-
-#### FOR ASPLOS AOE: PLEASE DON'T UNBIND DEVICES THAT ARE NOT TO BE USED FOR TESTING!
 
 
 Now we can load the custom kernel module from the root project directory with the following:
@@ -153,8 +149,6 @@ $ cd build/module
 $ sudo make reload
 ```
 
-
-#### FOR ASPLOS AOE: THE MODULE FOR THE SSDS NEEDED FOR TESTING IS ALREADY LOADED! YOU CAN TRY RELOADING!
 
 Running the Example Benchmark
 -------------------------------------------------------------------------------
@@ -217,11 +211,12 @@ BaM is evaluated on several applications and datasets. A limited set of them are
 
 **Graph Benchmarks** Initial implementation of graph benchmarks are taken from EMOGI (https://github.com/illinois-impact/EMOGI). We use the same dataset used in EMOGI and write them into SSDs using `benchmark/readwrite` application. BFS, CC, SSSP and PageRank benchmarks are implemented. BFS and CC workloads are extensively studied while SSSP and PageRank studies in progress. 
 
-#### FOR ASPLOS AOE: THE DATASET FOR THE GRAPH APPLICATIONS ARE ALREADY PRELOADED ON THE SSDS ON THE PROVIDED SYSTEM. THE TESTER NEED NOT RE-WRITE THE DATA. 
+**Dataset** If you need access to these preprocessed datasets, please reach out to us. These are gigantic datasets and we can figure out how to share the preprocessed ones. 
 
 **Your application** One can use any of these example benchmark and implement their application using `bam::array` abstraction. Feel free to reach out over Github issues incase if you run into issue or require additional insights on how to best use BaM in your codebase. 
 
-#### FOR ASPLOS AOR: PLEASE REFER TO THE [asplosaoe](./asplosaoe/) DIRECTORY FOR HOW TO RUN THE APPLICATIONS AND THE EXPECTED OUTPUTS!
+
+#### FOR ASPLOS AOE: PLEASE REFER TO THE [asplosaoe](./asplosaoe/) DIRECTORY FOR HOW TO RUN THE APPLICATIONS AND THE EXPECTED OUTPUTS!
 
 # Citations 
 
@@ -266,8 +261,7 @@ concurrent queues.
 Furthermore, we add the support for an application to use multiple NVMe SSDs.
 
 Finally, to lessen the programmer's burden we develop abstractions, like an array abstraction
-and a data caching layer,
-so that the programmer writes their GPU code like they are trained to and the library automatically checks
+and a data caching layer, so that the programmer writes their GPU code like they are trained to and the library automatically checks
 if accesses hit in the cache or not and if they miss to automatically fetch the needed data from the NVMe device.
 All of these features are developed into a header-only library in the [`include`](./include/) directory.
 These headers can be used in Cuda C/C++ application code.
@@ -277,3 +271,4 @@ These headers can be used in Cuda C/C++ application code.
 
 Please check the [Contribution.md](https://github.com/ZaidQureshi/bam/blob/master/CONTRIBUTION.md) file for more details.
 
+ 
