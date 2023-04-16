@@ -39,7 +39,7 @@ public:
 
     __host__ __device__ bafs_ptr(array_t<T>* const pValue):
         h_pData(pValue), pData(pValue->d_array_ptr),start_idx(0){
-
+	printf("bafs ptr init\n");
     }
 
     __host__ __device__ bafs_ptr(array_t<T>* const pValue, const uint64_t start_off):
@@ -55,6 +55,8 @@ public:
     }
 
     __device__ T operator*(){
+	    printf("() op\n");
+
         return (*pData)[start_idx];
     }
 
@@ -79,11 +81,11 @@ public:
         (*pData)(i, val);
     }
     __host__ __device__ T operator[](const uint64_t i) {
-        return (*pData)[start_idx+i];
+	    return (*pData)[start_idx+i];
     }
 
     __host__ __device__ const T operator[](const uint64_t i) const {
-        return (*pData)[start_idx+i];
+	    return (*pData)[start_idx+i];
     }
 
     __host__ __device__ bafs_ptr<T> operator+(const uint64_t i){
