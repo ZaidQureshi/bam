@@ -98,9 +98,8 @@ typedef struct __align__(32) {
                                                               //
     uint32_t offset;
     //CPU-CACHE
-    bool is_cpu = false;
-    uint32_t cpu_cache_id;
     simt::atomic<uint8_t,  simt::thread_scope_device> prefetch_count; 
+    simt::atomic<uint8_t,  simt::thread_scope_device> prefetch_counter;
     //uint8_t pad[32-4-4];
 
 } __attribute__((aligned (32))) data_page_t;
@@ -460,30 +459,20 @@ struct bam_ptr {
     }
 
 
-    __forceinline__
-    __host__ __device__
-    void set_cpu_page(const size_t i, const size_t cpu_i){
-	array -> set_cpu_page(i, cpu_i);
-    }
-
-    __forceinline__ 
-    __host__ __device__
-    bool is_cpu_page(const size_t i){
-	return array -> is_cpu_page(i);
-    }
-
-    __forceinline__ 
-    __host__ __device__
-    T& get_cpu_val(const size_t i){
-	return array -> get_cpu_val(i);
-    }
-
     __forceinline__    
     __host__ __device__ 
     void set_prefetch_val(const size_t i, const size_t prefetch_val){
 	array -> set_prefetching(i, 2);
 
     }
+    
+    __forceinline__    
+    __host__ __device__ 
+    void set_window_buffer_counter(const size_t i, const size_t prefetch_val){
+	array -> set_window_buffer_counter(i, 1);
+
+    }
+
 
 
 
@@ -492,9 +481,6 @@ struct bam_ptr {
     __host__ __device__
     T operator[](const size_t i) const {
 	if ((i < start) || (i >= end)) {
-      	//	 bool check_cpu = is_cpu_page(i);    
-	//	 if(check_cpu)
-	//		 return get_cpu_val(i);
 	   	T* tmpaddr =  update_page(i);
         }
         return addr[i-start];
@@ -514,10 +500,6 @@ struct bam_ptr {
     __host__ __device__
     T& operator[](const size_t i) {
 	if ((i < start) || (i >= end)) {
-	  //  bool check_cpu = is_cpu_page(i);
-	  //  if(check_cpu){
-	  //	    return get_cpu_val(i);      
-	  //  }
             update_page(i);
             page->state.fetch_or(DIRTY, simt::memory_order_relaxed);
         }
@@ -1000,19 +982,14 @@ struct range_d_t {
     __forceinline__
     __device__
     void mark_page_dirty(const size_t index);
-    __forceinline__ 
-    __device__
-    void set_cpu_page(const size_t i, const size_t cpu_i, const size_t  page) const;
-    __forceinline__
-    __device__
-    bool is_cpu_page(const size_t i, const size_t  page) const;
-    __forceinline__
-    __device__
-    T& get_cpu_val(const size_t i, const size_t  page, T* cpu_cache) const;
     __forceinline__
     __device__
     void set_prefetch_val(const size_t pg, const size_t count) const;
-	
+     __forceinline__
+    __device__
+    void set_window_buffer_counter(const size_t pg, const size_t count) const;
+    
+
 };
 
 template <typename T>
@@ -1059,6 +1036,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
 	ts[i].prefetch_count=0;
+	ts[i].prefetch_counter=0;
     }
     ////printf("S value: %llu\n", (unsigned long long)s);
    uint64_t* evicted_p_array; 
@@ -1145,6 +1123,7 @@ void range_d_t<T>::release_page(const size_t pg) const {
  uint64_t index = pg;
     uint32_t tc = 0;
 
+    /*
     uint8_t p_st = pages[index].prefetch_count.load(simt::memory_order_acquire);
     uint8_t p_count = (p_st & 0x7F);
     if(p_count > 0){
@@ -1156,7 +1135,23 @@ void range_d_t<T>::release_page(const size_t pg) const {
 		 uint8_t p_count_after = pages[index].prefetch_count.fetch_sub(1, simt::memory_order_release);
 	}
     }
-  //  printf("release2 idx:%llu p_count:%lu  count: %lu tc:%lu\n",(unsigned long long) pg, (unsigned long) p_count, (unsigned long) count,(unsigned long)tc);    
+	*/
+    uint8_t wb_st = pages[index].prefetch_counter.load(simt::memory_order_acquire);
+    uint8_t window_count = (wb_st & 0x7F);
+    if(window_count >= 1){
+	if(window_count  == 1 && wb_st >> 7 == 1){
+		tc=1;
+		pages[index].prefetch_counter.store(0,simt::memory_order_release);
+       	}
+	else{
+		 uint8_t wb_count_after = pages[index].prefetch_counter.fetch_sub(1, simt::memory_order_release);
+	}
+    }
+
+
+
+
+    //printf("release2 idx:%llu p_count:%lu  count: %lu tc:%lu\n",(unsigned long long) pg, (unsigned long) window_count, (unsigned long) count,(unsigned long)tc);    
     uint64_t st = pages[index].state.fetch_sub(1+tc, simt::memory_order_release);
 	uint32_t cnt = st & CNT_MASK;
 
@@ -1181,6 +1176,23 @@ void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
 		 uint8_t p_count_after = pages[index].prefetch_count.fetch_sub(1, simt::memory_order_release);
 	}
     }
+
+    uint8_t wb_st = pages[index].prefetch_counter.load(simt::memory_order_acquire);
+    uint8_t window_count = (wb_st & 0x7F);
+    if(window_count >= 1){
+	    if(window_count  == 1 && wb_st >> 7 == 1){
+		tc=1;
+		pages[index].prefetch_counter.store(0,simt::memory_order_release);
+       	}
+	else{
+		 uint8_t wb_count_after = pages[index].prefetch_counter.fetch_sub(1, simt::memory_order_release);
+	}
+    }
+
+
+    //printf("release2 idx:%llu p_count:%lu  count: %lu tc:%lu\n",(unsigned long long) pg, (unsigned long) window_count, (unsigned long) count, (unsigned long)tc);
+
+
   //  printf("release2 idx:%llu p_count:%lu  count: %lu tc:%lu\n",(unsigned long long) pg, (unsigned long) p_count, (unsigned long) count,(unsigned long)tc);    
     uint64_t st = pages[index].state.fetch_sub(count+tc, simt::memory_order_release);
 	uint32_t cnt = st & CNT_MASK;
@@ -1210,31 +1222,6 @@ void range_d_t<T>::mark_page_dirty(const size_t index) {
 }
 
 
-template <typename T>
-__forceinline__
-__device__
-void range_d_t<T>::set_cpu_page(const size_t i, const size_t cpu_i, const size_t  page) const{
-	pages[page].is_cpu = true;
-        pages[page].cpu_cache_id = cpu_i;	
-}
-
-template <typename T>
-__forceinline__
-__device__
-bool range_d_t<T>::is_cpu_page(const size_t i, const size_t page) const{
-	return pages[page].is_cpu;
-}
-
-
-template <typename T>
-__forceinline__
-__device__
-T& range_d_t<T>::get_cpu_val(const size_t subidx, const size_t page, T* cpu_cache) const{
-	printf("get cpu val\n");
-	uint64_t page_idx = pages[page].cpu_cache_id;
-	return cpu_cache[subidx + page_idx];
-}
-
 
 
 template <typename T>
@@ -1243,9 +1230,20 @@ __device__
 void range_d_t<T>::set_prefetch_val(const size_t pg, const size_t count) const{
 	 uint64_t index = pg;
 	 uint8_t p_count = count;
-//	printf("tid: %i, index: %i add count: %u\n", (int) threadIdx.x, (int)index, count); 
 	pages[index].prefetch_count.fetch_add(count, simt::memory_order_release); 
 }
+
+template <typename T>
+__forceinline__
+__device__
+void range_d_t<T>::set_window_buffer_counter(const size_t pg, const size_t count) const{
+	uint64_t index = pg;
+	uint8_t p_count = count;
+	pages[index].prefetch_counter.fetch_add(count, simt::memory_order_release); 
+}
+
+
+
 
 
 template <typename T>
@@ -1268,9 +1266,19 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
 	p_count = 1;
 	pages[index].prefetch_count.store(prefetch_count | 0x80, simt::memory_order_release);
     }
+
+
+    uint8_t window_count = pages[index].prefetch_counter.load(simt::memory_order_acquire); 
     
- 
-//    printf("acquire tid: %i idx: %i p: %u p_count:%lu\n", (int) threadIdx.x, (int)index,(unsigned) prefetch_count, (unsigned long) p_count);
+    if(window_count > 1 && (window_count >>7 == 0) ){
+	
+	    //printf("acquire tid: %i idx: %i p: %u window_count:%lu\n", (int) threadIdx.x, (int)index,(unsigned) prefetch_count, (unsigned long) window_count);
+    
+    	    p_count = 1;
+	pages[index].prefetch_counter.store(window_count | 0x80, simt::memory_order_release);
+    }
+
+//    printf("acquire tid: %i idx: %i p: %u window_count:%lu\n", (int) threadIdx.x, (int)index,(unsigned) prefetch_count, (unsigned long) window_count);
     uint64_t read_state,st,st_new;
     read_state = pages[index].state.fetch_add(count+p_count, simt::memory_order_acquire);
 
@@ -1675,6 +1683,28 @@ struct array_d_t {
     }
 	
 
+    __forceinline__
+    __device__
+    void set_window_buffer_counter(const size_t i, uint8_t p_val){
+	auto r = find_range(i);
+	auto r_ = d_ranges+r;
+
+	if (r != -1) {
+#ifndef __CUDACC__
+	    uint32_t mask = 1;
+#else 
+	    uint32_t mask = __activemask();
+#endif
+	    uint64_t page = r_->get_page(i);
+	    size_t lane = lane_id();
+	    uint32_t leader = __ffs(mask) - 1;
+       
+	    if(lane == leader){
+		r_ -> set_window_buffer_counter(page, p_val);
+	    }
+	}
+	return;
+    }
 
     __forceinline__
     __device__
@@ -1694,65 +1724,6 @@ struct array_d_t {
 	return;
     }
 
-
-    __forceinline__
-    __device__
-     void set_cpu_page(const size_t i, const size_t cpu_i) const {
-	auto r = find_range(i);
-	auto r_ = d_ranges+r;
-
-	if (r != -1) {
-#ifndef __CUDACC__
-	    uint32_t mask = 1;
-#else 
-	     uint32_t mask = __activemask();
-#endif
-	    uint64_t page = r_->get_page(i);
-	    r_->set_cpu_page(i, cpu_i, page);
-	}
-	return;
-    }
-
-
-    __forceinline__
-    __device__
-     bool is_cpu_page(const size_t i) const {
-	auto r = find_range(i);
-	auto r_ = d_ranges+r;
-
-	if (r != -1) {
-#ifndef __CUDACC__
-	    uint32_t mask = 1;
-#else 
-	     uint32_t mask = __activemask();
-#endif
-	    uint64_t page = r_->get_page(i);
-	    return r_->is_cpu_page(i, page);
-	}
-	return false;
-    }
-
-
-    __forceinline__
-    __device__
-     T& get_cpu_val(const size_t i) const {
-	auto r = find_range(i);
-	auto r_ = d_ranges+r;
-
-	if (r != -1) {
-#ifndef __CUDACC__
-	    uint32_t mask = 1;
-#else 
-	     uint32_t mask = __activemask();
-#endif
-	    uint64_t page = r_->get_page(i);
-	    uint64_t subindex = r_->get_subindex(i);
-
-	    return r_->get_cpu_val(subindex, page, cpu_cache);
-	}
-	T temp = -1;
-	return temp;
-    }
 
     __forceinline__
     __device__
@@ -2071,12 +2042,11 @@ struct array_t {
         cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt.data(), adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
     }
 
-    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice, bool cpu_cache_enabled = false, T* cpu_cache = nullptr) {
+    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
         adt.n_elems = num_elems;
         adt.start_offset = disk_start_offset;
         adt.n_ranges = ranges.size();
 
-	adt.cpu_cache = cpu_cache;
 
         d_array_buff = createBuffer(sizeof(array_d_t<T>), cudaDevice);
         d_array_ptr = (array_d_t<T>*) d_array_buff.get();
