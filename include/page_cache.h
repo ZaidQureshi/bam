@@ -515,6 +515,8 @@ struct wb_bam_ptr {
     uint32_t* wb_queue_counter;
     uint32_t  wb_depth;
     T* queue_ptr;
+    uint32_t* wb_id_array;
+    uint32_t q_depth;
 
     __forceinline__
     __host__ __device__
@@ -539,10 +541,12 @@ struct wb_bam_ptr {
     
     __forceinline__
     __host__ __device__
-    void set_wb(uint32_t* wb_q, uint32_t wb_d, T* pinned_ptr){
+    void set_wb(uint32_t* wb_q, uint32_t wb_d, T* pinned_ptr, uint32_t* id_array, uint32_t q_d){
         wb_queue_counter = wb_q;
         wb_depth = wb_d;
         queue_ptr = pinned_ptr;
+        wb_id_array = id_array;
+        q_depth = q_d;
     }
     
     __forceinline__
@@ -565,7 +569,7 @@ struct wb_bam_ptr {
     T* update_page(const size_t i) {
     fini(); //destructor
     addr = (T*) array->wb_acquire_page(i, page, start, end, range_id, 
-                                       wb_queue_counter, wb_depth, queue_ptr);
+                                       wb_queue_counter, wb_depth, queue_ptr, wb_id_array, q_depth);
      return addr;
     }
    
@@ -667,7 +671,7 @@ struct page_cache_d_t {
     __device__
     uint32_t wb_find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_,  simt::atomic<uint64_t, simt::thread_scope_device>& access_cnt, uint64_t* evicted_p_array, 
                           uint32_t* wb_queue_counter,  uint32_t  wb_depth,  uint64_t* queue_ptr,
-                         int& evict_cpu, uint32_t& evicted_page_id, uint32_t& queue_reuse);
+                         int& evict_cpu, uint32_t& evicted_page_id, uint32_t& queue_reuse, uint32_t* id_array, uint32_t q_depth);
 
 };
 
@@ -1069,7 +1073,7 @@ struct range_d_t {
     __device__
     uint64_t wb_acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl, const uint32_t queue,
                              uint32_t* wb_queue_counter,  uint32_t  wb_depth,  T* queue_ptr,
-                             int& evict_cpu, uint32_t& evicted_page_id, uint32_t& queue_reuse);
+                             int& evict_cpu, uint32_t& evicted_page_id, uint32_t& queue_reuse, uint32_t* id_array, uint32_t q_depth);
     __forceinline__
     __device__
     bool wb_check_page (const size_t pg);
@@ -1537,7 +1541,7 @@ __forceinline__
 __device__
 uint64_t range_d_t<T>::wb_acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue,
                                        uint32_t* wb_queue_counter,  uint32_t  wb_depth,  T* queue_ptr,
-                                       int& evict_cpu, uint32_t& queue_idx, uint32_t& queue_reuse) {
+                                       int& evict_cpu, uint32_t& queue_idx, uint32_t& queue_reuse, uint32_t* id_array, uint32_t q_depth) {
     uint64_t index = pg;
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
     
@@ -1560,7 +1564,7 @@ uint64_t range_d_t<T>::wb_acquire_page(const size_t pg, const uint32_t count, co
                  
                 uint32_t page_trans = cache.wb_find_slot(index, range_id, queue, read_io_cnt, evicted_p_array,
                                                           wb_queue_counter,  wb_depth, (uint64_t*) queue_ptr,
-                                                         evict_cpu, queue_idx, queue_reuse);
+                                                         evict_cpu, queue_idx, queue_reuse, id_array, q_depth);
                 //Need to write back to CPU
                 if(evict_cpu){
                     return page_trans;
@@ -1633,7 +1637,16 @@ struct array_d_t {
 
     range_d_t<T>* d_ranges;
 
+    uint32_t* wb_queue_counter;
+    uint32_t  wb_depth;
+    uint32_t q_depth;
+
+    T* queue_ptr;
+    uint32_t* wb_id_array;
+    
     T* cpu_cache; 
+    
+    
 
     __forceinline__
     __device__
@@ -1771,7 +1784,7 @@ struct array_d_t {
     __forceinline__
     __device__
     void wb_coalesce_page(const uint32_t lane, const uint32_t mask, const int64_t r, const uint64_t page, const uint64_t gaddr, const bool write, uint32_t& eq_mask, int& master, uint32_t& count, uint64_t& base_master, 
-                          uint32_t* wb_queue_counter,  uint32_t  wb_depth,  T* queue_ptr) const {
+                          uint32_t* wb_queue_counter,  uint32_t  wb_depth,  T* queue_ptr, uint32_t* id_array, uint32_t q_depth) const {
         uint32_t ctrl;
         uint32_t queue;
         uint32_t leader = __ffs(mask) - 1;
@@ -1806,7 +1819,7 @@ struct array_d_t {
         if (master == lane) {
             base = r_->wb_acquire_page(page, count, dirty, ctrl, queue, 
                                       wb_queue_counter, wb_depth, queue_ptr,
-                                      evict_cpu, queue_idx, queue_reuse);
+                                      evict_cpu, queue_idx, queue_reuse, id_array, q_depth);
             page_trans = base;
             base_master = base;
         }
@@ -1815,13 +1828,13 @@ struct array_d_t {
         evict_cpu =  __shfl_sync(eq_mask,  evict_cpu, master);
         if(evict_cpu){
             queue_idx = __shfl_sync(eq_mask,  queue_idx, master);
+            queue_reuse = __shfl_sync(eq_mask,  queue_reuse, master);
+
             //To DO write
             
             //uint8_t* write_adder = this (cache_d_t*) -> base_addr + (page * this->page_size);
             void* cache_ptr = (void*)r_->get_cache_page_addr(base_master);
- 
-        
-            write_to_queue<uint64_t>(cache_ptr, (void*)(queue_ptr) + queue_idx*( r_->cache.page_size), ( r_->cache.page_size), eq_mask);
+            write_to_queue<uint64_t>(cache_ptr, (void*)(queue_ptr) + (q_depth * queue_reuse *(r_->cache.page_size) ) + (queue_idx * ( r_->cache.page_size)), (r_->cache.page_size), eq_mask);
             
             __syncwarp(eq_mask);
             if (master == lane) {
@@ -1976,7 +1989,7 @@ struct array_d_t {
     
         __forceinline__
     __device__
-    void* wb_acquire_page(const size_t i, data_page_t*& page_, size_t& start, size_t& end, int64_t& r,  uint32_t* wb_queue_counter,  uint32_t  wb_depth,  T* queue_ptr) const {
+    void* wb_acquire_page(const size_t i, data_page_t*& page_, size_t& start, size_t& end, int64_t& r,  uint32_t* wb_queue_counter,  uint32_t  wb_depth,  T* queue_ptr, uint32_t* id_array, uint32_t q_depth) const {
         uint32_t lane = lane_id();
         r = find_range(i);
         auto r_ = d_ranges+r;
@@ -1998,7 +2011,7 @@ struct array_d_t {
             uint64_t gaddr = r_->get_global_address(page);
 
             wb_coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master,
-                                wb_queue_counter, wb_depth, queue_ptr);
+                                wb_queue_counter, wb_depth, queue_ptr, id_array, q_depth);
             page_ = &r_->pages[base_master];
 
 
@@ -2418,12 +2431,19 @@ struct array_t {
         cuda_err_chk(cudaMemcpy(adt.d_ranges, rdt.data(), adt.n_ranges*sizeof(range_d_t<T>), cudaMemcpyHostToDevice));
     }
 
-    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice) {
+    array_t(const uint64_t num_elems, const uint64_t disk_start_offset, const std::vector<range_t<T>*>& ranges, uint32_t cudaDevice, uint32_t* q_counter = nullptr, uint32_t wb_dep = 128, uint32_t q_dep = 128, uint32_t* wb_id = nullptr, T* q_ptr=nullptr) {
         adt.n_elems = num_elems;
         adt.start_offset = disk_start_offset;
         adt.n_ranges = ranges.size();
-
-
+        
+        //window buffers
+        adt.wb_queue_counter =q_counter;
+        adt.wb_depth = wb_dep;
+        adt.queue_ptr = q_ptr;
+        adt.wb_id_array = wb_id;
+        adt.q_depth =q_dep;
+        
+        
         d_array_buff = createBuffer(sizeof(array_d_t<T>), cudaDevice);
         d_array_ptr = (array_d_t<T>*) d_array_buff.get();
 
@@ -2453,7 +2473,7 @@ __forceinline__
 __device__
         uint32_t page_cache_d_t::wb_find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_, simt::atomic<uint64_t, simt::thread_scope_device>& access_cnt, uint64_t* evicted_p_array,
                                       uint32_t* wb_queue_counter,  uint32_t  wb_depth,  uint64_t* queue_ptr,
-                                             int& evict_cpu, uint32_t& queue_idx, uint32_t& queue_reuse) {
+                                      int& evict_cpu, uint32_t& queue_idx, uint32_t& queue_reuse, uint32_t* id_array, uint32_t q_depth) {
     bool fail = true;
     uint64_t count = 0;
     uint64_t global_address =(uint64_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
@@ -2524,7 +2544,7 @@ __device__
                                 uint32_t queue_counter = atomicAdd(wb_queue_counter+reuse_val, 1);
                                 queue_idx = queue_counter;
                                 queue_reuse = reuse_val;
-                                
+                                id_array[queue_idx + q_depth * reuse_val] = prev_page;
                                 printf("prev_ page: %lu reuse val: %u queue idx: %u\n", prev_page, reuse_val, queue_idx);
                             }
                              
