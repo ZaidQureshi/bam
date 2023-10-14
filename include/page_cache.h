@@ -72,13 +72,14 @@ struct range_d_t;
 
 
 typedef struct __align__(32) {
-    simt::atomic<uint32_t, simt::thread_scope_device>  state; //state
-                                                              //
+    simt::atomic<uint32_t, simt::thread_scope_device>  state;                                                      //
     uint32_t offset;
-    //CPU-CACHE
-//    simt::atomic<uint8_t,  simt::thread_scope_device> prefetch_count; 
-//    simt::atomic<uint8_t,  simt::thread_scope_device> prefetch_counter;
+
+    simt::atomic<uint8_t,  simt::thread_scope_device> prefetch_count; 
+    simt::atomic<uint8_t,  simt::thread_scope_device> prefetch_counter;
    // uint8_t pad[32-4-4];
+
+    uint32_t cpu_feature_offset;
 
 } __attribute__((aligned (32))) data_page_t;
 
@@ -466,6 +467,90 @@ struct bam_ptr {
 };
 
 
+template<typename T>
+struct gids_ptr {
+    data_page_t* page = nullptr;
+    array_d_t<T>* array = nullptr;
+    size_t start = 0;
+    size_t end = 0;
+    int64_t range_id = -1;
+    T* addr = nullptr;
+
+    __forceinline__
+    __host__ __device__
+    gids_ptr(array_d_t<T>* a) { init(a); }
+
+    __forceinline__
+    __host__ __device__
+    ~gids_ptr() { fini(); }
+
+    __forceinline__
+    __host__ __device__
+    void init(array_d_t<T>* a) { array = a; }
+
+    __forceinline__
+    __host__ __device__
+    void fini(void) {
+        if (page) {
+            array->release_page(page, range_id, start);
+            page = nullptr;
+        }
+    }
+
+    __forceinline__
+    __host__ __device__
+    T* update_page(const size_t i) {
+
+    fini(); //destructor
+    addr = (T*) array->acquire_page(i, page, start, end, range_id);
+
+     return addr;
+    }
+
+
+    __forceinline__    
+    __host__ __device__ 
+    void set_prefetch_val(const size_t i, const size_t prefetch_val){
+	array -> set_prefetching(i, 2);
+    }
+    
+    __forceinline__    
+    __host__ __device__ 
+    void set_window_buffer_counter(const size_t i, const size_t prefetch_val){
+	array -> set_window_buffer_counter(i, 1);
+
+    }
+
+    __forceinline__
+    __host__ __device__
+    T operator[](const size_t i) const {
+	if ((i < start) || (i >= end)) {
+	   	T* tmpaddr =  update_page(i);
+        }
+        return addr[i-start];
+    }
+    
+    __host__ __device__
+    T* memref(size_t i) {
+        T* ret_; 
+        if ((i < start) || (i >= end)) {
+           ret_ =  update_page(i);
+        }
+        return ret_;
+    }
+
+
+    __forceinline__
+    __host__ __device__
+    T& operator[](const size_t i) {
+	if ((i < start) || (i >= end)) {
+            update_page(i);
+            page->state.fetch_or(DIRTY, simt::memory_order_relaxed);
+        }
+        return addr[i-start];
+    }
+};
+
 
 template<typename T>
 struct wb_bam_ptr {
@@ -741,10 +826,10 @@ void __flush(page_cache_d_t* pc) {
     uint64_t page = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (page < pc->n_pages) {
-        uint32_t previous_global_address = pc->cache_pages[page].page_translation;
+        uint64_t previous_global_address = pc->cache_pages[page].page_translation;
         //uint8_t previous_range = this->cache_pages[page].range_id;
-        uint32_t previous_range = previous_global_address & pc->n_ranges_mask;
-        uint32_t previous_address = previous_global_address >> pc->n_ranges_bits;
+        uint64_t previous_range = previous_global_address & pc->n_ranges_mask;
+        uint64_t previous_address = previous_global_address >> pc->n_ranges_bits;
         //uint32_t new_state = BUSY;
 
         uint32_t expected_state = pc->ranges[previous_range][previous_address].state.load(simt::memory_order_relaxed);
@@ -763,6 +848,8 @@ void __flush(page_cache_d_t* pc) {
                 for (ctrl = 0; ctrl < pc->n_ctrls; ctrl++) {
                     Controller* c = pc->d_ctrls[ctrl];
                     uint32_t queue = smid % (c->n_qps);
+                    //printf("ALL CTRIL flush page:%i\n", (int) page);
+
                     write_data(pc, (c->d_qps)+queue, (index*pc->n_blocks_per_page), pc->n_blocks_per_page, page);
                 }
             }
@@ -772,7 +859,7 @@ void __flush(page_cache_d_t* pc) {
                 uint32_t queue = smid % (c->n_qps);
 
                 //index = ranges_page_starts[previous_range] + previous_address;
-
+                //printf("flush page:%i\n", (int) page);
 
                 write_data(pc, (c->d_qps)+queue, (index*pc->n_blocks_per_page), pc->n_blocks_per_page, page);
             }
@@ -1159,6 +1246,14 @@ struct range_d_t {
     void mark_page_dirty(const size_t index);
     __forceinline__
     __device__
+    void set_cpu_buffer(const size_t index, uint32_t offset);
+    __forceinline__
+    __device__
+    uint32_t get_cpu_offset(const size_t index);
+
+
+    __forceinline__
+    __device__
     void set_prefetch_val(const size_t pg, const size_t count) const;
      __forceinline__
     __device__
@@ -1212,8 +1307,10 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     data_page_t* ts = new data_page_t[s];
     for (size_t i = 0; i < s; i++) {
         ts[i].state = INVALID;
-	//ts[i].prefetch_count=0;
-//	ts[i].prefetch_counter=0;
+        ts[i].cpu_feature_offset = 0;
+
+        ts[i].prefetch_count=0;
+        ts[i].prefetch_counter=0;
     }
     ////printf("S value: %llu\n", (unsigned long long)s);
    uint64_t* evicted_p_array; 
@@ -1300,30 +1397,18 @@ void range_d_t<T>::release_page(const size_t pg) const {
  uint64_t index = pg;
     uint32_t tc = 0;
 
-    /*
-    uint8_t p_st = pages[index].prefetch_count.load(simt::memory_order_acquire);
-    uint8_t p_count = (p_st & 0x7F);
-    if(p_count > 0){
-	if(p_count  == 1 && p_st >> 7 == 1){
-		tc=1;
-		pages[index].prefetch_count.store(0,simt::memory_order_release);
-       	}
-	else{
-		 uint8_t p_count_after = pages[index].prefetch_count.fetch_sub(1, simt::memory_order_release);
-	}
-    }
     uint8_t wb_st = pages[index].prefetch_counter.load(simt::memory_order_acquire);
     uint8_t window_count = (wb_st & 0x7F);
     if(window_count >= 1){
-	if(window_count  == 1 && wb_st >> 7 == 1){
-		tc=1;
-		pages[index].prefetch_counter.store(0,simt::memory_order_release);
-       	}
-	else{
-		 uint8_t wb_count_after = pages[index].prefetch_counter.fetch_sub(1, simt::memory_order_release);
-	}
+        if(window_count  == 1 && wb_st >> 7 == 1){
+            tc=1;
+            pages[index].prefetch_counter.store(0,simt::memory_order_release);
+            }
+        else{
+            uint8_t wb_count_after = pages[index].prefetch_counter.fetch_sub(1, simt::memory_order_release);
+        }
     }
-*/
+
 
 
 
@@ -1340,7 +1425,7 @@ __device__
 void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
     uint64_t index = pg;
     uint32_t tc = 0;
-/*
+
     uint8_t p_st = pages[index].prefetch_count.load(simt::memory_order_acquire);
     uint8_t p_count = (p_st & 0x7F);
     if(p_count > 0){
@@ -1365,7 +1450,7 @@ void range_d_t<T>::release_page(const size_t pg, const uint32_t count) const {
 	}
     }
 
-*/
+
     //printf("release2 idx:%llu p_count:%lu  count: %lu tc:%lu\n",(unsigned long long) pg, (unsigned long) window_count, (unsigned long) count, (unsigned long)tc);
 
 
@@ -1397,6 +1482,24 @@ void range_d_t<T>::mark_page_dirty(const size_t index) {
     pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
 }
 
+template <typename T>
+__forceinline__
+__device__
+void range_d_t<T>::set_cpu_buffer(uint64_t index, uint32_t offset) {
+   // pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
+    pages[index].cpu_feature_offset = (offset << 1) | (0x1);
+}
+
+template <typename T>
+__forceinline__
+__device__
+uint32_t range_d_t<T>::get_cpu_offset(const size_t index) {
+   // pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
+    return pages[index].cpu_feature_offset;
+}
+
+
+
 
 
 
@@ -1406,7 +1509,7 @@ __device__
 void range_d_t<T>::set_prefetch_val(const size_t pg, const size_t count) const{
 	 uint64_t index = pg;
 	 uint8_t p_count = count;
-//	pages[index].prefetch_count.fetch_add(count, simt::memory_order_release); 
+	pages[index].prefetch_count.fetch_add(count, simt::memory_order_release); 
 }
 
 template <typename T>
@@ -1415,7 +1518,7 @@ __device__
 void range_d_t<T>::set_window_buffer_counter(const size_t pg, const size_t count) const{
 	uint64_t index = pg;
 	uint8_t p_count = count;
-	//pages[index].prefetch_counter.fetch_add(count, simt::memory_order_release); 
+	pages[index].prefetch_counter.fetch_add(count, simt::memory_order_release); 
 }
 
 
@@ -1425,36 +1528,28 @@ __forceinline__
 __device__
 uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const bool write, const uint32_t ctrl_, const uint32_t queue) {
     uint64_t index = pg;
-    //uint32_t global_address = (index << cache.n_ranges_bits) | range_id;
-    //access_cnt.fetch_add(count, simt::memory_order_relaxed);
     access_cnt.fetch_add(count, simt::memory_order_relaxed);
     
     bool fail = true;
     unsigned int ns = 8;
-    //bool miss = false;
-    //T ret;
-/*
+
+
     uint8_t prefetch_count = pages[index].prefetch_count.load(simt::memory_order_acquire);  
     uint32_t p_count = 0;
     if(prefetch_count != 0 && (prefetch_count >>7 == 0) ){
-	p_count = 1;
-	pages[index].prefetch_count.store(prefetch_count | 0x80, simt::memory_order_release);
+        p_count = 1;
+        pages[index].prefetch_count.store(prefetch_count | 0x80, simt::memory_order_release);
     }
-
 
     uint8_t window_count = pages[index].prefetch_counter.load(simt::memory_order_acquire); 
     
-    if(window_count > 1 && (window_count >>7 == 0) ){
-	
-	    //printf("acquire tid: %i idx: %i p: %u window_count:%lu\n", (int) threadIdx.x, (int)index,(unsigned) prefetch_count, (unsigned long) window_count);
-    
-    	    p_count = 1;
-	pages[index].prefetch_counter.store(window_count | 0x80, simt::memory_order_release);
+    if(window_count > 1 && (window_count >>7 == 0) ){    
+    	p_count = 1;
+	    pages[index].prefetch_counter.store(window_count | 0x80, simt::memory_order_release);
     }
-*/
-//    printf("acquire tid: %i idx: %i p: %u window_count:%lu\n", (int) threadIdx.x, (int)index,(unsigned) prefetch_count, (unsigned long) window_count);
+
     uint64_t read_state,st,st_new;
-    read_state = pages[index].state.fetch_add(count, simt::memory_order_acquire);
+    read_state = pages[index].state.fetch_add(count+p_count, simt::memory_order_acquire);
 
 
     do {
