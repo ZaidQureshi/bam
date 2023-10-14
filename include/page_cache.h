@@ -11,7 +11,6 @@
 #define __forceinline__ inline
 #endif
 
-
 #include "util.h"
 #include "host_util.h"
 #include "nvm_types.h"
