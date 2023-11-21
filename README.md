@@ -38,7 +38,7 @@ This code base requires specific type of hardware and specific system configurat
 * Relatively new Linux kernel (ie. 5.x).
 * CMake 3.10 or newer and the _FindCUDA_ package for CMake
 * GCC version 5.4.0 or newer. Compiler must support C++11 and POSIX threads.
-* CUDA 10.2 or newer
+* CUDA 12.2 or newer
 * Nvidia driver (at least 440.33 or newer)
 * Kernel module symbols and headers for the Nvidia driver. The instructions for how to compile these symbols are given [below](#compiling-nvidia-driver-kernel-symbols).
 
