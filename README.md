@@ -40,6 +40,7 @@ This code base requires specific type of hardware and specific system configurat
 * GCC version 5.4.0 or newer. Compiler must support C++11 and POSIX threads.
 * CUDA 12.2 or newer
 * Nvidia driver (at least 440.33 or newer)
+* The kernel version we have tested is 5.8.x. A newer kernel like 6.x may not work with BaM as the kernel APIs have dramatically changed. 
 * Kernel module symbols and headers for the Nvidia driver. The instructions for how to compile these symbols are given [below](#compiling-nvidia-driver-kernel-symbols).
 
 ### Disable IOMMU in Linux ###
