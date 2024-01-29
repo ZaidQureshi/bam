@@ -55,7 +55,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
 
 //    printf("Num pages: %llu, s_offset: %llu n_reqs: %llu\t req_size: %llu\n", (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) n_reqs, (unsigned long long) req_size); 
     for (;tid < pc->n_pages; tid = tid+n_reqs){
-	    uint64_t pid = tid/num_ctrls;	
+	    uint64_t pid = tid / num_ctrls;	
 	    uint64_t start_block = (o_offset+s_offset + pid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
 
             //uint64_t start_block = ((o_offset+s_offset + pc_idx*page_size)) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
