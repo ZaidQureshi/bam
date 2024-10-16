@@ -1780,7 +1780,7 @@ __device__
 uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const uint32_t queue_) {
     bool fail = true;
     uint64_t count = 0;
-    uint32_t global_address =(uint32_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
+    uint64_t global_address =(uint64_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
     uint32_t page = 0;
     unsigned int ns = 8;
 	uint64_t j = 0;
@@ -1823,10 +1823,10 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
             lock = this->cache_pages[page].page_take_lock.compare_exchange_weak(v, LOCKED, simt::memory_order_acquire, simt::memory_order_relaxed);
             if (lock) {
                 //uint32_t previous_address = this->cache_pages[page].page_translation;
-                uint32_t previous_global_address = this->cache_pages[page].page_translation;
+                uint64_t previous_global_address = this->cache_pages[page].page_translation;
                 //uint8_t previous_range = this->cache_pages[page].range_id;
-                uint32_t previous_range = previous_global_address & n_ranges_mask;
-                uint32_t previous_address = previous_global_address >> n_ranges_bits;
+                uint64_t previous_range = previous_global_address & n_ranges_mask;
+                uint64_t previous_address = previous_global_address >> n_ranges_bits;
                 //uint32_t new_state = BUSY;
                 //if ((previous_range >= range_cap) || (previous_address >= n_pages))
                 //    //printf("prev_ga: %llu\tprev_range: %llu\tprev_add: %llu\trange_cap: %llu\tn_pages: %llu\n", (unsigned long long) previous_global_address, (unsigned long long) previous_range, (unsigned long long) previous_address,
