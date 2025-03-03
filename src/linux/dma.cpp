@@ -155,7 +155,8 @@ int nvm_dma_map_device(nvm_dma_t** handle, const nvm_ctrl_t* ctrl, void* devptr,
     struct ioctl_mapping* md = NULL;
     *handle = NULL;
 
-    if (_nvm_ctrl_type(ctrl) != DEVICE_TYPE_IOCTL)
+    if (_nvm_ctrl_type(ctrl) != DEVICE_TYPE_IOCTL &&
+        _nvm_ctrl_type(ctrl) != DEVICE_TYPE_GRAID)
     {
         return EBADF;
     }

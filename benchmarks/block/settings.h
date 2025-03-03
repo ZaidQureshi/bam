@@ -390,7 +390,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
         {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write, 2->mixed", "0"))},
         {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
-        {'S', OptionPtr(new Range(ssdtype, 0, 2, "ssd", "type of SSD to use 0->Samsung, 1->Intel", "0"))},
+        {'S', OptionPtr(new Range(ssdtype, 0, 3, "ssd", "type of SSD to use 0->Samsung, 1->Intel, 2->Graid", "0"))},
     };
 
     string optionString;

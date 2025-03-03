@@ -314,3 +314,8 @@ int nvm_raw_ctrl_init(nvm_ctrl_t** ctrl, volatile void* mm_ptr, size_t mm_size)
     return _nvm_ctrl_init(ctrl, NULL, NULL, DEVICE_TYPE_UNKNOWN, mm_ptr, mm_size);
 }
 
+
+enum device_type nvm_ctrl_type(const nvm_ctrl_t* ctrl)
+{
+    return _nvm_ctrl_type(ctrl);
+}

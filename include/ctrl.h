@@ -35,6 +35,9 @@
 
 #define MAX_QUEUES 1024
 
+#ifdef __GRAID__
+#include "dmapool.h"
+#endif
 
 struct Controller
 {
@@ -62,6 +65,9 @@ struct Controller
     BufferPtr d_ctrl_buff;
 #ifdef __DIS_CLUSTER__
     Controller(uint64_t controllerId, uint32_t nvmNamespace, uint32_t adapter, uint32_t segmentId);
+#endif
+#ifdef __GRAID__
+    Controller(std::pair<unsigned, unsigned> dg_vd, uint32_t bam_cuda_device, uint32_t numQueues);
 #endif
 
     Controller(const char* path, uint32_t nvmNamespace, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues);
@@ -136,6 +142,10 @@ inline void Controller::initControllerQueues(uint64_t queueDepth, uint64_t numQu
     h_qps = (QueuePair*) aligned_alloc(16, sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
     CreateQueueFunc create_queue = QueuePair::nvm_create_queue;
+#ifdef __GRAID__
+    if (nvm_ctrl_type(ctrl) == DEVICE_TYPE_GRAID)
+	    create_queue = QueuePair::graid_create_queue;
+#endif
     for (size_t i = 0; i < n_qps; i++) {
         //printf("started creating qp\n");
         new (h_qps + i) QueuePair(ctrl, deviceId, ns, info, aq_ref, i+1, queueDepth, create_queue);
@@ -194,6 +204,7 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     // Create admin queue memory
     aq_mem = createDma(ctrl, ctrl->page_size * 3);
 
+    // Get controller information
     initializeController(*this, ns_id);
 
     reserveQueues(MAX_QUEUES,MAX_QUEUES);
@@ -201,7 +212,21 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     initControllerQueues(queueDepth, numQueues);
 }
 
+#ifdef __GRAID__
+inline Controller::Controller(std::pair<unsigned, unsigned> dg_vd, uint32_t bam_cuda_device, uint32_t numQueues)
+    : deviceId(bam_cuda_device)
+{
+    // Get controller reference
+    int status = graid_ctrl_init(&ctrl, &info, &ns, &n_sqs, &n_cqs, dg_vd.first, dg_vd.second);
+    if (status)
+    {
+        throw error(string("Failed to get Graid controller reference\n"));
+    }
 
+    numQueues = std::min(numQueues, NVMeMaxDGQNR);
+    initControllerQueues(NVMeMaxDGQDepth, numQueues);
+}
+#endif
 
 inline Controller::~Controller()
 {
@@ -210,7 +235,9 @@ inline Controller::~Controller()
         (h_qps + i)->~QueuePair();
     }
     free(h_qps);
-    nvm_aq_destroy(aq_ref);
+    if (aq_ref) {
+        nvm_aq_destroy(aq_ref);
+    }
     nvm_ctrl_free(ctrl);
 }
 

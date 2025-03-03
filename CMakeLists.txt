@@ -14,6 +14,7 @@ set (DIS "/opt/DIS" CACHE PATH "SISCI install location")
 set (NVIDIA "" CACHE PATH "Path to Nvidia driver source")
 set (KERNEL "/lib/modules/${CMAKE_SYSTEM_VERSION}/build" CACHE PATH "Path to kernel source, or module directory")
 set (FIO "" CACHE PATH "Path to FIO installation")
+set (GRAID "" CACHE PATH "Path to Graid driver source")
 
 set (nvidia_archs "70;80;90" CACHE STRING "NVIDIA compute architectures")
 set (no_smartio_samples true CACHE BOOL "Do not use SISCI for examples")
@@ -82,6 +83,19 @@ if (CUDA_FOUND AND NOT no_cuda)
     endif ()
 endif ()
 
+# Try to find Graid driver
+file (GLOB_RECURSE graid_paths "/usr/src/graid-*/dmapool.h")
+string (REPLACE "dmapool.h" "" graid_paths "${graid_paths}")
+if (graid_paths)
+list (SORT graid_paths)
+list (REVERSE graid_paths)
+endif ()
+
+find_path (graid_src NAMES "dmapool.h" PATHS "${GRAID}" ${graid_paths})
+
+if (NOT "${graid_src}" STREQUAL "")
+message(STATUS "Using Graid driver found in ${graid_src}")
+endif ()
 
 # Try to find SISCI
 find_path (sisci_include NAMES sisci_types.h sisci_api.h sisci_error.h PATHS "${DIS}/include" "${DIS}")
@@ -101,6 +115,7 @@ endif ()
 set (libnvm_root "${PROJECT_SOURCE_DIR}/src")
 file (GLOB libnvm_source "${libnvm_root}/*.cpp")
 file (GLOB libnvm_dis_source "${libnvm_root}/dis/*.cu")
+file (GLOB libnvm_graid_source "${libnvm_root}/graid/*.cu")
 file (GLOB libnvm_linux_source "${libnvm_root}/linux/*.cpp")
 file (GLOB libnvm_include "${PROJECT_BINARY_DIR}/include/*.h" "${PROJECT_SOURCE_DIR}/include/*.h")
 
@@ -133,18 +148,27 @@ include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/incl
 if (sisci_include)
     include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${sisci_include}" "${sisci_include}/dis")
 endif ()
+if (graid_src)
+    include_directories ("${graid_src}")
+endif ()
 
 
 # Create NVME library target
 CUDA_ADD_LIBRARY (libnvm ${libnvm_source} ${libnvm_linux_source}) # TODO: add check for OS
 target_include_directories (libnvm PRIVATE "${libnvm_root}")
-target_link_libraries(libnvm ${CUDA_LIBRARIES})
+target_link_libraries(libnvm ${CUDA_LIBRARIES} cuda cudadevrt)
 
 if (sisci_include AND sisci_lib AND NOT no_smartio)
     target_sources (libnvm PRIVATE ${libnvm_dis_source})
     target_compile_definitions (libnvm PRIVATE _REENTRANT _SISCI __DIS_CLUSTER__)
     target_link_libraries (libnvm ${sisci_lib} Threads::Threads)
     message (STATUS "Configuring libnvm with SmartIO")
+
+elseif (graid_src)
+    target_sources (libnvm PRIVATE ${libnvm_graid_source})
+    target_compile_definitions(libnvm PRIVATE __GRAID__)
+    target_link_libraries (libnvm Threads::Threads)
+    message (STATUS "Configuring libnvm with Graid")
 
 else ()
     target_link_libraries (libnvm Threads::Threads)
@@ -257,7 +281,10 @@ macro (make_benchmark target binary_name files)
 
         add_dependencies (${target} libnvm)
         target_link_libraries (${target} libnvm)
-        target_link_libraries (${target} ${CUDA_LIBRARIES})
+        target_link_libraries (${target} ${CUDA_LIBRARIES} cuda cudadevrt)
+        if (graid_src)
+                target_compile_definitions(${target} PRIVATE __GRAID__)
+        endif()
         set_target_properties (${target} PROPERTIES OUTPUT_NAME "nvm-${binary_name}")
 
         list (APPEND benchmark_targets "${target}")

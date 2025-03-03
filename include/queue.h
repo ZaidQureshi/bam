@@ -14,12 +14,17 @@
 #include "nvm_util.h"
 #include "nvm_error.h"
 #include "nvm_admin.h"
+#include "nvm_queue.h"
 #include <stdexcept>
 #include <string>
 #include <iostream>
 #include <functional>
 #include <cmath>
 #include "util.h"
+
+#ifdef __GRAID__
+#include "dmapool.h"
+#endif
 
 using error = std::runtime_error;
 using std::string;
@@ -138,6 +143,38 @@ struct QueuePair
         }
         return 0;
     }
+
+#ifdef __GRAID__
+    static inline
+    int graid_create_queue(enum QueueType qt, const nvm_ctrl_t *ctrl, const uint32_t cudaDevice,
+                           nvm_aq_ref &aq_ref, DmaPtr &q_mem,
+                           nvm_queue_t *cq, nvm_queue_t *sq,
+                           const uint16_t qp_id, const uint64_t queueDepth,
+                           string &errmsg)
+    {
+        UNUSED(cudaDevice);
+        UNUSED(aq_ref);
+        UNUSED(q_mem);
+        UNUSED(queueDepth);
+        void *q_vaddr = qt == QT_CQ ? graid_ctrl_cq_vaddr(ctrl, qp_id) :
+                                      graid_ctrl_sq_vaddr(ctrl, qp_id);
+
+	uint64_t q_ioaddr = qt == QT_CQ ? graid_ctrl_cq_ioaddr(ctrl, qp_id) :
+                                          graid_ctrl_sq_ioaddr(ctrl, qp_id);
+
+        nvm_queue_t *q = qt == QT_CQ ? cq : sq;
+
+        if (nvm_queue_clear(q, ctrl, qt, qp_id, NVMeMaxDGQDepth, true, q_vaddr, q_ioaddr)) {
+            errmsg = string("Graid device: Failed to initialize queue structure");
+            return EIO;
+        }
+
+        printf("%s Queue %d: q_vaddr=%016lx, q_paddr=%016lx\n",
+                qt == QT_CQ ? "Completion" : "Submission",
+                qp_id, (uint64_t)q_vaddr, q_ioaddr);
+        return 0;
+    }
+#endif
 
     inline QueuePair(const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth, CreateQueueFunc create_queue)
     {
