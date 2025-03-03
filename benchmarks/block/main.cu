@@ -41,6 +41,7 @@ using std::string;
 //uint32_t n_ctrls = 1;
 const char* const sam_ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
 const char* const intel_ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
+const std::pair<unsigned, unsigned> graid_devs[] = { {0, 0}, {1, 0}, {2, 0}, {3, 0} };
 //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9", "/dev/libnvm10", "/dev/libnvm11", "/dev/libnvm12", "/dev/libnvm13", "/dev/libnvm14", "/dev/libnvm15", "/dev/libnvm16", "/dev/libnvm17", "/dev/libnvm18", "/dev/libnvm19", "/dev/libnvm20", "/dev/libnvm21", "/dev/libnvm22", "/dev/libnvm23", "/dev/libnvm24","/dev/libnvm25", "/dev/libnvm26", "/dev/libnvm27", "/dev/libnvm28", "/dev/libnvm29", "/dev/libnvm30", "/dev/libnvm31"};
 
 
@@ -96,10 +97,11 @@ __device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starti
 }
 
 */
-__global__ __launch_bounds__(64,32)
-void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
+__global__ //__launch_bounds__(64,32)
+void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t total_blocks, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t warp_id = tid >> 5;
     uint32_t laneid = lane_id();
     //uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
@@ -109,18 +111,18 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     if (laneid == 0) {
         ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
         //queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
-        queue = smid % (ctrls[ctrl]->n_qps);
+        //queue = smid % (ctrls[ctrl]->n_qps);
+        queue = warp_id % (ctrls[ctrl]->n_qps);
     }
     ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
     queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
 
-
-
     if (tid < n_reqs) {
-        uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+	const uint64_t block_size_log = ctrls[ctrl]->d_qps[queue].block_size_log;
+        uint64_t start_block = (tid*req_size*reqs_per_thread) >> block_size_log;
         //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
         //start_block = tid;
-        uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
+        uint64_t n_blocks = req_size >> block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
         //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
         uint8_t opcode;
         for (size_t i = 0; i < reqs_per_thread; i++) {
@@ -135,6 +137,9 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
             else {
                 write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             }
+	    start_block += n_blocks;
+	    if (start_block >= total_blocks)
+		    start_block = 0;
         }
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -148,9 +153,10 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
 }
 
 __global__ //__launch_bounds__(64,32)
-void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
+void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t* assignment, uint64_t total_blocks, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
-    uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t warp_id = tid >> 5;
     uint32_t laneid = lane_id();
     //uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
@@ -160,18 +166,20 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
     if (laneid == 0) {
 	//ctrl = smid % (pc->n_ctrls);
         ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-        queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+        //queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
         //queue = smid % (ctrls[ctrl]->n_qps);
+        queue = warp_id % (ctrls[ctrl]->n_qps);
     }
     ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
     queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
 
 
     if (tid < n_reqs) {
-        uint64_t start_block = (assignment[tid]*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
+	const uint64_t block_size_log = ctrls[ctrl]->d_qps[queue].block_size_log;
+        uint64_t start_block = (assignment[tid]*req_size) >> block_size_log;
         //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
         //start_block = tid;
-        uint64_t n_blocks = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
+        uint64_t n_blocks = req_size >> block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
         //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
 
         uint8_t opcode;
@@ -187,6 +195,9 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
             else {
                 write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
             }
+	    start_block += n_blocks;
+	    if (start_block >= total_blocks)
+		    start_block = 0;
         }
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
         //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
@@ -253,8 +264,21 @@ int main(int argc, char** argv) {
         
         cuda_err_chk(cudaSetDevice(settings.cudaDevice));
         std::vector<Controller*> ctrls(settings.n_ctrls);
-        for (size_t i = 0 ; i < settings.n_ctrls; i++)
-            ctrls[i] = new Controller(settings.ssdtype == 0 ? sam_ctrls_paths[i] : intel_ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+        for (size_t i = 0 ; i < settings.n_ctrls; i++) {
+            Controller *ctrl = NULL;
+            switch (settings.ssdtype) {
+            case 0:
+                ctrl = new Controller(sam_ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+                break;
+            case 1:
+                ctrl = new Controller(intel_ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
+		break;
+            case 2:
+                ctrl = new Controller(graid_devs[i], settings.cudaDevice, settings.numQueues);
+		break;
+            };
+            ctrls[i] = ctrl;
+	}
 
         //auto dma = createDma(ctrl.ctrl, NVM_PAGE_ALIGN(64*1024*10, 1UL << 16), settings.cudaDevice, settings.adapter, settings.segmentId);
 
@@ -342,9 +366,9 @@ int main(int argc, char** argv) {
         }
         std::cout << "atlaunch kernel\n";
         if (settings.random)
-            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, settings.numReqs, settings.accessType, d_access_assignment);
+            random_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, d_assignment, n_blocks, settings.numReqs, settings.accessType, d_access_assignment);
         else
-            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, settings.numReqs, settings.accessType, d_access_assignment);
+            sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, n_blocks, settings.numReqs, settings.accessType, d_access_assignment);
         Event after;
 
         //print_cache_kernel<<<1,1>>>(d_pc);
