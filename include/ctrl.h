@@ -48,7 +48,7 @@ struct Controller
     uint16_t                n_cqs;
     uint16_t                n_qps;
     uint32_t                deviceId;
-    QueuePair**             h_qps;
+    QueuePair*              h_qps;
     QueuePair*              d_qps;
 
     simt::atomic<uint64_t, simt::thread_scope_device> queue_counter;
@@ -180,14 +180,14 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     n_qps = std::min(n_sqs, n_cqs);
     n_qps = std::min(n_qps, (uint16_t)numQueues);
     printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
-    h_qps = (QueuePair**) malloc(sizeof(QueuePair)*n_qps);
+    h_qps = (QueuePair*) aligned_alloc(16, sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
     for (size_t i = 0; i < n_qps; i++) {
         //printf("started creating qp\n");
-        h_qps[i] = new QueuePair(ctrl, cudaDevice, ns, info, aq_ref, i+1, queueDepth);
+        new (h_qps + i) QueuePair(ctrl, deviceId, ns, info, aq_ref, i+1, queueDepth);
         //printf("finished creating qp\n");
-        cuda_err_chk(cudaMemcpy(d_qps+i, h_qps[i], sizeof(QueuePair), cudaMemcpyHostToDevice));
     }
+    cuda_err_chk(cudaMemcpy(d_qps, h_qps, sizeof(QueuePair)*n_qps, cudaMemcpyHostToDevice));
     //printf("finished creating all qps\n");
 
 
@@ -204,7 +204,7 @@ inline Controller::~Controller()
 {
     cudaFree(d_qps);
     for (size_t i = 0; i < n_qps; i++) {
-        delete h_qps[i];
+        (h_qps + i)->~QueuePair();
     }
     free(h_qps);
     nvm_aq_destroy(aq_ref);
