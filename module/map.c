@@ -34,10 +34,18 @@ static struct map* create_descriptor(const struct ctrl* ctrl, u64 vaddr, unsigne
     unsigned long i;
     struct map* map = NULL;
 
-    map = kvmalloc(sizeof(struct map) + (n_pages - 1) * sizeof(uint64_t), GFP_KERNEL);
+    map = kvmalloc(sizeof(struct map), GFP_KERNEL);
     if (map == NULL)
     {
         printk(KERN_CRIT "Failed to allocate mapping descriptor\n");
+        return ERR_PTR(-ENOMEM);
+    }
+
+    map->addrs = kvmalloc(n_pages * sizeof(uint64_t), GFP_KERNEL);
+    if (map->addrs == NULL)
+    {
+        kvfree(map);
+        printk(KERN_CRIT "Failed to allocate mapping descriptor addr array\n");
         return ERR_PTR(-ENOMEM);
     }
 
@@ -71,6 +79,7 @@ void unmap_and_release(struct map* map)
         map->release(map);
     }
 
+    kvfree(map->addrs);
     kvfree(map);
 }
 
