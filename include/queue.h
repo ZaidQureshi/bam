@@ -92,17 +92,12 @@ struct QueuePair
 
 
     //    std::cout << "HERE\n";
-        uint64_t cap = ((volatile uint64_t*) ctrl->mm_ptr)[0];
-        bool cqr = (cap & 0x0000000000010000) == 0x0000000000010000;
+        const bool cqr = ctrl->cqr;
         //uint64_t sq_size = 16;
         //uint64_t cq_size = 16;
 
-        uint64_t sq_size = (cqr) ?
-            ((MAX_SQ_ENTRIES_64K <= ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) )) ? MAX_SQ_ENTRIES_64K :  ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) ) ) :
-            ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) );
-        uint64_t cq_size = (cqr) ?
-            ((MAX_CQ_ENTRIES_64K <= ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) )) ? MAX_CQ_ENTRIES_64K :  ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) ) ) :
-            ((((volatile uint16_t*) ctrl->mm_ptr)[0] + 1) );
+        uint64_t sq_size = (cqr) ? std::min((unsigned)MAX_SQ_ENTRIES_64K, ctrl->max_qs) : ctrl->max_qs;
+        uint64_t cq_size = (cqr) ? std::min((unsigned)MAX_CQ_ENTRIES_64K, ctrl->max_qs) : ctrl->max_qs;
         sq_size = std::min(queueDepth, sq_size);
         cq_size = std::min(queueDepth, cq_size);
 
