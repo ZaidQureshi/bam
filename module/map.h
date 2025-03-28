@@ -52,6 +52,9 @@ void unmap_and_release(struct map* map);
  * Lock and map GPU device memory.
  */
 struct map* map_device_memory(struct list* list, const struct ctrl* ctrl, u64 vaddr, unsigned long n_pages, struct list* ctrl_list);
+
+void release_gpu_memory(struct map* map);
+int map_gpu_memory(struct map* map, struct list* list);
 #endif
 
 
