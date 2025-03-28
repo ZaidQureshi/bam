@@ -25,6 +25,7 @@ typedef struct
 {
     size_t                  page_size;      // Memory page size used by the controller (MPS)
     uint8_t                 dstrd;          // Doorbell stride (in encoded form)
+    bool                    cqr;            // Contiguous queue required
     uint64_t                timeout;        // Controller timeout in milliseconds (TO)
     uint32_t                max_qs;         // Maximum queue entries supported (MQES)
     size_t                  mm_size;        // Size of memory-mapped region
