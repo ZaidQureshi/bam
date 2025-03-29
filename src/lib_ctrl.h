@@ -85,7 +85,8 @@ int _nvm_ctrl_init(nvm_ctrl_t** handle,             /* User's handle */
                    enum device_type type,           /* Device type */
                    volatile void* mm_ptr,           /* Memory-mapped pointer */
                    size_t mm_size,                  /* Size of memory-map */
-                   volatile void* mm_devp = NULL);  /* Memory-mapped GPU pointer */
+                   volatile void* mm_devp = NULL,   /* Memory-mapped GPU pointer */
+                   void *priv = NULL);              /* Controller type specific private data */
 
 
 
