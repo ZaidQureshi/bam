@@ -167,11 +167,6 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     aq_mem = createDma(ctrl, ctrl->page_size * 3);
 
     initializeController(*this, ns_id);
-    cudaError_t err = cudaHostRegister((void*) ctrl->mm_ptr, NVM_CTRL_MEM_MINSIZE, cudaHostRegisterIoMemory);
-    if (err != cudaSuccess)
-    {
-        throw error(string("Unexpected error while mapping IO memory (cudaHostRegister): ") + cudaGetErrorString(err));
-    }
     queue_counter = 0;
     page_size = ctrl->page_size;
     blk_size = this->ns.lba_data_size;

@@ -180,15 +180,6 @@ struct QueuePair
         }
         // std::cout << "after nvm_admin_cq_create\n";
 
-        // Get a valid device pointer for CQ doorbell
-        void* devicePtr = nullptr;
-        cudaError_t err = cudaHostGetDevicePointer(&devicePtr, (void*) this->cq.db, 0);
-        if (err != cudaSuccess)
-        {
-            throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
-        }
-        this->cq.db = (volatile uint32_t*) devicePtr;
-
         // Create submission queue
         //  nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
         status = nvm_admin_sq_create(aq_ref, &this->sq, &this->cq, qp_id, this->sq_mem.get(), 0, sq_size, sq_need_prp);
@@ -197,14 +188,6 @@ struct QueuePair
             throw error(string("Failed to create submission queue: ") + nvm_strerror(status));
         }
 
-
-        // Get a valid device pointer for SQ doorbell
-        err = cudaHostGetDevicePointer(&devicePtr, (void*) this->sq.db, 0);
-        if (err != cudaSuccess)
-        {
-            throw error(string("Failed to get device pointer") + cudaGetErrorString(err));
-        }
-        this->sq.db = (volatile uint32_t*) devicePtr;
 //        std::cout << "Finish Making Queue\n";
 
         init_gpu_specific_struct(cudaDevice);
