@@ -39,8 +39,8 @@
 struct Controller
 {
     simt::atomic<uint64_t, simt::thread_scope_device> access_counter;
-    nvm_ctrl_t*             ctrl;
-    nvm_aq_ref              aq_ref;
+    nvm_ctrl_t*             ctrl = NULL;
+    nvm_aq_ref              aq_ref = NULL;
     DmaPtr                  aq_mem;
     struct nvm_ctrl_info    info;
     struct nvm_ns_info      ns;
@@ -51,7 +51,7 @@ struct Controller
     QueuePair*              h_qps;
     QueuePair*              d_qps;
 
-    simt::atomic<uint64_t, simt::thread_scope_device> queue_counter;
+    simt::atomic<uint64_t, simt::thread_scope_device> queue_counter = { 0 };
 
     uint32_t page_size;
     uint32_t blk_size;
@@ -66,15 +66,18 @@ struct Controller
 
     Controller(const char* path, uint32_t nvmNamespace, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues);
 
+    ~Controller();
+
+    void print_reset_stats(void);
+
+private:
     void reserveQueues();
 
     void reserveQueues(uint16_t numSubmissionQueues);
 
     void reserveQueues(uint16_t numSubmissionQueues, uint16_t numCompletionQueues);
 
-    void print_reset_stats(void);
-
-    ~Controller();
+    void initControllerQueues(uint64_t queueDepth, uint64_t numQueues);
 };
 
 
@@ -122,56 +125,11 @@ static void initializeController(struct Controller& ctrl, uint32_t ns_id)
     }
 }
 
-
-
-#ifdef __DIS_CLUSTER__
-Controller::Controller(uint64_t ctrl_id, uint32_t ns_id, uint32_t)
-    : ctrl(nullptr)
-    , aq_ref(nullptr)
+inline void Controller::initControllerQueues(uint64_t queueDepth, uint64_t numQueues)
 {
-    // Get controller reference
-    int status = nvm_dis_ctrl_init(&ctrl, ctrl_id);
-    if (!nvm_ok(status))
-    {
-        throw error(string("Failed to get controller reference: ") + nvm_strerror(status));
-    }
-
-    // Create admin queue memory
-    aq_mem = createDma(ctrl, ctrl->page_size * 3, 0, 0);
-
-    initializeController(*this, ns_id);
-}
-#endif
-
-
-
-inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues)
-    : ctrl(nullptr)
-    , aq_ref(nullptr)
-    , deviceId(cudaDevice)
-{
-    int fd = open(path, O_RDWR);
-    if (fd < 0)
-    {
-        throw error(string("Failed to open descriptor: ") + strerror(errno));
-    }
-
-    // Get controller reference
-    int status = nvm_ctrl_init(&ctrl, fd);
-    if (!nvm_ok(status))
-    {
-        throw error(string("Failed to get controller reference: ") + nvm_strerror(status));
-    }
-
-    // Create admin queue memory
-    aq_mem = createDma(ctrl, ctrl->page_size * 3);
-
-    initializeController(*this, ns_id);
-    queue_counter = 0;
     page_size = ctrl->page_size;
     blk_size = this->ns.lba_data_size;
     blk_size_log = std::log2(blk_size);
-    reserveQueues(MAX_QUEUES,MAX_QUEUES);
     n_qps = std::min(n_sqs, n_cqs);
     n_qps = std::min(n_qps, (uint16_t)numQueues);
     printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
@@ -185,12 +143,61 @@ inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDev
     cuda_err_chk(cudaMemcpy(d_qps, h_qps, sizeof(QueuePair)*n_qps, cudaMemcpyHostToDevice));
     //printf("finished creating all qps\n");
 
-
-    close(fd);
-
-    d_ctrl_buff = createBuffer(sizeof(Controller), cudaDevice);
+    d_ctrl_buff = createBuffer(sizeof(Controller), deviceId);
     d_ctrl_ptr = d_ctrl_buff.get();
     cuda_err_chk(cudaMemcpy(d_ctrl_ptr, this, sizeof(Controller), cudaMemcpyHostToDevice));
+}
+
+#ifdef __DIS_CLUSTER__
+Controller::Controller(uint64_t ctrl_id, uint32_t ns_id, uint32_t)
+{
+    // Get controller reference
+    int status = nvm_dis_ctrl_init(&ctrl, ctrl_id);
+    if (!nvm_ok(status))
+    {
+        throw error(string("Failed to get controller reference: ") + nvm_strerror(status));
+    }
+
+    // Create admin queue memory
+    aq_mem = createDma(ctrl, ctrl->page_size * 3, 0, 0);
+
+    initializeController(*this, ns_id);
+
+    // NOTE: Does this constructor still works?
+    //   It does not initialize:
+    //     1. page_size
+    //     2. blk_size / blk_size_log
+    //     3. n_qps / d_qps
+    //     4. d_ctrl_buff / d_ctrl_ptr
+}
+#endif
+
+
+inline Controller::Controller(const char* path, uint32_t ns_id, uint32_t cudaDevice, uint64_t queueDepth, uint64_t numQueues)
+    : deviceId(cudaDevice)
+{
+    int fd = open(path, O_RDWR);
+    if (fd < 0)
+    {
+        throw error(string("Failed to open descriptor: ") + strerror(errno));
+    }
+
+    // Get controller reference
+    int status = nvm_ctrl_init(&ctrl, fd);
+    if (!nvm_ok(status))
+    {
+        throw error(string("Failed to get controller reference: ") + nvm_strerror(status));
+    }
+    close(fd);
+
+    // Create admin queue memory
+    aq_mem = createDma(ctrl, ctrl->page_size * 3);
+
+    initializeController(*this, ns_id);
+
+    reserveQueues(MAX_QUEUES,MAX_QUEUES);
+
+    initControllerQueues(queueDepth, numQueues);
 }
 
 
@@ -204,7 +211,6 @@ inline Controller::~Controller()
     free(h_qps);
     nvm_aq_destroy(aq_ref);
     nvm_ctrl_free(ctrl);
-
 }
 
 
