@@ -31,6 +31,7 @@ typedef struct
     size_t                  mm_size;        // Size of memory-mapped region
     volatile void*          mm_ptr;         // Memory-mapped pointer to BAR0 of the physical device
     volatile void*          mm_devp;        // GPU device pointer to BAR0 of the physical device
+    void*                   priv;           // Controller type specific private data
 } nvm_ctrl_t;
 
 
