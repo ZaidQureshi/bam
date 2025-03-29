@@ -413,7 +413,7 @@ int main(int argc, char *argv[]) {
 
         vertex_count--;
 
-        printf("Vertex: %llu, ", vertex_count);
+        printf("Vertex: %lu, ", vertex_count);
         vertex_size = (vertex_count+1) * sizeof(uint64_t);
 
         vertexList_h = (uint64_t*)malloc(vertex_size);
@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
         file.read((char*)(&edge_count), 8);
         file.read((char*)(&typeT), 8);
 
-        printf("Edge: %llu, ", edge_count);
+        printf("Edge: %lu, ", edge_count);
         fflush(stdout);
         edge_size = edge_count * sizeof(EdgeT);
         edge_size = edge_size + (4096 - (edge_size & 0xFFFULL));
@@ -448,7 +448,7 @@ int main(int argc, char *argv[]) {
         file2.read((char*)(&weight_count), 8);
         file2.read((char*)(&typeT), 8);
 
-        printf("Weight: %llu\n", weight_count);
+        printf("Weight: %lu\n", weight_count);
         fflush(stdout);
         weight_size = weight_count * sizeof(WeightT);
         weight_size = weight_size + (4096 - (weight_size & 0xFFFULL));
@@ -482,9 +482,9 @@ int main(int argc, char *argv[]) {
 
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 if (totalbyte < 16*1024*1024*1024ULL)
-                    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                    printf("total memory sizeo of current GPU is %lu byte, no need to throttle\n", totalbyte);
                 else {
-                    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                    printf("total memory sizeo of current GPU is %lu byte, throttling %lu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024lu);
                     cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
                     throttle_memory<<<1,1>>>(pad);
                 }
@@ -510,14 +510,16 @@ int main(int argc, char *argv[]) {
             case BAFS_DIRECT:
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 if (totalbyte < 16*1024*1024*1024ULL)
-                    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                    printf("total memory sizeo of current GPU is %lu byte, no need to throttle\n", totalbyte);
                 else {
-                    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                    printf("total memory sizeo of current GPU is %lu byte, throttling %lu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024lu);
                     cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
                     throttle_memory<<<1,1>>>(pad);
                 }
                 break;
-
+            default: 
+                 printf("ERROR: Invalid Mem type specified\n");
+                 break;
         }
 
         file.close();
@@ -577,7 +579,7 @@ int main(int argc, char *argv[]) {
         avg_milliseconds = 0.0f;
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC)){
-                printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+                printf("page size: %lu, pc_entries: %lu\n", pc_page_size, pc_pages);
         }
 
         std::vector<Controller*> ctrls(settings.n_ctrls);
@@ -591,14 +593,14 @@ int main(int argc, char *argv[]) {
         printf("Initialization done\n");
         fflush(stdout);
 
-        page_cache_t* h_pc;
+        page_cache_t* h_pc = nullptr;
 
-        range_t<uint64_t>* h_erange;
-        range_t<WeightT>* h_wrange;
+        range_t<uint64_t>* h_erange = nullptr;
+        range_t<WeightT>* h_wrange = nullptr;
         std::vector<range_t<uint64_t>*> vec_erange(1);
         std::vector<range_t<WeightT>*> vec_wrange(1);
-        array_t<uint64_t>* h_earray;
-        array_t<WeightT>* h_warray;
+        array_t<uint64_t>* h_earray = nullptr;
+        array_t<WeightT>* h_warray = nullptr;
 
         uint64_t n_epages = ceil(((float)edge_size)/pc_page_size);  
         uint64_t n_wpages = ceil(((float)weight_size)/pc_page_size); 
@@ -643,7 +645,7 @@ int main(int argc, char *argv[]) {
             do {
                 changed_h = false;
                 cuda_err_chk(cudaMemcpy(changed_d, &changed_h, sizeof(bool), cudaMemcpyHostToDevice));
-                auto start = std::chrono::system_clock::now();
+                //auto start = std::chrono::system_clock::now();
                 switch (type) {
                     case BASELINE:
                         kernel_baseline<<<blockDim_kernel, numthreads>>>(label_d, costList_d, newCostList_d, vertex_count, vertexList_d, edgeList_d, weightList_d);
@@ -674,7 +676,7 @@ int main(int argc, char *argv[]) {
                 iter++;
 
                 cuda_err_chk(cudaMemcpy(&changed_h, changed_d, sizeof(bool), cudaMemcpyDeviceToHost));
-                auto end = std::chrono::system_clock::now();
+                //auto end = std::chrono::system_clock::now();
 /*
                 if(mem == BAFS_DIRECT) {
                     h_earray->print_reset_stats();
@@ -690,7 +692,7 @@ int main(int argc, char *argv[]) {
             cuda_err_chk(cudaEventElapsedTime(&milliseconds, start, end));
             if(iter > 1){
                   printf("run %*d: ", 3, i);
-                  printf("src %*u, ", 10, src);
+                  printf("src %*lu, ", 10, src);
                   printf("iteration %*u, ", 3, iter);
                   printf("time %*f ms\n", 12, milliseconds);
                   if(mem == BAFS_DIRECT) {
@@ -745,7 +747,7 @@ int main(int argc, char *argv[]) {
         }
 
         //printf("Average run time %f ms\n", avg_milliseconds / num_run);
-        printf("\nSSSP_F Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
+        printf("\nSSSP_F Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %lu \t AvgTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, avg_milliseconds / num_run);
 
 
 

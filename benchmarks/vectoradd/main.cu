@@ -95,7 +95,7 @@ void kernel_baseline(uint64_t n_elems, uint64_t *A, uint64_t *B, unsigned long l
        sum[tid]= A[tid] + B[tid];  
        //uint64_t val = A[tid] + B[tid];  
        //atomicAdd(&sum[0], val);
-       //printf("tid: %llu A:%llu B:%llu \n",tid,  A[tid], B[tid]);
+       //printf("tid: %lu A:%lu B:%lu \n",tid,  A[tid], B[tid]);
     }
 }
 
@@ -129,7 +129,7 @@ void kernel_sequential_warp(T *A, T *B, uint64_t n_elems,  uint64_t n_pages_per_
     uint64_t idx=0; 
 
     if(tid ==0)
-        printf("n_elems_per_page: %llu\n", n_elems_per_page);
+        printf("n_elems_per_page: %lu\n", n_elems_per_page);
     if (warp_id < n_warps) {
         size_t start_page = n_pages_per_warp * warp_id;;
         for (size_t i = 0; i < n_pages_per_warp; i++) {
@@ -142,7 +142,7 @@ void kernel_sequential_warp(T *A, T *B, uint64_t n_elems,  uint64_t n_pages_per_
                    val  = A[idx] + B[idx];
                    sum[idx] = val;
                    //atomicAdd(&sum[0], val);
-       //            printf("tid: %llu A:%llu B:%llu \n",idx,  A[tid], B[tid]);
+       //            printf("tid: %lu A:%lu B:%lu \n",idx,  A[tid], B[tid]);
                }
             }
         }
@@ -179,7 +179,7 @@ void kernel_sequential_warp_ptr_pc(array_d_t<T> *da, array_d_t<T> *db, uint64_t 
                    Cptr[idx] = val; 
                    //sum[idx] = val;
                    //atomicAdd(&sum[0], val);
-       //            printf("tid: %llu A:%llu B:%llu \n",idx,  A[tid], B[tid]);
+       //            printf("tid: %lu A:%lu B:%lu \n",idx,  A[tid], B[tid]);
                }
             }
         }
@@ -220,12 +220,12 @@ int main(int argc, char *argv[]) {
 
     impl_type type;
     mem_type mem;
-    uint32_t *pad;
-    uint64_t *a_h, *a_d;
-    uint64_t *b_h, *b_d;
-    uint64_t *c_h, *c_d;
-    uint64_t n_elems, n_size;
-    uint64_t typeT;
+    //uint32_t *pad;
+    uint64_t *a_h = nullptr, *a_d;
+    uint64_t *b_h = nullptr, *b_d;
+    //uint64_t *c_h, *c_d;
+    //uint64_t n_elems, n_size;
+    //uint64_t typeT;
     uint64_t numblocks, numthreads;
     size_t freebyte, totalbyte;
 
@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
 
         uint64_t n_elems = settings.n_elems;
         uint64_t n_elems_size = n_elems * sizeof(uint64_t);
-        printf("Total elements: %llu \n", n_elems);
+        printf("Total elements: %lu \n", n_elems);
         uint64_t tmp; 
         
         // Read files
@@ -351,14 +351,14 @@ int main(int argc, char *argv[]) {
                 cuda_err_chk(cudaMemAdvise(b_d, size_4k_aligned, cudaMemAdviseSetAccessedBy, settings.cudaDevice));
                 high_resolution_clock::time_point ft1 = high_resolution_clock::now();
                
-                if (fread(a_d, sizeof(uint64_t), count_4k_aligned, fa_tmp) <0) {
-                    printf("A file fread failed: %llu \t %llu\n", count_4k_aligned, n_elems+2);
+                if (fread(a_d, sizeof(uint64_t), count_4k_aligned, fa_tmp) != count_4k_aligned) {
+                    printf("A file fread failed: %lu \t %lu\n", count_4k_aligned, n_elems+2);
                     exit(1);
                 }   
                 fclose(fa_tmp);                                                                                                              
                 close(fda);
                 
-                if (fread(b_d, sizeof(uint64_t), count_4k_aligned, fb_tmp) <0) {
+                if (fread(b_d, sizeof(uint64_t), count_4k_aligned, fb_tmp) != count_4k_aligned) {
                     printf("B file fread failed\n");
                     exit(1);
                 }   
@@ -395,6 +395,10 @@ int main(int argc, char *argv[]) {
                 {
                 break;
                 }
+            default:
+                fprintf(stderr, "Invalid type: %d\n", mem);
+                exit(1);
+                break;
         }
 
         
@@ -434,7 +438,7 @@ int main(int argc, char *argv[]) {
         dim3 blockDim(numblocks);
 
         if((type == BASELINE_PC) || (type==OPTIMIZED_PC)) {
-                printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+                printf("page size: %lu, pc_entries: %lu\n", pc_page_size, pc_pages);
         }
         std::vector<Controller*> ctrls(settings.n_ctrls);
         if(mem == BAFS_DIRECT){
@@ -446,19 +450,19 @@ int main(int argc, char *argv[]) {
         printf("Initialization done\n");
         fflush(stdout);
 
-        page_cache_t* h_pc;
-        range_t<uint64_t>* h_Arange;
-        range_t<uint64_t>* h_Brange;
-        range_t<uint64_t>* h_Crange;
+        page_cache_t* h_pc = nullptr;
+        range_t<uint64_t>* h_Arange = nullptr;
+        range_t<uint64_t>* h_Brange = nullptr;
+        range_t<uint64_t>* h_Crange = nullptr;
         std::vector<range_t<uint64_t>*> vec_Arange(1);
         std::vector<range_t<uint64_t>*> vec_Brange(1);
         std::vector<range_t<uint64_t>*> vec_Crange(1);
-        array_t<uint64_t>* h_Aarray;
-        array_t<uint64_t>* h_Barray;
-        array_t<uint64_t>* h_Carray;
+        array_t<uint64_t>* h_Aarray = nullptr;
+        array_t<uint64_t>* h_Barray = nullptr;
+        array_t<uint64_t>* h_Carray = nullptr;
 
 
-        uint64_t cfileoffset = 720*1024*1024*1024;
+        uint64_t cfileoffset = 720llu*1024llu*1024llu*1024llu;
         if((type == BASELINE_PC) || (type == OPTIMIZED_PC)) {
             //TODO: fix for 2 arrays
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
@@ -486,12 +490,12 @@ int main(int argc, char *argv[]) {
 
             switch (type) {
                 case BASELINE:
-                    printf("launching baseline: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+                    printf("launching baseline: blockDim.x :%u blockDim.y :%u numthreads:%lu\n", blockDim.x, blockDim.y, numthreads);
                     kernel_baseline<<<blockDim, numthreads>>>(n_elems, a_d, b_d, sum_d);
                     //kernel_baseline<<<blockDim, numthreads>>>(n_elems,  sum_d);
                     break;
                 case BASELINE_PC:
-                    printf("launching baseline_pc: blockDim.x :%llu blockDim.y :%llu numthreads:%llu\n", blockDim.x, blockDim.y, numthreads);
+                    printf("launching baseline_pc: blockDim.x :%u blockDim.y :%u numthreads:%lu\n", blockDim.x, blockDim.y, numthreads);
                     kernel_baseline_ptr_pc<<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, h_Carray->d_array_ptr, sum_d);
                     h_pc->flush_cache(); 
                     //uint64_t n_pages = pc_pages; 
@@ -500,12 +504,12 @@ int main(int argc, char *argv[]) {
                     break;
 
                 case OPTIMIZED:
-                    printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
+                    printf("launching optimized: blockDim.x :%u numthreads:%lu\n", blockDim.x, numthreads);
                     kernel_sequential_warp<uint64_t><<<blockDim, numthreads>>>(a_d, b_d, n_elems, 1, sum_d, n_warps, settings.pageSize);
                     break;
 
                 case OPTIMIZED_PC:
-                    printf("launching optimized: blockDim.x :%llu numthreads:%llu\n", blockDim.x, numthreads);
+                    printf("launching optimized: blockDim.x :%u numthreads:%lu\n", blockDim.x, numthreads);
                     kernel_sequential_warp_ptr_pc<uint64_t><<<blockDim, numthreads>>>(h_Aarray->d_array_ptr, h_Barray->d_array_ptr, n_elems, 1, h_Carray->d_array_ptr, sum_d, n_warps, settings.pageSize, settings.stride);
                     h_pc->flush_cache(); 
                     break;
@@ -539,7 +543,7 @@ int main(int argc, char *argv[]) {
                  h_Barray->print_reset_stats();
                  cuda_err_chk(cudaDeviceSynchronize());
             }
-            printf("\nVA %d A:%s \t B:%s Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %llu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), b_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, milliseconds); 
+            printf("\nVA %d A:%s \t B:%s Impl: %d \t SSD: %d \t CL: %lu \t Cache: %lu \t Stride: %lu \t TotalTime %f ms\n", titr, a_file_bin.c_str(), b_file_bin.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, milliseconds); 
             fflush(stdout);
         }
 
