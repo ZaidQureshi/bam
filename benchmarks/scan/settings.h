@@ -160,7 +160,7 @@ template <>
 void Option<bool>::parseArgument(const char* optstr, const char* optarg)
 {
     string str(optarg);
-    std::transform(str.begin(), str.end(), str.begin(), std::ptr_fun<int, int>(std::tolower));
+    std::transform(str.cbegin(), str.cend(), str.begin(), [](int ch)->int{return ::tolower(ch);});
 
     if (str == "false" || str == "0" || str == "no" || str == "n" || str == "off" || str == "disable" || str == "disabled")
     {

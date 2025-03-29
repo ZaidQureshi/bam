@@ -101,7 +101,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t laneid = lane_id();
-    uint32_t bid = blockIdx.x;
+    //uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
     uint32_t ctrl;
@@ -152,7 +152,7 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
     //printf("in threads\n");
     uint64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t laneid = lane_id();
-    uint32_t bid = blockIdx.x;
+    //uint32_t bid = blockIdx.x;
     uint32_t smid = get_smid();
 
     uint32_t ctrl;
@@ -228,7 +228,7 @@ int main(int argc, char** argv) {
 
         input_f = settings.input;
 
-        void* map_in;
+        void* map_in = nullptr;
         int fd_in;
         struct stat sb_in;
 
@@ -243,7 +243,7 @@ int main(int argc, char** argv) {
             map_in = mmap(NULL, sb_in.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_in, 0);
 
             if((map_in == (void*)-1)){
-                fprintf(stderr,"Input file map failed %d\n",map_in);
+                fprintf(stderr,"Input file map failed\n");
                 return 1;
             }
 
@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
         if (settings.accessType == 2) {
             access_assignment = (uint8_t*) malloc(n_threads*sizeof(uint8_t));
             for (size_t i = 0; i < n_threads; i++)
-                access_assignment[i] = (((rand() % 100) + 1) <= settings.ratio) ? NVM_IO_READ : NVM_IO_WRITE;
+                access_assignment[i] = ((((unsigned)rand() % 100u) + 1u) <= settings.ratio) ? NVM_IO_READ : NVM_IO_WRITE;
 
             cuda_err_chk(cudaMalloc(&d_access_assignment, n_threads*sizeof(uint8_t)));
             cuda_err_chk(cudaMemcpy(d_access_assignment, access_assignment, n_threads*sizeof(uint8_t), cudaMemcpyHostToDevice));
@@ -353,7 +353,7 @@ int main(int argc, char** argv) {
 
         //cuda_err_chk(cudaMemcpy(ret_array, h_pc.base_addr,page_size*n_pages, cudaMemcpyDeviceToHost));
         cuda_err_chk(cudaDeviceSynchronize());
-        if (input_f != nullptr) {
+        if (input_f != nullptr && map_in != nullptr) {
             cuda_err_chk(cudaMemcpy(map_in, h_pc.pdt.base_addr,  std::min((uint64_t)sb_in.st_size, total_cache_size), cudaMemcpyDeviceToHost));
             munmap(map_in, sb_in.st_size);
         }
