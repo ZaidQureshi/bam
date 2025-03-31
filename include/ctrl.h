@@ -135,9 +135,10 @@ inline void Controller::initControllerQueues(uint64_t queueDepth, uint64_t numQu
     printf("SQs: %d\tCQs: %d\tn_qps: %d\n", n_sqs, n_cqs, n_qps);
     h_qps = (QueuePair*) aligned_alloc(16, sizeof(QueuePair)*n_qps);
     cuda_err_chk(cudaMalloc((void**)&d_qps, sizeof(QueuePair)*n_qps));
+    CreateQueueFunc create_queue = QueuePair::nvm_create_queue;
     for (size_t i = 0; i < n_qps; i++) {
         //printf("started creating qp\n");
-        new (h_qps + i) QueuePair(ctrl, deviceId, ns, info, aq_ref, i+1, queueDepth);
+        new (h_qps + i) QueuePair(ctrl, deviceId, ns, info, aq_ref, i+1, queueDepth, create_queue);
         //printf("finished creating qp\n");
     }
     cuda_err_chk(cudaMemcpy(d_qps, h_qps, sizeof(QueuePair)*n_qps, cudaMemcpyHostToDevice));

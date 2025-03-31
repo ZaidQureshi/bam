@@ -367,10 +367,10 @@ static int create_admin(struct local_admin** handle, const struct controller* ct
     admin->qmem = copy;
     memset((void*) admin->qmem->vaddr, 0, 2 * admin->qmem->page_size);
 
-    nvm_queue_clear(&admin->acq, &ctrl->handle, true, 0, ctrl->handle.page_size / sizeof(nvm_cpl_t), 
+    nvm_queue_clear(&admin->acq, &ctrl->handle, QT_CQ, 0, ctrl->handle.page_size / sizeof(nvm_cpl_t), 
             admin->qmem->local, admin->qmem->vaddr, admin->qmem->ioaddrs[0]);
 
-    nvm_queue_clear(&admin->asq, &ctrl->handle, false, 0, ctrl->handle.page_size / sizeof(nvm_cmd_t), 
+    nvm_queue_clear(&admin->asq, &ctrl->handle, QT_SQ, 0, ctrl->handle.page_size / sizeof(nvm_cmd_t), 
             admin->qmem->local,  NVM_DMA_OFFSET(admin->qmem, 1), admin->qmem->ioaddrs[1]);
 
     admin->timeout = ctrl->handle.timeout;
