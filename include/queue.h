@@ -17,12 +17,15 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
+#include <functional>
 #include <cmath>
 #include "util.h"
 
 using error = std::runtime_error;
 using std::string;
 
+struct QueuePair;
+typedef std::function<int(enum QueueType, const nvm_ctrl_t *, const uint32_t, nvm_aq_ref &, DmaPtr &, nvm_queue_t *, nvm_queue_t *, const uint16_t, const uint64_t, string &)> CreateQueueFunc;
 
 struct QueuePair
 {
@@ -84,42 +87,60 @@ struct QueuePair
        // this->cq.clean_cid = (uint16_t*) this->cq_clean_cid.get();
     }
 
-
-
-    inline QueuePair( const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth)
+    static inline
+    int nvm_create_queue(enum QueueType qt, const nvm_ctrl_t *ctrl, const uint32_t cudaDevice,
+                         nvm_aq_ref &aq_ref, DmaPtr &q_mem,
+                         nvm_queue_t *cq, nvm_queue_t *sq,
+                         const uint16_t qp_id, const uint64_t queueDepth,
+                         string &errmsg)
     {
-        //this->this = (QueuePairThis*) malloc(sizeof(QueuePairThis));
-
-
-    //    std::cout << "HERE\n";
         const bool cqr = ctrl->cqr;
-        //uint64_t sq_size = 16;
-        //uint64_t cq_size = 16;
+        const uint32_t max_qs = (qt == QT_SQ) ? MAX_SQ_ENTRIES_64K : MAX_CQ_ENTRIES_64K;
+        uint64_t q_size = (cqr) ? std::min(max_qs, ctrl->max_qs) : ctrl->max_qs;
+        q_size = std::min(queueDepth, q_size);
+        bool q_need_prp = false;//(!cqr) || (q_size > MAX_[SC]Q_ENTRIES_64K);
+        const size_t q_item_size = (qt == QT_SQ) ? sizeof(nvm_cmd_t) : sizeof(nvm_cpl_t);
 
-        uint64_t sq_size = (cqr) ? std::min((unsigned)MAX_SQ_ENTRIES_64K, ctrl->max_qs) : ctrl->max_qs;
-        uint64_t cq_size = (cqr) ? std::min((unsigned)MAX_CQ_ENTRIES_64K, ctrl->max_qs) : ctrl->max_qs;
-        sq_size = std::min(queueDepth, sq_size);
-        cq_size = std::min(queueDepth, cq_size);
+        const size_t q_mem_size = q_size * q_item_size + q_need_prp*(64*1024);
+        q_mem = createDma(ctrl, NVM_PAGE_ALIGN(q_mem_size, 1UL << 16), cudaDevice);
 
-  //      printf("sq_size: %ld\tcq_size: %ld\n", sq_size, cq_size);
-        bool sq_need_prp = false;//(!cqr) || (sq_size > MAX_SQ_ENTRIES_64K);
-        bool cq_need_prp = false;// (!cqr) || (cq_size > MAX_CQ_ENTRIES_64K);
+        // Fill queue PRP list
+        if (q_need_prp) {
+            size_t iters = (size_t)ceil(((float)q_size*q_item_size)/((float)ctrl->page_size));
+            uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
+            memset((void*)cpu_vaddrs, 0, 64*1024);
+            for (size_t i = 0; i < iters; i++) {
+                size_t page_64  = i/(64*1024);
+                size_t page_4 = i%(64*1024/ctrl->page_size);
+                cpu_vaddrs[i] = q_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
+            }
 
-        size_t sq_mem_size =  sq_size * sizeof(nvm_cmd_t) + sq_need_prp*(64*1024);
-        size_t cq_mem_size =  cq_size * sizeof(nvm_cpl_t) + cq_need_prp*(64*1024);
+            if (q_mem.get()->vaddr) {
+                cuda_err_chk(cudaMemcpy(q_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
+            }
 
-//        std::cout << sq_size << "\t" << sq_mem_size << std::endl;
-        //size_t queueMemSize = ctrl.info.page_size * 2;
-        //size_t prpListSize = ctrl.info.page_size * numThreads * (doubleBuffered + 1);
-        //size_t prp_mem_size = sq_size * (4096) * 2;
-//        std::cout << "Started creating DMA\n";
-        // qmem->vaddr will be already a device pointer after the following call
-        this->sq_mem = createDma(ctrl, NVM_PAGE_ALIGN(sq_mem_size, 1UL << 16), cudaDevice);
- //       std::cout << "Finished creating sq dma vaddr: " << this->sq_mem.get()->vaddr << "\tioaddr: " << std::hex<< this->sq_mem.get()->ioaddrs[0] << std::dec << std::endl;
-        this->cq_mem = createDma(ctrl, NVM_PAGE_ALIGN(cq_mem_size, 1UL << 16), cudaDevice);
-        //this->prp_mem = createDma(ctrl, NVM_PAGE_ALIGN(prp_mem_size, 1UL << 16), cudaDevice, adapter, segmentId);
- //       std::cout << "Finished creating cq dma vaddr: " << this->cq_mem.get()->vaddr << "\tioaddr: " << std::hex << this->cq_mem.get()->ioaddrs[0] << std::dec << std::endl;
+            q_mem.get()->vaddr = (void*)((uint64_t)q_mem.get()->vaddr + 64*1024);
 
+            free(cpu_vaddrs);
+        }
+
+        // Issue create queue admin command
+        int status;
+        if (qt == QT_CQ) {
+            status = nvm_admin_cq_create(aq_ref, cq, qp_id, q_mem.get(), 0, q_size, q_need_prp);
+        } else {
+            status = nvm_admin_sq_create(aq_ref, sq, cq, qp_id, q_mem.get(), 0, q_size, q_need_prp);
+        }
+        if (!nvm_ok(status))
+        {
+            errmsg = nvm_strerror(status);
+            return EIO;
+        }
+        return 0;
+    }
+
+    inline QueuePair(const nvm_ctrl_t* ctrl, const uint32_t cudaDevice, const struct nvm_ns_info ns, const struct nvm_ctrl_info info, nvm_aq_ref& aq_ref, const uint16_t qp_id, const uint64_t queueDepth, CreateQueueFunc create_queue)
+    {
         // Set members
         this->pageSize = info.page_size;
         this->block_size = ns.lba_data_size;
@@ -133,59 +154,13 @@ struct QueuePair
         //this->prpListIoAddrs = this->prp_mem->ioaddrs;
         this->qp_id = qp_id;
 
-        if (cq_need_prp) {
-            size_t iters = (size_t)ceil(((float)cq_size*sizeof(nvm_cpl_t))/((float)ctrl->page_size));
-            uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
-            memset((void*)cpu_vaddrs, 0, 64*1024);
-            for (size_t i = 0; i < iters; i++) {
-                size_t page_64  = i/(64*1024);
-                size_t page_4 = i%(64*1024/ctrl->page_size);
-                cpu_vaddrs[i] = this->cq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
-            }
-
-            if (this->cq_mem.get()->vaddr) {
-                cuda_err_chk(cudaMemcpy(this->cq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
-            }
-
-            this->cq_mem.get()->vaddr = (void*)((uint64_t)this->cq_mem.get()->vaddr + 64*1024);
-
-            free(cpu_vaddrs);
+        string errmsg;
+        if (create_queue(QT_CQ, ctrl, cudaDevice, aq_ref, this->cq_mem, &this->cq, &this->sq, qp_id, queueDepth, errmsg)) {
+            throw error(string("Failed to create submission queue: ") + errmsg);
         }
 
-        if (sq_need_prp) {
-            size_t iters = (size_t)ceil(((float)sq_size*sizeof(nvm_cpl_t))/((float)ctrl->page_size));
-            uint64_t* cpu_vaddrs = (uint64_t*) malloc(64*1024);
-            memset((void*)cpu_vaddrs, 0, 64*1024);
-            for (size_t i = 0; i < iters; i++) {
-                size_t page_64  = i/(64*1024);
-                size_t page_4 = i%(64*1024/ctrl->page_size);
-                cpu_vaddrs[i] = this->sq_mem.get()->ioaddrs[1 + page_64] + (page_4 * ctrl->page_size);
-            }
-
-            if (this->sq_mem.get()->vaddr) {
-                cuda_err_chk(cudaMemcpy(this->sq_mem.get()->vaddr, cpu_vaddrs, 64*1024, cudaMemcpyHostToDevice));
-            }
-
-            this->sq_mem.get()->vaddr = (void*)((uint64_t)this->sq_mem.get()->vaddr + 64*1024);
-
-            free(cpu_vaddrs);
-        }
-      //  std::cout << "before nvm_admin_cq_create\n";
-        // Create completion queue
-        // (nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
-        int status = nvm_admin_cq_create(aq_ref, &this->cq, qp_id, this->cq_mem.get(), 0, cq_size, cq_need_prp);
-        if (!nvm_ok(status))
-        {
-            throw error(string("Failed to create completion queue: ") + nvm_strerror(status));
-        }
-        // std::cout << "after nvm_admin_cq_create\n";
-
-        // Create submission queue
-        //  nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, uint16_t id, const nvm_dma_t* dma, size_t offset, size_t qs, bool need_prp = false)
-        status = nvm_admin_sq_create(aq_ref, &this->sq, &this->cq, qp_id, this->sq_mem.get(), 0, sq_size, sq_need_prp);
-        if (!nvm_ok(status))
-        {
-            throw error(string("Failed to create submission queue: ") + nvm_strerror(status));
+        if (create_queue(QT_SQ, ctrl, cudaDevice, aq_ref, this->sq_mem, &this->cq, &this->sq, qp_id, queueDepth, errmsg)) {
+            throw error(string("Failed to create completion queue: ") + errmsg);
         }
 
 //        std::cout << "Finish Making Queue\n";
