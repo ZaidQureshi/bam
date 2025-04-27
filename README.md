@@ -10,7 +10,8 @@ However, many emerging applications, such as graph and data analytics, recommend
 In this work, we present a novel system architecture, BaM, that offers mechanisms for GPU code to efficiently access storage and enables GPU self-orchestrated storage access. BaM features a fine-grained software cache to coalesce data storage requests while minimizing I/O amplification effects. This software cache communicates with the storage system through high-throughput queues that enable the massive number of concurrent threads in modern GPUs to generate I/O requests at a high-enough rate to fully utilize the storage devices, and the system interconnect. Experimental results show that GPU self-orchestrated storage access running on BaM delivers 1.0$\times$ and 1.49$\times$ end-to-end speed up for BFS and CC graph analytics 
 benchmarks while reducing hardware costs by up to 21.7$\times$. Our experiments also show GPU self-orchestrated storage access speeds up data-analytics workloads by 5.3$\times$ when running on the same hardware.
 
-
+### DeepWiki BaM code documentation
+We have indexed the BaM codebase to enable easier understanding of BaM codebase. The DeepWiki link is here: https://deepwiki.com/ZaidQureshi/bam 
 
 Hardware/System Requirements
 -------------------------------------------------------------------------------
@@ -261,12 +262,14 @@ concurrent queues.
 
 Furthermore, we add the support for an application to use multiple NVMe SSDs.
 
-Finally, to lessen the programmer's burden we develop abstractions, like an array abstraction
+To lessen the programmer's burden we develop abstractions, like an array abstraction
 and a data caching layer, so that the programmer writes their GPU code like they are trained to and the library automatically checks
 if accesses hit in the cache or not and if they miss to automatically fetch the needed data from the NVMe device.
 All of these features are developed into a header-only library in the [`include`](./include/) directory.
 These headers can be used in Cuda C/C++ application code.
 
+Update 27 Apr 2025
+We also would like to acknowledge Cognition Labs for creating DeepWiki for BaM codebase! 
 
 # Contributions 
 
