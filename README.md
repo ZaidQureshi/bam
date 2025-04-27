@@ -11,7 +11,7 @@ In this work, we present a novel system architecture, BaM, that offers mechanism
 benchmarks while reducing hardware costs by up to 21.7$\times$. Our experiments also show GPU self-orchestrated storage access speeds up data-analytics workloads by 5.3$\times$ when running on the same hardware.
 
 ### DeepWiki BaM code documentation
-We have indexed the BaM codebase to enable easier understanding of BaM codebase. The DeepWiki link is here: https://deepwiki.com/ZaidQureshi/bam 
+We have indexed the BaM codebase to enable easier understanding of BaM codebase. The DeepWiki link is here: https://deepwiki.com/ZaidQureshi/bam (correctness not checked)
 
 Hardware/System Requirements
 -------------------------------------------------------------------------------
