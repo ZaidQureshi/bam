@@ -268,7 +268,7 @@ if accesses hit in the cache or not and if they miss to automatically fetch the 
 All of these features are developed into a header-only library in the [`include`](./include/) directory.
 These headers can be used in Cuda C/C++ application code.
 
-Update 27 Apr 2025
+Update 27 Apr 2025: 
 We also would like to acknowledge Cognition Labs for creating DeepWiki for BaM codebase! 
 
 # Contributions 
