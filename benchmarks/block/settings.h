@@ -156,7 +156,7 @@ template <>
 void Option<bool>::parseArgument(const char* optstr, const char* optarg)
 {
     string str(optarg);
-    std::transform(str.begin(), str.end(), str.begin(), std::ptr_fun<int, int>(std::tolower));
+    std::transform(str.cbegin(), str.cend(), str.begin(), [](int ch)->int{return ::tolower(ch);});
 
     if (str == "false" || str == "0" || str == "no" || str == "n" || str == "off" || str == "disable" || str == "disabled")
     {
@@ -255,6 +255,7 @@ string Settings::getDeviceBDF() const
 
 string Settings::usageString(const string& name)
 {
+    UNUSED(name);
     //return "Usage: " + name + " --ctrl=identifier [options]\n"
         //+  "   or: " + name + " --block-device=path [options]";
     return "\n";
@@ -339,7 +340,7 @@ static void verifyCudaDevice(int device)
 }
 
 
-static void verifyNumberOfThreads(size_t numThreads)
+static inline void verifyNumberOfThreads(size_t numThreads)
 {
     size_t i = 0;
 
@@ -389,7 +390,7 @@ void Settings::parseArguments(int argc, char** argv)
         //{'j', OptionPtr(new Option<const char*>(blockDevicePath, "path", "block-device", "path to block device"))},
         {'o', OptionPtr(new Range(accessType, 0, 3, "access_type", "type of access to make: 0->read, 1->write, 2->mixed", "0"))},
         {'s', OptionPtr(new Range(ratio, 0, 100, "ratio", "ratio split for % of mixed accesses that are read", "100"))},
-        {'S', OptionPtr(new Range(ssdtype, 0, 2, "ssd", "type of SSD to use 0->Samsung, 1->Intel", "0"))},
+        {'S', OptionPtr(new Range(ssdtype, 0, 3, "ssd", "type of SSD to use 0->Samsung, 1->Intel, 2->Graid", "0"))},
     };
 
     string optionString;

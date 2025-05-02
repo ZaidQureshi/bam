@@ -167,7 +167,7 @@ void verify_kernel(uint64_t* orig_h, uint64_t* nvme_h, uint64_t n_elems,uint32_t
            uint64_t orig_val = orig_h[tid]; 
            uint64_t nvme_val = nvme_h[tid]; 
            if(orig_val != nvme_val)
-              printf("MISMATCH: at %llu\torig_val:%llu\tnvme_val:%llu\tn_reqs:%lu\tn_elms:%llu\n",tid, (unsigned long long)orig_val, (unsigned long long)nvme_h, n_reqs, n_elems);
+              printf("MISMATCH: at %llu\torig_val:%llu\tnvme_val:%llu\tn_reqs:%u\tn_elms:%llu\n",tid, (unsigned long long)orig_val, (unsigned long long)nvme_h, n_reqs, n_elems);
         }
         __syncthreads();//really not needed. 
 }
@@ -223,13 +223,13 @@ int main(int argc, char** argv) {
         map_in = mmap(NULL, sb_in.st_size, PROT_READ, MAP_SHARED, fd_in, 0);
         
         if((map_in == (void*)-1)){
-                fprintf(stderr,"Input file map failed %d\n",map_in);
+                fprintf(stderr,"Input file map failed\n");
                 return 1;
         }
 
         // uint64_t* dummyArray= NULL; 
         // cuda_err_chk(cudaHostAlloc(&dummyArray, 1024, cudaHostAllocDefault)); 
-        // cuda_err_chk(cudaMemcpy(dummyArray, map_in+16, 1024, cudaMemcpyHostToDevice));
+        // cuda_err_chk(cudaMemcpy(dummyArray, (void*)(((size_t)map_in)+16), 1024, cudaMemcpyHostToDevice));
 
         // printf("value at 0: %llu\n", (uint64_t)dummyArray[0]);
         // fflush(stderr);
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
         uint64_t page_size = settings.pageSize;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
-        uint64_t n_blocks = settings.numBlks;
+        //uint64_t n_blocks = settings.numBlks;
 
         if(total_cache_size > (sb_in.st_size - settings.ifileoffset)){
                 n_pages = ceil((sb_in.st_size - settings.ifileoffset)/(1.0*settings.pageSize));
@@ -278,17 +278,17 @@ int main(int argc, char** argv) {
         uint64_t n_telem = ((sb_in.st_size-settings.ifileoffset)/sizeof(uint64_t)); 
         uint64_t s_offset = 0; 
         
-        printf("n_tsteps: %lu, n_telem: %llu, n_pages:%llu\n", n_tsteps, n_telem, n_pages); 
+        printf("n_tsteps: %u, n_telem: %lu, n_pages:%lu\n", n_tsteps, n_telem, n_pages); 
 
         if(settings.accessType == WRITE){
-            printf("Writing contents from %s to NVMe Device at %llu\n", input_f, settings.ofileoffset); 
+            printf("Writing contents from %s to NVMe Device at %lu\n", input_f, settings.ofileoffset); 
             for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
 
                uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
-               printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
+               printf("cstep: %u  s_offset: %lu   cpysize: %lu pcaddr:%p, block size: %lu, grid size: %lu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
                fflush(stderr);
                fflush(stdout);
-               cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, map_in+s_offset+settings.ifileoffset, cpysize, cudaMemcpyHostToDevice));
+               cuda_err_chk(cudaMemcpy(h_pc.pdt.base_addr, (void*)(((size_t)map_in)+s_offset+settings.ifileoffset), cpysize, cudaMemcpyHostToDevice));
                Event before; 
                sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, //d_req_count,
                                                                settings.n_ctrls, settings.numReqs, settings.accessType, s_offset, settings.ofileoffset);
@@ -315,14 +315,14 @@ int main(int argc, char** argv) {
             close(fd_in);
         }
         else if(settings.accessType == READ){
-                int fd_out, ft;
+                int fd_out;
                 void* map_out; 
                 if((fd_out = open(read_f, O_RDWR)) == -1){
                     fprintf(stderr, "NVMe Output file cannot be opened\n");
                     return 1;
                 }
                 
-                if( (ft =ftruncate(fd_out,(sb_in.st_size-settings.ifileoffset))) == -1){
+                if(ftruncate(fd_out,(sb_in.st_size-settings.ifileoffset)) == -1){
                     fprintf(stderr, "Truncating NVMe Output file failed\n");
                     return 1;
                 }
@@ -330,7 +330,7 @@ int main(int argc, char** argv) {
                 map_out = mmap(NULL, sb_in.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd_out, 0);
                 
                 if((map_out == (void*)-1)){
-                        fprintf(stderr,"Output file map failed: %d\n",map_out);
+                        fprintf(stderr,"Output file map failed\n");
                         return 1;
                 }
 
@@ -338,13 +338,13 @@ int main(int argc, char** argv) {
                 tmprbuff = (uint8_t*) malloc(sb_in.st_size-settings.ifileoffset);
                 memset(tmprbuff, 0, (sb_in.st_size-settings.ifileoffset));
                 
-                printf("Reading NVMe contents from %llu to file\n", settings.ofileoffset, read_f); 
+                printf("Reading NVMe contents from %lu to file: %s\n", settings.ofileoffset, read_f); 
                 
                 for (uint32_t cstep =0; cstep < n_tsteps; cstep++) {
 
                     uint64_t cpysize = std::min(total_cache_size, (sb_in.st_size-settings.ifileoffset-s_offset));
                     //uint64_t cpysize = (total_cache_size); //, (sb_in.st_size-settings.ifileoffset-s_offset));
-                    printf("cstep: %lu  s_offset: %llu   cpysize: %llu pcaddr:%p, block size: %llu, grid size: %llu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
+                    printf("cstep: %u  s_offset: %lu   cpysize: %lu pcaddr:%p, block size: %lu, grid size: %lu\n", cstep, s_offset, cpysize, h_pc.pdt.base_addr, b_size, g_size);
                     fflush(stderr);
                     fflush(stdout);
 //                    for(size_t wat=0; wat<32; wat++)
@@ -378,7 +378,7 @@ int main(int argc, char** argv) {
                 while(sz !=(sb_in.st_size-settings.ifileoffset)){
                         sz +=write(fd_out, tmprbuff+sz, (sb_in.st_size-sz-settings.ifileoffset));  
                 }
-                printf("Written file size: %llu\n", sz);
+                printf("Written file size: %lu\n", sz);
                 free(tmprbuff);
 
                 //if(munmap(map_out, sb_in.st_size) == -1) 
@@ -412,7 +412,7 @@ int main(int argc, char** argv) {
                map_orig = mmap(NULL, sb_orig.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd_orig, 0);
                
                if((map_orig == (void*)-1)){
-                       fprintf(stderr,"Input file map failed %d\n",map_orig);
+                       fprintf(stderr,"Input file map failed\n");
                        return 1;
                }
                
@@ -421,7 +421,7 @@ int main(int argc, char** argv) {
                cuda_err_chk(cudaMallocManaged((void**)&orig_h, orig_sz)); 
                cuda_err_chk(cudaMemAdvise(orig_h, orig_sz, cudaMemAdviseSetAccessedBy, 0));
 //               cuda_err_chk(cudaMemset(orig_h, 0, orig_sz)); 
-               memcpy(orig_h, map_orig+settings.ifileoffset, orig_sz);
+               memcpy(orig_h, (void*)(((size_t)map_orig)+settings.ifileoffset), orig_sz);
 
                void* map_nvme;
                int fd_nvme;
@@ -438,19 +438,19 @@ int main(int argc, char** argv) {
                map_nvme = mmap(NULL, sb_nvme.st_size, PROT_READ, MAP_SHARED, fd_nvme, 0);
                
                if((map_nvme == (void*)-1)){
-                       fprintf(stderr,"Input file map failed %d\n",map_nvme);
+                       fprintf(stderr,"Input file map failed\n");
                        return 1;
                }
                
                size_t nvme_sz = sb_nvme.st_size - settings.ifileoffset; 
                if(orig_sz != nvme_sz){
-                   fprintf(stderr,"Orig and NVMe file are of different sizes: orig: %llu and nvme: %llu\n Continuing...\n",orig_sz, nvme_sz);
+                   fprintf(stderr,"Orig and NVMe file are of different sizes: orig: %lu and nvme: %lu\n Continuing...\n",orig_sz, nvme_sz);
                    return 1;
                }
                cuda_err_chk(cudaMallocManaged((void**)&nvme_h, nvme_sz)); 
                cuda_err_chk(cudaMemAdvise(nvme_h, nvme_sz, cudaMemAdviseSetAccessedBy, 0));
   //             cuda_err_chk(cudaMemset(nvme_h, 0, nvme_sz)); 
-               memcpy(nvme_h, map_nvme+settings.ifileoffset, nvme_sz);
+               memcpy(nvme_h, (void*)(((size_t)map_nvme)+settings.ifileoffset), nvme_sz);
                printf("Launching verification kernel");
                 
                
