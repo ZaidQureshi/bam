@@ -49,15 +49,19 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     // uint32_t bid = blockIdx.x;
     // uint32_t smid = get_smid();
 
-    uint32_t ctrl = (tid) % (num_ctrls);
+    auto ssd_off = ((s_offset+o_offset) / req_size) % (num_ctrls);
+    uint32_t ctrl = (tid+ssd_off) % (num_ctrls);
     uint32_t queue = (tid) % (ctrls[ctrl]->n_qps);
     uint64_t itr=0; 
 
-//    printf("Num pages: %llu, s_offset: %llu n_reqs: %llu\t req_size: %llu\n", (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) n_reqs, (unsigned long long) req_size); 
-    for (;tid < pc->n_pages; tid = tid+n_reqs){
-	    uint64_t pid = tid / num_ctrls;	
-	    uint64_t start_block = (o_offset+ (s_offset + tid*req_size)/num_ctrls) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
 
+    if(tid < pc -> n_pages){
+  //  for (;tid < pc->n_pages; tid = tid+n_reqs){
+	    uint64_t pid = tid / num_ctrls;	
+	    uint64_t start_block_global = (o_offset+ (s_offset + tid*req_size)) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
+        uint64_t num_block = req_size >> ctrls[ctrl]->d_qps[queue].block_size_log;
+        uint64_t start_block = start_block_global / (num_ctrls * num_block);
+        start_block *= num_block;
             //uint64_t start_block = ((o_offset+s_offset + pc_idx*page_size)) >> ctrls[ctrl]->d_qps[queue].block_size_log ;
 
             uint64_t pc_idx = (tid);
@@ -76,6 +80,11 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
                     //}
                 }
                 else {
+                    if(tid < 8) {
+                        printf("TID: %i ssd_off : %i ctrL: %i Num pages: %llu, s_offset: %llu  o_offset: %llu n_reqs: %llu\t req_size: %llu start_blcok: %llu num_blokcks: %i\n", 
+                            (int) tid, (int) ssd_off, (int) ctrl, (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) o_offset, (unsigned long long int) n_reqs, 
+                            (unsigned long long) req_size, (unsigned long long) start_block, (int) n_blocks); 
+                    }
                     write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, pc_idx);
                 }
 
