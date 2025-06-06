@@ -101,8 +101,10 @@ void nvm_dis_ctrl_unmap_p2p_device(const nvm_ctrl_t* ctrl, sci_smartio_device_t 
 
 
 #ifdef __GRAID__
+#include "giio_queue.cuh"
 int graid_ctrl_init(nvm_ctrl_t** ctrl, struct nvm_ctrl_info *info, struct nvm_ns_info *ns,
-		    uint16_t *n_sqs, uint16_t *n_cqs, const int dg_id, const int vd_id);
+		    uint16_t *n_sqs, uint16_t *n_cqs, GIIOQueueState **p_devp_giioqs,
+		    const int dg_id, const int vd_id);
 void* graid_ctrl_sq_vaddr(const nvm_ctrl_t* ctrl, const int qp_id);
 void* graid_ctrl_cq_vaddr(const nvm_ctrl_t* ctrl, const int qp_id);
 uint64_t graid_ctrl_sq_ioaddr(const nvm_ctrl_t* ctrl, const int qp_id);

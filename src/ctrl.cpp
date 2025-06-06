@@ -78,7 +78,7 @@ static void remove_handle(struct controller* handle)
     while (status == EBUSY);
 
     if (handle->handle.priv)
-        free(handle->handle.priv);
+        delete handle->handle.priv;
     free(handle);
 }
 
@@ -147,7 +147,7 @@ void _nvm_ctrl_put(struct controller* controller)
 
 
 int _nvm_ctrl_init(nvm_ctrl_t** handle, struct device* dev, const struct device_ops* ops, enum device_type type,
-                   volatile void* mm_ptr, size_t mm_size, volatile void* mm_devp, void *priv)
+                   volatile void* mm_ptr, size_t mm_size, volatile void* mm_devp, nvm_priv *priv)
 {
     struct controller* container;
     nvm_ctrl_t* ctrl;

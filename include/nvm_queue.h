@@ -28,6 +28,9 @@
 enum QueueType {
     QT_SQ = 0,
     QT_CQ = 1,
+    QT_GIIO_POOL = 2,
+    QT_GIIO_CPLT = 3,
+    QT_GIIO_QUEUE = 4,
 };
 
 __host__

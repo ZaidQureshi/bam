@@ -142,7 +142,7 @@ if (sisci_include)
     include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${sisci_include}" "${sisci_include}/dis")
 endif ()
 if (graid_src)
-    include_directories (${graid_src})
+    include_directories (${graid_src} ${PROJECT_SOURCE_DIR}/src/graid)
 endif ()
 
 # Create NVME library target

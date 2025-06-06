@@ -37,11 +37,12 @@ using error = std::runtime_error;
 using std::string;
 
 
-
 //uint32_t n_ctrls = 1;
 const char* const sam_ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
 const char* const intel_ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9"};
+#ifdef __GRAID__
 const std::pair<unsigned, unsigned> graid_devs[] = { {0, 0}, {1, 0}, {2, 0}, {3, 0} };
+#endif
 //const char* const ctrls_paths[] = {"/dev/libnvm0", "/dev/libnvm1", "/dev/libnvm2", "/dev/libnvm3", "/dev/libnvm4", "/dev/libnvm5", "/dev/libnvm6", "/dev/libnvm7", "/dev/libnvm8", "/dev/libnvm9", "/dev/libnvm10", "/dev/libnvm11", "/dev/libnvm12", "/dev/libnvm13", "/dev/libnvm14", "/dev/libnvm15", "/dev/libnvm16", "/dev/libnvm17", "/dev/libnvm18", "/dev/libnvm19", "/dev/libnvm20", "/dev/libnvm21", "/dev/libnvm22", "/dev/libnvm23", "/dev/libnvm24","/dev/libnvm25", "/dev/libnvm26", "/dev/libnvm27", "/dev/libnvm28", "/dev/libnvm29", "/dev/libnvm30", "/dev/libnvm31"};
 
 
@@ -61,42 +62,7 @@ void new_kernel(ulonglong4* dst, ulonglong4* src, size_t num) {
     warp_memcpy<ulonglong4>(dst, src, num);
 
 }
-/*
-__device__ void read_data(page_cache_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
-    nvm_cmd_t cmd;
-    uint16_t cid = get_cid(&(qp->sq));
-    //printf("cid: %u\n", (unsigned int) cid);
-
-
-    nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-    //printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) threadIdx.x, (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
-    nvm_cmd_data_ptr(&cmd, prp1, prp2);
-    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    sq_dequeue(&qp->sq, sq_pos);
-    cq_dequeue(&qp->cq, cq_pos);
-
-
-    put_cid(&qp->sq, cid);
-
-
-}
-
-*/
 __global__ //__launch_bounds__(64,32)
 void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_size, uint32_t n_reqs, unsigned long long* req_count, uint32_t num_ctrls, uint64_t total_blocks, uint64_t reqs_per_thread, uint32_t access_type, uint8_t* access_type_assignment) {
     //printf("in threads\n");
@@ -107,49 +73,31 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
     uint32_t smid = get_smid();
 
     uint32_t ctrl;
-    uint32_t queue;
+    uint32_t qhash;
     if (laneid == 0) {
         ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-        //queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
-        //queue = smid % (ctrls[ctrl]->n_qps);
-        queue = warp_id % (ctrls[ctrl]->n_qps);
+        //qhash = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+        //qhash = smid % (ctrls[ctrl]->n_qps);
+        qhash = warp_id % (ctrls[ctrl]->n_qps);
     }
     ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
-    queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
+    qhash =  __shfl_sync(0xFFFFFFFF, qhash, 0);
 
     if (tid < n_reqs) {
-	const uint64_t block_size_log = ctrls[ctrl]->d_qps[queue].block_size_log;
+        Controller *_ctrl = ctrls[ctrl];
+        const uint64_t block_size_log = _ctrl->d_qps[qhash].block_size_log;
         uint64_t start_block = (tid*req_size*reqs_per_thread) >> block_size_log;
-        //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-        //start_block = tid;
-        uint64_t n_blocks = req_size >> block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-        //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
+        uint64_t n_blocks = req_size >> block_size_log;
         uint8_t opcode;
         for (size_t i = 0; i < reqs_per_thread; i++) {
-            if (access_type == MIXED) {
-                opcode = access_type_assignment[tid];
-                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
-            }
-            else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-
-            }
-            else {
-                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-            }
-	    start_block += n_blocks;
-	    if (start_block >= total_blocks)
-		    start_block = 0;
+            opcode = access_type == MIXED ? access_type_assignment[tid] :
+                     access_type == READ ? NVM_IO_READ : NVM_IO_WRITE;
+            access_data(_ctrl, qhash, start_block, n_blocks, opcode, pc, tid);
+            start_block += n_blocks;
+            if (start_block >= total_blocks)
+                start_block = 0;
         }
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //__syncthreads();
-        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
-        //printf("tid: %llu finished\n", (unsigned long long) tid);
-
     }
-
 }
 
 __global__ //__launch_bounds__(64,32)
@@ -162,54 +110,35 @@ void random_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t req_
     uint32_t smid = get_smid();
 
     uint32_t ctrl;
-    uint32_t queue;
+    uint32_t qhash;
     if (laneid == 0) {
 	//ctrl = smid % (pc->n_ctrls);
         ctrl = pc->ctrl_counter->fetch_add(1, simt::memory_order_relaxed) % (pc->n_ctrls);
-        //queue = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
-        //queue = smid % (ctrls[ctrl]->n_qps);
-        queue = warp_id % (ctrls[ctrl]->n_qps);
+        //qhash = ctrls[ctrl]->queue_counter.fetch_add(1, simt::memory_order_relaxed) %  (ctrls[ctrl]->n_qps);
+        //qhash = smid % (ctrls[ctrl]->n_qps);
+        qhash = warp_id % (ctrls[ctrl]->n_qps);
     }
     ctrl =  __shfl_sync(0xFFFFFFFF, ctrl, 0);
-    queue =  __shfl_sync(0xFFFFFFFF, queue, 0);
+    qhash =  __shfl_sync(0xFFFFFFFF, qhash, 0);
 
 
     if (tid < n_reqs) {
-	const uint64_t block_size_log = ctrls[ctrl]->d_qps[queue].block_size_log;
+        Controller *_ctrl = ctrls[ctrl];
+        const uint64_t block_size_log = _ctrl->d_qps[qhash].block_size_log;
         uint64_t start_block = (assignment[tid]*req_size) >> block_size_log;
-        //uint64_t start_block = (tid*req_size) >> ctrls[ctrl]->d_qps[queue].block_size_log;
-        //start_block = tid;
-        uint64_t n_blocks = req_size >> block_size_log; /// ctrls[ctrl].ns.lba_data_size;;
-        //printf("tid: %llu\tstart_block: %llu\tn_blocks: %llu\n", (unsigned long long) tid, (unsigned long long) start_block, (unsigned long long) n_blocks);
+        uint64_t n_blocks = req_size >> block_size_log; /// _ctrl.ns.lba_data_size;;
 
         uint8_t opcode;
         for (size_t i = 0; i < reqs_per_thread; i++) {
-            if (access_type == MIXED) {
-                opcode = access_type_assignment[tid];
-                access_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid, opcode);
-            }
-            else if (access_type == READ) {
-                read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-
-            }
-            else {
-                write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-            }
-	    start_block += n_blocks;
-	    if (start_block >= total_blocks)
-		    start_block = 0;
+            opcode = access_type == MIXED ? access_type_assignment[tid] :
+                     access_type == READ ? NVM_IO_READ : NVM_IO_WRITE;
+            access_data(_ctrl, qhash, start_block, n_blocks, opcode, pc, tid);
+            start_block += n_blocks;
+            if (start_block >= total_blocks)
+                start_block = 0;
         }
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //read_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, tid);
-        //__syncthreads();
-        //read_data(pc, (ctrls[ctrl].d_qps)+(queue),start_block*2, n_blocks, tid);
-        //printf("tid: %llu finished\n", (unsigned long long) tid);
-
     }
-
 }
-
 
 int main(int argc, char** argv) {
 
@@ -274,7 +203,12 @@ int main(int argc, char** argv) {
                 ctrl = new Controller(intel_ctrls_paths[i], settings.nvmNamespace, settings.cudaDevice, settings.queueDepth, settings.numQueues);
 		break;
             case 2:
+#ifdef __GRAID__
                 ctrl = new Controller(graid_devs[i], settings.cudaDevice, settings.numQueues);
+#else
+                fprintf(stderr,"GRAID Controller not supported\n");
+                return 1;
+#endif
 		break;
             };
             ctrls[i] = ctrl;
@@ -371,6 +305,11 @@ int main(int argc, char** argv) {
             sequential_access_kernel<<<g_size, b_size>>>(h_pc.pdt.d_ctrls, d_pc, page_size, n_threads, d_req_count, settings.n_ctrls, n_blocks, settings.numReqs, settings.accessType, d_access_assignment);
         Event after;
 
+#ifdef __GRAID__
+	const bool giioq_debug = false;
+	if (ctrls[0]->d_giioqs && giioq_debug)
+		giioq_print_counters<<<1,1>>>(ctrls[0]->d_giioqs);
+#endif
         //print_cache_kernel<<<1,1>>>(d_pc);
         //new_kernel<<<1,1>>>();
         //uint8_t* ret_array = (uint8_t*) malloc(n_pages*page_size);

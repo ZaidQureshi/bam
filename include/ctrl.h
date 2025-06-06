@@ -37,6 +37,7 @@
 
 #ifdef __GRAID__
 #include "dmapool.h"
+#include "giio_queue.cuh"
 #endif
 
 struct Controller
@@ -53,6 +54,9 @@ struct Controller
     uint32_t                deviceId;
     QueuePair*              h_qps;
     QueuePair*              d_qps;
+#ifdef __GRAID__
+    GIIOQueueState*         d_giioqs = NULL;
+#endif
 
     simt::atomic<uint64_t, simt::thread_scope_device> queue_counter = { 0 };
 
@@ -217,7 +221,7 @@ inline Controller::Controller(std::pair<unsigned, unsigned> dg_vd, uint32_t bam_
     : deviceId(bam_cuda_device)
 {
     // Get controller reference
-    int status = graid_ctrl_init(&ctrl, &info, &ns, &n_sqs, &n_cqs, dg_vd.first, dg_vd.second);
+    int status = graid_ctrl_init(&ctrl, &info, &ns, &n_sqs, &n_cqs, &d_giioqs, dg_vd.first, dg_vd.second);
     if (status)
     {
         throw error(string("Failed to get Graid controller reference\n"));

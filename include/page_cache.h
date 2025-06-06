@@ -2046,6 +2046,43 @@ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, c
     access_data(pc, qp, starting_lba, n_blocks, pc_entry, NVM_IO_READ);
 }
 
+__device__ __forceinline__
+void access_data(Controller *ctrl, const uint32_t qhash,
+                 const uint64_t starting_lba, const uint64_t n_blocks, const uint8_t opcode,
+                 page_cache_d_t* pc, const unsigned long long pc_entry)
+{
+#ifdef __GRAID__
+    if (ctrl->d_giioqs != NULL)
+    {
+        uint64_t prp1 = pc->prp1[pc_entry];
+        uint64_t prp2 = 0;
+        if (pc->prps)
+            prp2 = pc->prp2[pc_entry];
+        giioq_access_data(ctrl->d_giioqs, starting_lba, n_blocks, opcode, prp1, prp2);
+    }
+    else
+#endif
+    {
+        uint32_t queue = qhash % (ctrl->n_qps);
+        QueuePair *qp = ctrl->d_qps + queue;
+        access_data(pc, qp, starting_lba, n_blocks, pc_entry, opcode);
+    }
+}
+
+__device__ __forceinline__
+void write_data(Controller *ctrl, const uint32_t qhash,
+                const uint64_t starting_lba, const uint64_t n_blocks,
+                page_cache_d_t* pc, const unsigned long long pc_entry) {
+    access_data(ctrl, qhash, starting_lba, n_blocks, NVM_IO_WRITE, pc, pc_entry);
+}
+
+__device__ __forceinline__
+void read_data(Controller *ctrl, const uint32_t qhash,
+                const uint64_t starting_lba, const uint64_t n_blocks,
+                page_cache_d_t* pc, const unsigned long long pc_entry) {
+    access_data(ctrl, qhash, starting_lba, n_blocks, NVM_IO_READ, pc, pc_entry);
+}
+
 //#ifndef __CUDACC__
 //#undef __device__
 //#undef __host__
