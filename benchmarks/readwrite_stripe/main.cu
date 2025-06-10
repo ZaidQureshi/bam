@@ -80,11 +80,7 @@ void sequential_access_kernel(Controller** ctrls, page_cache_d_t* pc,  uint32_t 
                     //}
                 }
                 else {
-                    if(tid < 8) {
-                        printf("TID: %i ssd_off : %i ctrL: %i Num pages: %llu, s_offset: %llu  o_offset: %llu n_reqs: %llu\t req_size: %llu start_blcok: %llu num_blokcks: %i\n", 
-                            (int) tid, (int) ssd_off, (int) ctrl, (unsigned long long int) pc->n_pages, (unsigned long long int) s_offset, (unsigned long long int) o_offset, (unsigned long long int) n_reqs, 
-                            (unsigned long long) req_size, (unsigned long long) start_block, (int) n_blocks); 
-                    }
+                    
                     write_data(pc, (ctrls[ctrl]->d_qps)+(queue),start_block, n_blocks, pc_idx);
                 }
 
@@ -234,14 +230,16 @@ int main(int argc, char** argv) {
         cuda_err_chk(cudaDeviceGetPCIBusId(st, 15, settings.cudaDevice));
         std::cout << st << std::endl;
 
-        uint64_t b_size = settings.blkSize;//64;
-        uint64_t g_size = (settings.numThreads + b_size - 1)/b_size;//80*16;
-        uint64_t n_threads = b_size * g_size;
+
 
         uint64_t page_size = settings.pageSize;
         uint64_t n_pages = settings.numPages;
         uint64_t total_cache_size = (page_size * n_pages);
         uint64_t n_blocks = settings.numBlks;
+
+        uint64_t b_size = settings.blkSize;//64;
+        uint64_t g_size = (n_pages + b_size - 1)/b_size;//80*16;
+        uint64_t n_threads = b_size * g_size;
 
         if(total_cache_size > (sb_in.st_size - settings.ifileoffset)){
                 n_pages = ceil((sb_in.st_size - settings.ifileoffset)/(1.0*settings.pageSize));
