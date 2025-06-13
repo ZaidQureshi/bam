@@ -415,11 +415,13 @@ struct bam_ptr {
     __host__ __device__
     T* update_page(const size_t i) {
 
-    fini(); //destructor
-    addr = (T*) array->acquire_page(i, page, start, end, range_id);
+        fini(); //destructor
+        addr = (T*) array->acquire_page(i, page, start, end, range_id);
 
-     return addr;
+        return addr;
     }
+
+
 
 
     __forceinline__    
@@ -443,7 +445,17 @@ struct bam_ptr {
         }
         return addr[i-start];
     }
-    
+
+    __forceinline__
+    __host__ __device__
+    T read(size_t i) {
+        if ((i < start) || (i >= end)) {
+            update_page(i);  // no page->state.fetch_or
+        }
+        return addr[i - start];
+    }
+
+   
     __host__ __device__
     T* memref(size_t i) {
         T* ret_; 
@@ -463,7 +475,7 @@ struct bam_ptr {
         }
         return addr[i-start];
     }
-};
+ };
 
 
 template<typename T>
@@ -3289,7 +3301,7 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
 
     //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
+   // printf("read_data: starting_lba: %llu, n_blocks: %llu, pc_entry: %llu\n", starting_lba, n_blocks, pc_entry);
 
 
     nvm_cmd_t cmd;
@@ -3338,7 +3350,7 @@ inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint6
 
     //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
 
-
+    //printf("write_data: starting_lba: %llu, n_blocks: %llu, pc_entry: %llu\n", starting_lba, n_blocks, pc_entry);
 
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
