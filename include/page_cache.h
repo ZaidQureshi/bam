@@ -1965,9 +1965,11 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
         //pc_pos == position i wanna move the head past
         uint64_t cur_pc_head = pc->q_head->load(simt::memory_order_relaxed);
         //sec == true when cur_pc_head past pc_pos
-        bool sec = ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) ||
-            ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) ||
-            ((pc_pos < cur_pc_head) && (cur_pc_head < pc_prev_head));
+        bool sec =
+            /* pc_prev_head <= pc_pos means ps_pos did not wrap around after pc_prev_head */
+            ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) /* cur_pc_head mosed past pc_pos and cur_pc_head wrapped around */||
+            ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) /* cur_pc_head > pc_pos means cur_pc_head moved head past pc_pos and did not wrapped around */ ||
+            ((pc_pos < cur_pc_head) && (cur_pc_head < pc_prev_head)) /* cur_pc_head wrapped around, pc_pos also wrapped around, and pc_pos is in [0.. cur_pc_head], which means cur_pc_head passed pc_pos */;
 
         if (sec) break;
 
@@ -2003,26 +2005,16 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
 
 }
 
-inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
+inline __device__
+void access_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode) {
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
-    ////printf("cid: %u\n", (unsigned int) cid);
 
-
-    nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
+    nvm_cmd_header(&cmd, cid, opcode, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
@@ -2037,98 +2029,22 @@ inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64
     pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
 
     cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
-    //sq_dequeue(&qp->sq, sq_pos);
 
-
-    //enqueue_second(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, nvm_cmd_t* cmd, const uint16_t cid, const uint64_t pc_pos, const uint64_t pc_prev_head)
-    enqueue_second(pc, qp, starting_lba, &cmd, cid, pc_pos, pc_prev_head);
-
-
+    if (opcode == NVM_IO_READ)
+        enqueue_second(pc, qp, starting_lba, &cmd, cid, pc_pos, pc_prev_head);
 
     put_cid(&qp->sq, cid);
-
-
 }
 
-
-inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
-    nvm_cmd_t cmd;
-    uint16_t cid = get_cid(&(qp->sq));
-    ////printf("cid: %u\n", (unsigned int) cid);
-
-
-    nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
-    nvm_cmd_data_ptr(&cmd, prp1, prp2);
-    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head, head_;
-    //uint64_t pc_pos;
-    //uint64_t pc_prev_head;
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
-    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
-    /*pc_prev_head = */pc->q_head->load(simt::memory_order_relaxed);
-    /*pc_pos = */pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
-    //sq_dequeue(&qp->sq, sq_pos);
-
-
-
-
-    put_cid(&qp->sq, cid);
-
+__device__ __forceinline__
+void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+    access_data(pc, qp, starting_lba, n_blocks, pc_entry, NVM_IO_WRITE);
 }
 
-inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
-    nvm_cmd_t cmd;
-    uint16_t cid = get_cid(&(qp->sq));
-    ////printf("cid: %u\n", (unsigned int) cid);
-
-
-    nvm_cmd_header(&cmd, cid, opcode, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
-    nvm_cmd_data_ptr(&cmd, prp1, prp2);
-    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq);
-    //sq_dequeue(&qp->sq, sq_pos);
-
-
-
-
-    put_cid(&qp->sq, cid);
-
-
+__device__ __forceinline__
+void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+    access_data(pc, qp, starting_lba, n_blocks, pc_entry, NVM_IO_READ);
 }
-
-
 
 //#ifndef __CUDACC__
 //#undef __device__
