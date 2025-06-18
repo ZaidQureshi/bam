@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.8)
 project (libnvm LANGUAGES CUDA C CXX)
 
 set (CMAKE_C_STANDARD 99)
@@ -6,9 +6,7 @@ set (CMAKE_CXX_STANDARD 11)
 
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
-find_package (CUDA 8.0)
-
-
+find_package(CUDAToolkit 12.8 REQUIRED)
 
 set (DIS "/opt/DIS" CACHE PATH "SISCI install location")
 set (NVIDIA "" CACHE PATH "Path to Nvidia driver source")
@@ -32,10 +30,6 @@ if (no_smartio)
 endif ()
 
 # Set global compiler flags
-set (GPU_ARCHS "" CACHE INTERNAL "" FORCE)
-foreach (arch ${nvidia_archs})
-    string (CONCAT GPU_ARCHS ${GPU_ARCHS} " -gencode arch=compute_${arch},code=sm_${arch}")
-endforeach ()
 
 set (convert_warnings implicit-function-declaration incompatible-pointer-types int-conversion return-type unused-function unused-variable)
 set (flags "")
@@ -48,8 +42,10 @@ set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORC
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++11" CACHE INTERNAL "" FORCE)
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG} -g -DDEBUG " CACHE INTERNAL "" FORCE)
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -std=c++11" CACHE INTERNAL "" FORCE)
-set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -lineinfo -D__CUDA__ -D__CUDACC__ -O3;-std=c++11;${GPU_ARCHS}")
-set (CUDA_NVCC_FLAGS_RELEASE "${CMAKE_NVCC_FLAGS_RELEASE} -O2" CACHE INTERNAL "" FORCE)
+set (CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo -D__CUDA__ -D__CUDACC__")
+set (CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} -O3 -Xptxas=--allow-expensive-optimizations=true -Xptxas=-O4 -Xptxas=--device-function-maxrregcount=64")
+set (CMAKE_CUDA_FLAGS_DEBUG "${CMAKE_CUDA_FLAGS_DEBUG} -g -G --keep -Xptxas=--device-function-maxrregcount=64")
+
 
 if (no_cc)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__NO_COHERENCE__")
@@ -57,9 +53,8 @@ if (no_cc)
     set(CCUDA_NVCC_FLAGS "${CMAKE_C_FLAGS} -D__NO_COHERENCE__")
 endif ()
 
-
 # Try to find Nvidia driver
-if (CUDA_FOUND AND NOT no_cuda)
+if (NOT no_cuda)
 
     # Try to find Nvidia headers (will choose the newest version)
     file (GLOB_RECURSE driver_paths "/usr/src/nvidia-*/nv-p2p.h")
@@ -141,60 +136,59 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set (module_output "${CMAKE_BINARY_DIR}/module")
 set (fio_output "${CMAKE_BINARY_DIR}/fio")
 
-
-
 # Set include directories
 include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/freestanding/include")
 if (sisci_include)
     include_directories ("${PROJECT_BINARY_DIR}/include" "${PROJECT_SOURCE_DIR}/include" "${sisci_include}" "${sisci_include}/dis")
 endif ()
 if (graid_src)
-    include_directories ("${graid_src}")
+    include_directories (${graid_src})
 endif ()
 
-
 # Create NVME library target
-CUDA_ADD_LIBRARY (libnvm ${libnvm_source} ${libnvm_linux_source}) # TODO: add check for OS
-target_include_directories (libnvm PRIVATE "${libnvm_root}")
-target_link_libraries(libnvm ${CUDA_LIBRARIES} cuda cudadevrt)
+add_library (libnvm STATIC ${libnvm_source} ${libnvm_linux_source})
+target_include_directories (libnvm PRIVATE ${libnvm_root})
+target_link_libraries(libnvm CUDA::cudart_static CUDA::cuda_driver)
+set_target_properties(libnvm PROPERTIES
+    CUDA_ARCHITECTURES "${nvidia_archs}"
+    CUDA_SEPARABLE_COMPILATION ON
+    POSITION_INDEPENDENT_CODE ON)
 
 if (sisci_include AND sisci_lib AND NOT no_smartio)
     target_sources (libnvm PRIVATE ${libnvm_dis_source})
     target_compile_definitions (libnvm PRIVATE _REENTRANT _SISCI __DIS_CLUSTER__)
     target_link_libraries (libnvm ${sisci_lib} Threads::Threads)
     message (STATUS "Configuring libnvm with SmartIO")
-
 elseif (graid_src)
     target_sources (libnvm PRIVATE ${libnvm_graid_source})
     target_compile_definitions(libnvm PRIVATE __GRAID__)
     target_link_libraries (libnvm Threads::Threads)
     message (STATUS "Configuring libnvm with Graid")
-
 else ()
     target_link_libraries (libnvm Threads::Threads)
     message (STATUS "Configuring libnvm without SmartIO")
-
 endif ()
 
-
-
-if (CUDA_FOUND AND NOT no_cuda)
+if (NOT no_cuda)
     target_compile_definitions(libnvm PRIVATE _CUDA __CUDA__)
+    target_compile_options(libnvm PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--maxrregcount 64>)
 endif ()
 
 # Set name of library
 #set_target_properties (libnvm PROPERTIES OUTPUT_NAME "${CMAKE_PROJECT_NAME}")
 set_target_properties (libnvm PROPERTIES OUTPUT_NAME "nvm")
 
+get_target_property(libnvm_includes libnvm INCLUDE_DIRECTORIES)
+message(STATUS "${libnvm_includes}")
+
 # Set install locations
 install (FILES ${libnvm_include} DESTINATION "include")
 install (TARGETS libnvm DESTINATION "lib")
 
 
-
 # Create kernel module makefile
 if (NOT no_module)
-    if (CUDA_FOUND AND NOT no_cuda AND EXISTS "${driver_dir}/Module.symvers")
+    if (NOT no_cuda AND EXISTS "${driver_dir}/Module.symvers")
         set (module_ccflags "-D_CUDA -I${driver_include} -I${libnvm_root} -I${libnvm_root}/linux")
         set (module_symbols "${driver_dir}/Module.symvers")
         message(STATUS "Configuring kernel module with CUDA")
@@ -221,9 +215,13 @@ endif ()
 # Macro for creating sample target
 macro (make_sample target binary_name files)
     add_executable (${target} EXCLUDE_FROM_ALL ${files})
+    set_target_properties(${target} PROPERTIES
+        CUDA_ARCHITECTURES "${nvidia_archs}"
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON)
 
     add_dependencies (${target} libnvm)
-    target_link_libraries (${target} libnvm)
+    target_link_libraries (${target} libnvm CUDA::cudart_static CUDA::cuda_driver)
 
     # TODO: Do we want to install samples or not?
     #set_target_properties (${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/samples")
@@ -275,13 +273,16 @@ endmacro ()
 # Make benchmark target
 # We assume all benchmarks are CUDA programs
 macro (make_benchmark target binary_name files)
-    if (CUDA_FOUND AND NOT no_cuda)
-        cuda_add_executable (${target} EXCLUDE_FROM_ALL ${files} OPTIONS ${GPU_ARCHS} -D__CUDA__) # Ugly bugly
+    if (NOT no_cuda)
+        add_executable (${target} EXCLUDE_FROM_ALL ${files})
         target_compile_definitions (${target} PRIVATE __CUDA__)
+        set_target_properties(${target} PROPERTIES
+            CUDA_ARCHITECTURES "${nvidia_archs}"
+            CUDA_SEPARABLE_COMPILATION ON
+            POSITION_INDEPENDENT_CODE ON)
 
         add_dependencies (${target} libnvm)
-        target_link_libraries (${target} libnvm)
-        target_link_libraries (${target} ${CUDA_LIBRARIES} cuda cudadevrt)
+        target_link_libraries (${target} libnvm CUDA::cudart_static CUDA::cuda_driver)
         if (graid_src)
                 target_compile_definitions(${target} PRIVATE __GRAID__)
         endif()
@@ -293,12 +294,16 @@ macro (make_benchmark target binary_name files)
 endmacro ()
 
 macro (make_sisci_benchmark target binary_name files)
-    if (CUDA_FOUND AND NOT no_cuda AND sisci_include AND sisci_lib AND NOT (no_smartio OR no_smartio_benchmarks))
-        cuda_add_executable (${target} ${files} EXCLUDE_FROM_ALL OPTIONS ${GPU_ARCHS} -D__CUDA__ -D__DIS_CLUSTER__ -D_REENTRANT)
+    if (NOT no_cuda AND sisci_include AND sisci_lib AND NOT (no_smartio OR no_smartio_benchmarks))
+        add_executable (${target} EXCLUDE_FROM_ALL ${files})
         target_compile_definitions(${target} PRIVATE __DIS_CLUSTER__ __CUDA__ _REENTRANT)
+        set_target_properties(${target} PROPERTIES
+            CUDA_ARCHITECTURES "${nvidia_archs}"
+            CUDA_SEPARABLE_COMPILATION ON
+            POSITION_INDEPENDENT_CODE ON)
 
         add_dependencies (${target} libnvm)
-        target_link_libraries (${target} libnvm ${sisci_lib})
+        target_link_libraries (${target} libnvm ${sisci_lib} CUDA::cudart_static CUDA::cuda_driver)
         set_target_properties (${target} PROPERTIES OUTPUT_NAME "nvm-${binary_name}")
 
         list (APPEND benchmark_targets "${target}")
@@ -344,7 +349,7 @@ if (NOT no_fio AND sisci_include AND sisci_lib)
 endif ()
 
 # Add individual benchmarks
-if (CUDA_FOUND AND NOT no_cuda)
+if (NOT no_cuda)
   add_subdirectory ("${benchmarks_root}/array")
   add_subdirectory ("${benchmarks_root}/iodepth-block")
   add_subdirectory ("${benchmarks_root}/block")
