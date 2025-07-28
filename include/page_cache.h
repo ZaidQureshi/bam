@@ -1457,7 +1457,7 @@ struct array_d_t {
             uint64_t base_master = r_->acquire_page(page, 1, false, ctrl, queue);
             //coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
 
-            page_ = &r_->pages[base_master];
+            page_ = &r_->pages[page];
 
 
             ret = (void*)r_->get_cache_page_addr(base_master);
@@ -1492,7 +1492,7 @@ struct array_d_t {
             uint64_t gaddr = r_->get_global_address(page);
 
             coalesce_page(lane, mask, r, page, gaddr, false, eq_mask, master, count, base_master);
-            page_ = &r_->pages[base_master];
+            page_ = &r_->pages[page];
 
 
             ret = (void*)r_->get_cache_page_addr(base_master);
