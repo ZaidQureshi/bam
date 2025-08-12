@@ -178,9 +178,6 @@ endif ()
 #set_target_properties (libnvm PROPERTIES OUTPUT_NAME "${CMAKE_PROJECT_NAME}")
 set_target_properties (libnvm PROPERTIES OUTPUT_NAME "nvm")
 
-get_target_property(libnvm_includes libnvm INCLUDE_DIRECTORIES)
-message(STATUS "${libnvm_includes}")
-
 # Set install locations
 install (FILES ${libnvm_include} DESTINATION "include")
 install (TARGETS libnvm DESTINATION "lib")
