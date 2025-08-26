@@ -43,6 +43,7 @@ This code base requires specific type of hardware and specific system configurat
 * Nvidia driver (at least 440.33 or newer)
 * The kernel version we have tested is 5.8.x. A newer kernel like 6.x may not work with BaM as the kernel APIs have dramatically changed. 
 * Kernel module symbols and headers for the Nvidia driver. The instructions for how to compile these symbols are given [below](#compiling-nvidia-driver-kernel-symbols).
+* On Ubuntu versions with kernel newer than 20.04, the P2P driver implementation may have changed, which could lead to incompatibility issues.
 
 ### Disable IOMMU in Linux ###
 If you are using CUDA or implementing support for your own custom devices, 
