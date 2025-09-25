@@ -4,7 +4,7 @@ project (libnvm-benchmarks)
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
 
-find_package (CUDA 10.0 REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 
 

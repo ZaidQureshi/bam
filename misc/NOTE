@@ -1,0 +1,2 @@
+Command that gets 55M IOPS
+t=$(( 8 << 20 )); sudo ./build/bin/nvm-block-bench --ssd 2 -g 0 --page_size=4096 --threads=${t} --pages=${t} --num_blks=$(( 1 << (40-12) )) --random true --reqs=1 --num_queues=1

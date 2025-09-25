@@ -150,7 +150,7 @@ template <>
 void Option<bool>::parseArgument(const char* optstr, const char* optarg)
 {
     string str(optarg);
-    std::transform(str.begin(), str.end(), str.begin(), std::ptr_fun<int, int>(std::tolower));
+    std::transform(str.cbegin(), str.cend(), str.begin(), [](int ch)->int{return ::tolower(ch);});
 
     if (str == "false" || str == "0" || str == "no" || str == "n" || str == "off" || str == "disable" || str == "disabled")
     {
@@ -249,6 +249,7 @@ string Settings::getDeviceBDF() const
 
 string Settings::usageString(const string& name)
 {
+    UNUSED(name);
     //return "Usage: " + name + " --ctrl=identifier [options]\n"
         //+  "   or: " + name + " --block-device=path [options]";
     return "\n";
@@ -333,7 +334,7 @@ static void verifyCudaDevice(int device)
 }
 
 
-static void verifyNumberOfThreads(size_t numThreads)
+static inline void verifyNumberOfThreads(size_t numThreads)
 {
     size_t i = 0;
 

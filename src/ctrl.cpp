@@ -77,6 +77,8 @@ static void remove_handle(struct controller* handle)
     }
     while (status == EBUSY);
 
+    if (handle->handle.priv)
+        delete handle->handle.priv;
     free(handle);
 }
 
@@ -145,7 +147,7 @@ void _nvm_ctrl_put(struct controller* controller)
 
 
 int _nvm_ctrl_init(nvm_ctrl_t** handle, struct device* dev, const struct device_ops* ops, enum device_type type,
-        volatile void* mm_ptr, size_t mm_size)
+                   volatile void* mm_ptr, size_t mm_size, volatile void* mm_devp, nvm_priv *priv)
 {
     struct controller* container;
     nvm_ctrl_t* ctrl;
@@ -161,6 +163,29 @@ int _nvm_ctrl_init(nvm_ctrl_t** handle, struct device* dev, const struct device_
     ctrl = &container->handle;
     ctrl->mm_ptr = mm_ptr;
     ctrl->mm_size = mm_size;
+    ctrl->priv = priv;
+
+    if (mm_devp != NULL) {
+        ctrl->mm_devp = mm_devp;
+    } else {
+        cudaError_t err;
+
+        err = cudaHostRegister((void*) ctrl->mm_ptr, NVM_CTRL_MEM_MINSIZE, cudaHostRegisterIoMemory);
+        if (err != cudaSuccess)
+        {
+            remove_handle(container);
+            dprintf("Unexpected error while mapping IO memory (cudaHostRegister): %s\n", cudaGetErrorString(err));
+            return EINVAL;
+        }
+
+        err = cudaHostGetDevicePointer((void**)&ctrl->mm_devp, (void*)ctrl->mm_ptr, 0);
+        if (err != cudaSuccess)
+        {
+            remove_handle(container);
+            dprintf("Failed to get device pointer of mapped BAR0: %s\n", cudaGetErrorString(err));
+            return EINVAL;
+        }
+    }
 
     if (ctrl->mm_size < NVM_CTRL_MEM_MINSIZE)
     {
@@ -193,6 +218,7 @@ int _nvm_ctrl_init(nvm_ctrl_t** handle, struct device* dev, const struct device_
     ctrl->dstrd = CAP$DSTRD(ctrl->mm_ptr);
     ctrl->timeout = CAP$TO(ctrl->mm_ptr) * 500UL;
     ctrl->max_qs = CAP$MQES(ctrl->mm_ptr) + 1; // CAP.MQES is 0's based
+    ctrl->cqr = CAP$CQR(ctrl->mm_ptr) != 0;
 
     *handle = ctrl;
 
@@ -288,3 +314,8 @@ int nvm_raw_ctrl_init(nvm_ctrl_t** ctrl, volatile void* mm_ptr, size_t mm_size)
     return _nvm_ctrl_init(ctrl, NULL, NULL, DEVICE_TYPE_UNKNOWN, mm_ptr, mm_size);
 }
 
+
+enum device_type nvm_ctrl_type(const nvm_ctrl_t* ctrl)
+{
+    return _nvm_ctrl_type(ctrl);
+}

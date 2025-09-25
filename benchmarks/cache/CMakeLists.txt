@@ -1,10 +1,10 @@
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.5)
 project (libnvm-benchmarks)
 
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
 
-find_package (CUDA 8.0 REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 
 

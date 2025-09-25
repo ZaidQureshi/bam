@@ -21,14 +21,21 @@
  * Note: This structure will be allocated by the API and needs to be
  *       released by the API.
  */
+class nvm_priv {
+    public:
+    virtual ~nvm_priv() { }
+};
 typedef struct
 {
     size_t                  page_size;      // Memory page size used by the controller (MPS)
     uint8_t                 dstrd;          // Doorbell stride (in encoded form)
+    bool                    cqr;            // Contiguous queue required
     uint64_t                timeout;        // Controller timeout in milliseconds (TO)
     uint32_t                max_qs;         // Maximum queue entries supported (MQES)
     size_t                  mm_size;        // Size of memory-mapped region
     volatile void*          mm_ptr;         // Memory-mapped pointer to BAR0 of the physical device
+    volatile void*          mm_devp;        // GPU device pointer to BAR0 of the physical device
+    nvm_priv*               priv;           // Controller type specific private data
 } nvm_ctrl_t;
 
 
@@ -242,7 +249,18 @@ struct nvm_ns_info
     size_t                  metadata_size;  // Metadata size (MS)
 };
 
-
+/*
+ * Controller device type.
+ * Indicates how the controller handle was initialized.
+ */
+enum device_type
+{
+    DEVICE_TYPE_UNKNOWN =   0x00,       /* Device is mapped manually by the user */
+    DEVICE_TYPE_IOCTL   =   0x01,       /* Device is mapped through UNIX file descriptor */
+    DEVICE_TYPE_SMARTIO =   0x02,       /* Device is mapped by SISCI SmartIO API */
+    DEVICE_TYPE_GRAID   =   0x03,       /* Device is mapped by GRAID RAID Volume */
+};
+extern enum device_type nvm_ctrl_type(const nvm_ctrl_t* ctrl);
 
 //#ifndef __CUDACC__
 //#undef __align__

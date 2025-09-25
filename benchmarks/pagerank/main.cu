@@ -464,7 +464,7 @@ int main(int argc, char *argv[]) {
     uint64_t typeT;
     size_t freebyte, totalbyte;
     uint32_t *pad;
-    EdgeT *edgeList_dtmp;
+    //EdgeT *edgeList_dtmp;
 
 
     float milliseconds;
@@ -520,7 +520,7 @@ int main(int argc, char *argv[]) {
 
         vertex_count--;
 
-        printf("Vertex: %llu, ", vertex_count);
+        printf("Vertex: %lu, ", vertex_count);
         vertex_size = (vertex_count+1) * sizeof(uint64_t);
 
         vertexList_h = (uint64_t*)malloc(vertex_size);
@@ -537,7 +537,7 @@ int main(int argc, char *argv[]) {
         file.read((char*)(&edge_count), 8);
         file.read((char*)(&typeT), 8);
 
-        printf("Edge: %llu\n", edge_count);
+        printf("Edge: %lu\n", edge_count);
         fflush(stdout);
         edge_size = edge_count * sizeof(EdgeT);
         edge_size = edge_size + (4096 - (edge_size & 0xFFFULL));
@@ -566,9 +566,9 @@ int main(int argc, char *argv[]) {
 
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 if (totalbyte < 16*1024*1024*1024ULL)
-                    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                    printf("total memory sizeo of current GPU is %lu byte, no need to throttle\n", totalbyte);
                 else {
-                    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                    printf("total memory sizeo of current GPU is %lu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
                     cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
                     throttle_memory<<<1,1>>>(pad);
                 }
@@ -616,13 +616,16 @@ int main(int argc, char *argv[]) {
             case BAFS_DIRECT:
                  cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                  if (totalbyte < 16*1024*1024*1024ULL)
-                     printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                     printf("total memory sizeo of current GPU is %lu byte, no need to throttle\n", totalbyte);
                  else {
-                     printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                     printf("total memory sizeo of current GPU is %lu byte, throttling %lu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024lu);
                      cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
                      throttle_memory<<<1,1>>>(pad);
                  }
                  break;                
+            default:
+                 printf("Invalid type: %d\n", mem);
+                 exit(1);
         }
         file.close();
 
@@ -678,15 +681,15 @@ int main(int argc, char *argv[]) {
         iter = 0;
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_CHUNK_HASH_PC)){
-            printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+            printf("page size: %lu, pc_entries: %lu\n", pc_page_size, pc_pages);
         }
 
 
-        page_cache_t* h_pc; 
-        range_t<uint64_t>* h_range;
+        page_cache_t* h_pc = nullptr;
+        range_t<uint64_t>* h_range = nullptr;
         std::vector<range_t<uint64_t>*> vec_range(1);
-        array_t<uint64_t>* h_array; 
-        uint64_t n_pages = ceil(((float)edge_size)/pc_page_size); 
+        array_t<uint64_t>* h_array = nullptr;
+        uint64_t n_pages = ceil(((float)edge_size)/pc_page_size);
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_CHUNK_HASH_PC)){
             h_pc =new page_cache_t(pc_page_size, pc_pages, settings.cudaDevice, ctrls[0][0], (uint64_t) 64, ctrls);
@@ -764,7 +767,7 @@ int main(int argc, char *argv[]) {
             if(mem == BAFS_DIRECT) {
                   h_array->print_reset_stats();
 		          //std::cout<< "itr time: "<< elapsed.count() << " ms" <<std::endl;
-                  printf("\nPageRank SSD: %d \t PageSize: %d \t ItrTime %f ms\n", settings.n_ctrls, settings.pageSize,(double)elapsed.count());
+                  printf("\nPageRank SSD: %d \t PageSize: %lu \t ItrTime %f ms\n", settings.n_ctrls, settings.pageSize,(double)elapsed.count());
                   for (auto ct : ctrls) {
                       ct->print_reset_stats();
                   }
@@ -778,7 +781,7 @@ int main(int argc, char *argv[]) {
 
         printf("pg iteration %*u, ", 3, iter);
 //        printf("time %*f ms\n", 12, milliseconds);
-        printf("\nPageRank Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %d \t TotalTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, milliseconds); 
+        printf("\nPageRank Graph:%s \t Impl: %d \t SSD: %d \t PageSize: %lu \t TotalTime %f ms\n", filename.c_str(), type, settings.n_ctrls, settings.pageSize, milliseconds); 
         fflush(stdout);
 
         avg_milliseconds += (double)milliseconds;
@@ -787,7 +790,7 @@ int main(int argc, char *argv[]) {
         cuda_err_chk(cudaMemcpy(value_h, value_d, vertex_count * sizeof(ValueT), cudaMemcpyDeviceToHost));
 
         // for(uint64_t tid = 0; tid<32; tid++){
-        //         printf("Value of tid: %llu is %f and delta is %f\n", tid, value_h[tid], delta_h[tid]); 
+        //         printf("Value of tid: %lu is %f and delta is %f\n", tid, value_h[tid], delta_h[tid]); 
         // }
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_CHUNK_HASH_PC)){

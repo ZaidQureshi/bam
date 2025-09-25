@@ -44,6 +44,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=f
 #endif
 
 #define CEIL(X, Y, Z) ((X + Y - 1) >> Z)
+#define UNUSED(x) (void)(x)
 
 
 #ifndef HEXDUMP_COLS
