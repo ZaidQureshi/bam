@@ -281,7 +281,7 @@ int nvm_admin_cq_create(nvm_aq_ref ref, nvm_queue_t* cq, uint16_t id, const nvm_
         return NVM_ERR_PACK(NULL, EINVAL);
     }
 
-    err = nvm_queue_clear(&queue, ctrl, true, id, qs,
+    err = nvm_queue_clear(&queue, ctrl, QT_CQ, id, qs,
             dma->local, NVM_DMA_OFFSET(dma, offset), dma->ioaddrs[offset]);
     if (err != 0)
     {
@@ -389,7 +389,7 @@ int nvm_admin_sq_create(nvm_aq_ref ref, nvm_queue_t* sq, const nvm_queue_t* cq, 
         return NVM_ERR_PACK(NULL, EINVAL);
     }
 
-    err = nvm_queue_clear(&queue, ctrl, false, id, qs,
+    err = nvm_queue_clear(&queue, ctrl, QT_SQ, id, qs,
             dma->local, NVM_DMA_OFFSET(dma, offset), dma->ioaddrs[offset]);
     if (err != 0)
     {

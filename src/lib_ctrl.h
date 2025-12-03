@@ -46,18 +46,6 @@ struct device_ops
 
 
 
-/*
- * Controller device type.
- * Indicates how the controller handle was initialized.
- */
-enum device_type
-{
-    DEVICE_TYPE_UNKNOWN =   0x00,       /* Device is mapped manually by the user */
-    DEVICE_TYPE_IOCTL   =   0x01,       /* Device is mapped through UNIX file descriptor */
-    DEVICE_TYPE_SMARTIO =   0x02,       /* Device is mapped by SISCI SmartIO API */
-};
-
-
 
 /*
  * Internal controller handle.
@@ -84,7 +72,9 @@ int _nvm_ctrl_init(nvm_ctrl_t** handle,             /* User's handle */
                    const struct device_ops* ops,    /* Device handle operations */
                    enum device_type type,           /* Device type */
                    volatile void* mm_ptr,           /* Memory-mapped pointer */
-                   size_t mm_size);                 /* Size of memory-map */
+                   size_t mm_size,                  /* Size of memory-map */
+                   volatile void* mm_devp = NULL,   /* Memory-mapped GPU pointer */
+                   nvm_priv *priv = NULL);              /* Controller type specific private data */
 
 
 

@@ -25,11 +25,18 @@
  *
  * Queue memory must be physically contiguous.
  */
+enum QueueType {
+    QT_SQ = 0,
+    QT_CQ = 1,
+    QT_GIIO_POOL = 2,
+    QT_GIIO_CPLT = 3,
+    QT_GIIO_QUEUE = 4,
+};
 
 __host__
 int nvm_queue_clear(nvm_queue_t* q,            // NVM queue descriptor
                     const nvm_ctrl_t* ctrl,    // NVM controller handle
-                    bool cq,                   // Is this a completion queue or submission queue?
+                    enum QueueType qt,         // Is this a completion queue or submission queue?
                     uint16_t no,               // Queue number
                     uint32_t qs,               // Queue size (number of entries)
                     bool local,                // Is this local or remote memory

@@ -86,20 +86,13 @@ struct array_d_t;
 template <typename T>
 struct range_d_t;
 
-/*struct data_page_t {
+struct data_page_t {
   simt::atomic<uint64_t, simt::thread_scope_device>  state; //state
   //
   uint32_t offset;
-
-  };
-*/
-typedef struct __align__(32) {
-    simt::atomic<uint32_t, simt::thread_scope_device>  state; //state
-                                                              //
-    uint32_t offset;
-    //uint8_t pad[32-4-4];
-
-} __attribute__((aligned (32))) data_page_t;
+  data_page_t() : state(INVALID), offset(0) {}
+} __attribute__((aligned (32)));
+static_assert(sizeof(data_page_t) == 32, "data_page_t not aligned to 32 bytes");
 
 typedef data_page_t* pages_t;
 
@@ -484,13 +477,14 @@ struct bam_ptr {
     }
 };
 
-typedef struct __align__(32) {
+struct cache_page_t {
     simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock; //state
     //
     uint64_t page_translation;
-    uint8_t pad[32-8];
+    cache_page_t() : page_take_lock(FREE), page_translation(0) {}
+} __attribute__((aligned (32)));
+static_assert(sizeof(cache_page_t) == 32, "cache_page_t not aligned to 32 bytes");
 
-} __attribute__((aligned (32))) cache_page_t;
 /*
   struct cache_page_t {
   simt::atomic<uint32_t, simt::thread_scope_device>  page_take_lock;
@@ -756,11 +750,11 @@ struct page_cache_t {
         page_ticket_buf = createBuffer(1 * sizeof(padded_struct_pc), cudaDevice);
         pdt.page_ticket =  (padded_struct_pc*)page_ticket_buf.get();
         //std::vector<padded_struct_pc> tps(np, FREE);
-        cache_page_t* tps = new cache_page_t[np];
+        cache_page_t* tps = (cache_page_t*)aligned_alloc(32, sizeof(cache_page_t)*np);
         for (size_t i = 0; i < np; i++)
-            tps[i].page_take_lock = FREE;
+	    new (tps + i) cache_page_t();
         cuda_err_chk(cudaMemcpy(pdt.cache_pages, tps, np*sizeof(cache_page_t), cudaMemcpyHostToDevice));
-        delete tps;
+        free(tps);
 
         ranges_dists_buf = createBuffer(max_range * sizeof(data_dist_t), cudaDevice);
         pdt.ranges_dists = (data_dist_t*)ranges_dists_buf.get();
@@ -794,7 +788,7 @@ struct page_cache_t {
                 }
             }
             cuda_err_chk(cudaMemcpy(pdt.prp1, temp, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
-            delete temp;
+            delete[] temp;
             //std::cout << "HERE1\n";
             //free(temp);
             //std::cout << "HERE2\n";
@@ -819,8 +813,8 @@ struct page_cache_t {
             cuda_err_chk(cudaMemcpy(pdt.prp1, temp1, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
 
-            delete temp1;
-            delete temp2;
+            delete[] temp1;
+            delete[] temp2;
             pdt.prps = true;
         }
         else {
@@ -860,9 +854,9 @@ struct page_cache_t {
             cuda_err_chk(cudaMemcpy(pdt.prp2, temp2, np * sizeof(uint64_t), cudaMemcpyHostToDevice));
             cuda_err_chk(cudaMemcpy(this->prp_list_dma.get()->vaddr, temp3, prp_list_size, cudaMemcpyHostToDevice));
 
-            delete temp1;
-            delete temp2;
-            delete temp3;
+            delete[] temp1;
+            delete[] temp2;
+            delete[] temp3;
             pdt.prps = true;
         }
 
@@ -875,9 +869,9 @@ struct page_cache_t {
     }
 
     ~page_cache_t() {
-        delete h_ranges;
-        delete h_ranges_page_starts;
-        delete h_ranges_dists;
+        delete[] h_ranges;
+        delete[] h_ranges_page_starts;
+        delete[] h_ranges_dists;
     }
 
 
@@ -992,6 +986,7 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     //range_id = (c_h->range_count)++;
     rdt.page_start = ps;
     rdt.page_count = pc;
+    UNUSED(p_size); /* Should be equal to c_h->pdt.page_size ? */
     rdt.page_size = c_h->pdt.page_size;
     rdt.page_start_offset = pso;
     rdt.dist = dist;
@@ -1001,14 +996,14 @@ range_t<T>::range_t(uint64_t is, uint64_t count, uint64_t ps, uint64_t pc, uint6
     pages_buff = createBuffer(s * sizeof(data_page_t), cudaDevice);
     rdt.pages = (pages_t) pages_buff.get();
     //std::vector<padded_struct_pc> ts(s, INVALID);
-    data_page_t* ts = new data_page_t[s];
+    data_page_t* ts = (data_page_t*)aligned_alloc(32, sizeof(data_page_t) * s);
     for (size_t i = 0; i < s; i++) {
-        ts[i].state = INVALID;
+        new (ts + i)data_page_t();
     }
     ////printf("S value: %llu\n", (unsigned long long)s);
     cuda_err_chk(cudaMemcpy(rdt.pages//_states
                             , ts, s * sizeof(data_page_t), cudaMemcpyHostToDevice));
-    delete ts;
+    free(ts);
 
     //page_addresses_buff = createBuffer(s * sizeof(uint32_t), cudaDevice);
     //rdt.page_addresses = (uint32_t*) page_addresses_buff.get();
@@ -1184,6 +1179,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
             break;
             //valid
         case V_NB:
+	    {
             if (write && ((read_state & DIRTY) == 0))
                 pages[index].state.fetch_or(DIRTY, simt::memory_order_relaxed);
             //uint32_t page_trans = pages[index].offset.load(simt::memory_order_acquire);
@@ -1193,6 +1189,7 @@ uint64_t range_d_t<T>::acquire_page(const size_t pg, const uint32_t count, const
             //hit_cnt.fetch_add(count, simt::memory_order_relaxed);
             hit_cnt.fetch_add(count, simt::memory_order_relaxed);
             return page_trans;
+	    }
 
             //pages[index].fetch_sub(1, simt::memory_order_release);
             fail = false;
@@ -1788,8 +1785,8 @@ uint32_t page_cache_d_t::find_slot(uint64_t address, uint64_t range_id, const ui
     uint64_t count = 0;
     uint64_t global_address =(uint64_t) ((address << n_ranges_bits) | range_id); //not elegant. but hack
     uint32_t page = 0;
-    unsigned int ns = 8;
-	uint64_t j = 0;
+    //unsigned int ns = 8;
+    //uint64_t j = 0;
     uint64_t expected_state = VALID;
     uint64_t new_expected_state = 0;
 
@@ -1968,9 +1965,11 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
         //pc_pos == position i wanna move the head past
         uint64_t cur_pc_head = pc->q_head->load(simt::memory_order_relaxed);
         //sec == true when cur_pc_head past pc_pos
-        bool sec = ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) ||
-            ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) ||
-            ((pc_pos < cur_pc_head) && (cur_pc_head < pc_prev_head));
+        bool sec =
+            /* pc_prev_head <= pc_pos means ps_pos did not wrap around after pc_prev_head */
+            ((cur_pc_head < pc_prev_head) && (pc_prev_head <= pc_pos)) /* cur_pc_head mosed past pc_pos and cur_pc_head wrapped around */||
+            ((pc_prev_head <= pc_pos) && (pc_pos < cur_pc_head)) /* cur_pc_head > pc_pos means cur_pc_head moved head past pc_pos and did not wrapped around */ ||
+            ((pc_pos < cur_pc_head) && (cur_pc_head < pc_prev_head)) /* cur_pc_head wrapped around, pc_pos also wrapped around, and pc_pos is in [0.. cur_pc_head], which means cur_pc_head passed pc_pos */;
 
         if (sec) break;
 
@@ -2006,132 +2005,83 @@ inline __device__ void enqueue_second(page_cache_d_t* pc, QueuePair* qp, const u
 
 }
 
-inline __device__ void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
+inline __device__
+void access_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode) {
     nvm_cmd_t cmd;
     uint16_t cid = get_cid(&(qp->sq));
-    ////printf("cid: %u\n", (unsigned int) cid);
-
-
-    nvm_cmd_header(&cmd, cid, NVM_IO_READ, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
-    nvm_cmd_data_ptr(&cmd, prp1, prp2);
-    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head, head_;
-    uint64_t pc_pos;
-    uint64_t pc_prev_head;
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
-
-    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
-    pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
-    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
-
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
-    //sq_dequeue(&qp->sq, sq_pos);
-
-
-    //enqueue_second(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, nvm_cmd_t* cmd, const uint16_t cid, const uint64_t pc_pos, const uint64_t pc_prev_head)
-    enqueue_second(pc, qp, starting_lba, &cmd, cid, pc_pos, pc_prev_head);
-
-
-
-    put_cid(&qp->sq, cid);
-
-
-}
-
-
-inline __device__ void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
-    nvm_cmd_t cmd;
-    uint16_t cid = get_cid(&(qp->sq));
-    ////printf("cid: %u\n", (unsigned int) cid);
-
-
-    nvm_cmd_header(&cmd, cid, NVM_IO_WRITE, qp->nvmNamespace);
-    uint64_t prp1 = pc->prp1[pc_entry];
-    uint64_t prp2 = 0;
-    if (pc->prps)
-        prp2 = pc->prp2[pc_entry];
-    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
-    nvm_cmd_data_ptr(&cmd, prp1, prp2);
-    nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
-    uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
-    uint32_t head, head_;
-    uint64_t pc_pos;
-    uint64_t pc_prev_head;
-
-    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
-    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
-    pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
-    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
-    //sq_dequeue(&qp->sq, sq_pos);
-
-
-
-
-    put_cid(&qp->sq, cid);
-
-}
-
-inline __device__ void access_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry, const uint8_t opcode) {
-    //uint64_t starting_lba = starting_byte >> qp->block_size_log;
-    //uint64_t rem_bytes = starting_byte & qp->block_size_minus_1;
-    //uint64_t end_lba = CEIL((starting_byte+num_bytes), qp->block_size);
-
-    //uint16_t n_blocks = CEIL(num_bytes, qp->block_size, qp->block_size_log);
-
-
-
-    nvm_cmd_t cmd;
-    uint16_t cid = get_cid(&(qp->sq));
-    ////printf("cid: %u\n", (unsigned int) cid);
-
 
     nvm_cmd_header(&cmd, cid, opcode, qp->nvmNamespace);
     uint64_t prp1 = pc->prp1[pc_entry];
     uint64_t prp2 = 0;
     if (pc->prps)
         prp2 = pc->prp2[pc_entry];
-    ////printf("tid: %llu\tstart_lba: %llu\tn_blocks: %llu\tprp1: %p\n", (unsigned long long) (threadIdx.x+blockIdx.x*blockDim.x), (unsigned long long) starting_lba, (unsigned long long) n_blocks, (void*) prp1);
     nvm_cmd_data_ptr(&cmd, prp1, prp2);
     nvm_cmd_rw_blks(&cmd, starting_lba, n_blocks);
     uint16_t sq_pos = sq_enqueue(&qp->sq, &cmd);
+    uint32_t head, head_;
+    uint64_t pc_pos;
+    uint64_t pc_prev_head;
 
-    uint32_t cq_pos = cq_poll(&qp->cq, cid);
-    cq_dequeue(&qp->cq, cq_pos, &qp->sq);
-    //sq_dequeue(&qp->sq, sq_pos);
+    uint32_t cq_pos = cq_poll(&qp->cq, cid, &head, &head_);
 
+    qp->cq.tail.fetch_add(1, simt::memory_order_acq_rel);
+    pc_prev_head = pc->q_head->load(simt::memory_order_relaxed);
+    pc_pos = pc->q_tail->fetch_add(1, simt::memory_order_acq_rel);
 
+    cq_dequeue(&qp->cq, cq_pos, &qp->sq, head, head_);
 
+    if (opcode == NVM_IO_READ)
+        enqueue_second(pc, qp, starting_lba, &cmd, cid, pc_pos, pc_prev_head);
 
     put_cid(&qp->sq, cid);
-
-
 }
 
+__device__ __forceinline__
+void write_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+    access_data(pc, qp, starting_lba, n_blocks, pc_entry, NVM_IO_WRITE);
+}
 
+__device__ __forceinline__
+void read_data(page_cache_d_t* pc, QueuePair* qp, const uint64_t starting_lba, const uint64_t n_blocks, const unsigned long long pc_entry) {
+    access_data(pc, qp, starting_lba, n_blocks, pc_entry, NVM_IO_READ);
+}
+
+__device__ __forceinline__
+void access_data(Controller *ctrl, const uint32_t qhash,
+                 const uint64_t starting_lba, const uint64_t n_blocks, const uint8_t opcode,
+                 page_cache_d_t* pc, const unsigned long long pc_entry)
+{
+#ifdef __GRAID__
+    if (ctrl->d_giioqs != NULL)
+    {
+        uint64_t prp1 = pc->prp1[pc_entry];
+        uint64_t prp2 = 0;
+        if (pc->prps)
+            prp2 = pc->prp2[pc_entry];
+        giioq_access_data(ctrl->d_giioqs, starting_lba, n_blocks, opcode, prp1, prp2);
+    }
+    else
+#endif
+    {
+        uint32_t queue = qhash % (ctrl->n_qps);
+        QueuePair *qp = ctrl->d_qps + queue;
+        access_data(pc, qp, starting_lba, n_blocks, pc_entry, opcode);
+    }
+}
+
+__device__ __forceinline__
+void write_data(Controller *ctrl, const uint32_t qhash,
+                const uint64_t starting_lba, const uint64_t n_blocks,
+                page_cache_d_t* pc, const unsigned long long pc_entry) {
+    access_data(ctrl, qhash, starting_lba, n_blocks, NVM_IO_WRITE, pc, pc_entry);
+}
+
+__device__ __forceinline__
+void read_data(Controller *ctrl, const uint32_t qhash,
+                const uint64_t starting_lba, const uint64_t n_blocks,
+                page_cache_d_t* pc, const unsigned long long pc_entry) {
+    access_data(ctrl, qhash, starting_lba, n_blocks, NVM_IO_READ, pc, pc_entry);
+}
 
 //#ifndef __CUDACC__
 //#undef __device__

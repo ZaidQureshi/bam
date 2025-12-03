@@ -32,8 +32,9 @@ modules.order
 
 # Ignore build directory
 build/*
+debug/*
+.cache/*
+.vscode/
 
 # Ignore cscope files
-cscope.out
-cscope.in.out
-cscope.po.out
+cscope.*

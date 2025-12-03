@@ -51,7 +51,7 @@
 #include <iterator> 
 #include <functional>
 
-#define UINT64MAX 0xFFFFFFFFFFFFFFFF
+#define UINT64MAX 0xFFFFFFFFFFFFFFFFllu
 
 using error = std::runtime_error;
 using std::string;
@@ -377,20 +377,20 @@ void kernel_optimized(bool *curr_visit, bool *next_visit, uint64_t vertex_count,
 
     // uint64_t itr = 0;
     if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
-       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+       //printf("warpidx: %lu laneidx:%lu clstart: %lu clend: %lu start: %lu end: %lu cur_vertexid : %lu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
         while(!stop){
         //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
             //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
             if(end >= clend){
                 end  = clend;
                 stop = true;
-     //           printf("called end >=clend and end is:%llu\n", end);
+     //           printf("called end >=clend and end is:%lu\n", end);
             }
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
        //              uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
-       //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
+       //            printf("itr:%lu i:%lu laneIdx: %lu starts:%lu end:%lu cur_vertexid: %lu pre_atomicval:%lu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = edgeList[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
                }
@@ -439,20 +439,20 @@ void kernel_optimized_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *ne
 
     // uint64_t itr = 0;
     if((cur_vertexid < vertex_count) && (warpIdx < n_pages) ) {
-       //printf("warpidx: %llu laneidx:%llu clstart: %llu clend: %llu start: %llu end: %llu cur_vertexid : %llu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
+       //printf("warpidx: %lu laneidx:%lu clstart: %lu clend: %lu start: %lu end: %lu cur_vertexid : %lu\n", warpIdx, laneIdx, clstart, clend, start, end, cur_vertexid);
         while(!stop){
         //if (cur_vertexid < vertex_count && curr_visit[cur_vertexid] == true) {
             //check if the fetched end of cur_vertexid is beyond clend. If yes, then trim end to clend and this is the last while loop iteration.
             if(end >= clend){
                 end  = clend;
                 stop = true;
-     //           printf("called end >=clend and end is:%llu\n", end);
+     //           printf("called end >=clend and end is:%lu\n", end);
             }
 
             if(curr_visit[cur_vertexid] == true){
                for(uint64_t i = start + laneIdx; i < end; i += WARP_SIZE){
        //            uint64_t val = (uint64_t)atomicAdd(&(totalcount_d[0]), 1);
-       //            printf("itr:%llu i:%llu laneIdx: %llu starts:%llu end:%llu cur_vertexid: %llu pre_atomicval:%llu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
+       //            printf("itr:%lu i:%lu laneIdx: %lu starts:%lu end:%lu cur_vertexid: %lu pre_atomicval:%lu\n",itr, i, laneIdx,start,  end, cur_vertexid, val);
                    EdgeT next = ptr[i];
                    cc_compute(cur_vertexid, comp, next , next_visit, changed); 
                }
@@ -513,7 +513,7 @@ void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsi
                 bool backtrack = false; 
                 uint64_t i =1; 
                 while(!backtrack){
-     //               printf("I got called : %llu\n", i);
+     //               printf("I got called : %lu\n", i);
                     backtrack = true; 
                     int64_t tmptid = (int64_t)tid- (int64_t)i;
                     if(tmptid>=0){
@@ -535,7 +535,7 @@ void kernel_first_vertex_step2(uint64_t n_cachelines, uint64_t *vertexList, unsi
 
                 uint64_t backtrackItr = (nsize + num_elems_in_cl)/num_elems_in_cl; 
                 for(uint64_t i = 0; i < backtrackItr ; i++){
-                    if( (tid-i)>=0 )
+                    if( tid >= i )
                        firstVertexList[tid-i] = wid; //TODO: does this required to be atomicMin?  
                 }
             }
@@ -551,13 +551,13 @@ void kernel_verify(uint64_t count, unsigned long long int *list, uint64_t condva
         switch(type){
             case 1: {
                     if(list[tid] != condval){
-                        printf("index %llu is incorrect and has value :%llu \n",(unsigned long long int) tid, list[tid]);
+                        printf("index %lu is incorrect and has value :%lu \n",(unsigned long long int) tid, list[tid]);
                     }
                     break;
             }
             case 2: {
                     if(list[tid] == condval){
-                        printf("index %llu is incorrect and has value :%llu \n",(unsigned long long int) tid, list[tid]);
+                        printf("index %lu is incorrect and has value :%lu \n",(unsigned long long int) tid, list[tid]);
                     }
                     break;
             }
@@ -702,7 +702,7 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
     bam_ptr<uint64_t> ptr(da);
 //    uint64_t* memref = ptr.memref(oldtid);
 
-    __shared__ uint64_t memref[32*32];
+    //__shared__ uint64_t memref[32*32];
     
     if(oldtid < vertex_count){
         uint64_t tid; 
@@ -717,7 +717,7 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
         if(curr_visit[tid] == true){
             const uint64_t start = vertexList[tid];
             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
-            const uint64_t end = vertexList[tid+1];
+            //const uint64_t end = vertexList[tid+1];
             //uint64_t numelems = pc_page_size/sizeof(uint64_t);
             
             for(uint64_t i = shift_start; i < shift_start+1; i+=WARP_SIZE){//run only one iteration. 
@@ -731,7 +731,7 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
     //if(oldtid==0){
     //uint64_t* addr = memref[0];
     //EdgeT next = addr[0];
-    //printf("Value in next is:%llu\n", next);
+    //printf("Value in next is:%lu\n", next);
     //}
     if (oldwarpIdx < vertex_count){
         uint64_t warpIdx;
@@ -748,7 +748,6 @@ void preload_kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_vis
              const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
              const uint64_t end = vertexList[warpIdx+1];
 
-             uint64_t i = shift_start+laneIdx;
 //#pragma unroll (1)
              for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
                  if (i >= start) {
@@ -787,7 +786,6 @@ void kernel_coalesce_hash_ptr_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool
              const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
              const uint64_t end = vertexList[warpIdx+1];
 
-             uint64_t i = shift_start+laneIdx;
 //#pragma unroll (1)
              for(uint64_t i = shift_start + laneIdx; i < end; i += WARP_SIZE) {
                  if (i >= start) {
@@ -945,7 +943,7 @@ __global__ void kernel_coalesce_chunk(bool *curr_visit, bool *next_visit, uint64
             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
             const uint64_t end = vertexList[i+1];
 
-            unsigned long long comp_src = comp[i];
+            //unsigned long long comp_src = comp[i];
 
             for(uint64_t j = shift_start + laneIdx; j < end; j += WARP_SIZE) {
                 if (j >= start) {
@@ -980,7 +978,7 @@ void kernel_coalesce_chunk_pc(array_d_t<uint64_t>* da, bool *curr_visit, bool *n
             const uint64_t shift_start = start & 0xFFFFFFFFFFFFFFF0;
             const uint64_t end = vertexList[i+1];
 
-            unsigned long long comp_src = comp[i];
+            //unsigned long long comp_src = comp[i];
 
             for(uint64_t j = shift_start + laneIdx; j < end; j += WARP_SIZE) {
                 if (j >= start) {
@@ -1009,7 +1007,7 @@ void preprocess_kernel(uint64_t* vertices, uint64_t vertex_count, uint64_t num_e
 
         unsigned long long int val = vertices[tid] / (num_elems_per_page); 
         //if(val>=n_pages)
-        //    printf("val: %llu \t update: %llu\n", val, 1);
+        //    printf("val: %lu \t update: %lu\n", val, 1);
         unsigned long long int update = atomicAdd(&outarray[val], 1);
     }
 }
@@ -1114,7 +1112,7 @@ int main(int argc, char *argv[]) {
         edge_count = 41; 
         */
 
-        printf("Vertex: %llu, ", vertex_count);
+        printf("Vertex: %lu, ", vertex_count);
         vertex_size = (vertex_count+1) * sizeof(uint64_t);
 
         vertexList_h = (uint64_t*)malloc(vertex_size);
@@ -1140,7 +1138,7 @@ int main(int argc, char *argv[]) {
         file.read((char*)(&typeT), 8);
         
 
-        printf("Edge: %llu\n", edge_count);
+        printf("Edge: %lu\n", edge_count);
         fflush(stdout);
         edge_size = edge_count * sizeof(EdgeT);
         edge_size = edge_size + (4096 - (edge_size & 0xFFFULL));
@@ -1164,9 +1162,9 @@ int main(int argc, char *argv[]) {
 
                 cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 if (totalbyte < 16*1024*1024*1024ULL)
-                    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                    printf("total memory sizeo of current GPU is %lu byte, no need to throttle\n", totalbyte);
                 else {
-                    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                    printf("total memory sizeo of current GPU is %lu byte, throttling %lu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024lu);
                     cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
                     throttle_memory<<<1,1>>>(pad);
                 }
@@ -1219,13 +1217,16 @@ int main(int argc, char *argv[]) {
             case BAFS_DIRECT: 
                 //cuda_err_chk(cudaMemGetInfo(&freebyte, &totalbyte));
                 //if (totalbyte < 16*1024*1024*1024ULL)
-                //    printf("total memory sizeo of current GPU is %llu byte, no need to throttle\n", totalbyte);
+                //    printf("total memory sizeo of current GPU is %lu byte, no need to throttle\n", totalbyte);
                 //else {
-                //    printf("total memory sizeo of current GPU is %llu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
+                //    printf("total memory sizeo of current GPU is %lu byte, throttling %llu byte.\n", totalbyte, totalbyte - 16*1024*1024*1024ULL);
                 //    cuda_err_chk(cudaMalloc((void**)&pad, totalbyte - 16*1024*1024*1024ULL));
                 //    throttle_memory<<<1,1>>>(pad);
                 //}
                 break;
+            default: 
+                 printf("ERROR: Invalid Mem type specified\n");
+                 break;
             }
 
         file.close();
@@ -1326,7 +1327,7 @@ int main(int argc, char *argv[]) {
         //dim3 blockDim(16, 80); //(numblocks+BLOCK_NUM)/BLOCK_NUM);
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
-                printf("page size: %d, pc_entries: %llu\n", pc_page_size, pc_pages);
+                printf("page size: %lu, pc_entries: %lu\n", pc_page_size, pc_pages);
         }
         std::vector<Controller*> ctrls(settings.n_ctrls);
         if(mem == BAFS_DIRECT){
@@ -1338,10 +1339,10 @@ int main(int argc, char *argv[]) {
         printf("Initialization done\n");
         fflush(stdout);
 
-        page_cache_t* h_pc;
-        range_t<uint64_t>* h_range;
+        page_cache_t* h_pc = nullptr;
+        range_t<uint64_t>* h_range = nullptr;
         std::vector<range_t<uint64_t>*> vec_range(1);
-        array_t<uint64_t>* h_array;
+        array_t<uint64_t>* h_array = nullptr;
 
 
         if((type == BASELINE_PC) || (type == COALESCE_PC) || (type == COALESCE_PTR_PC) ||(type == COALESCE_CHUNK_PC) || (type == BASELINE_HASH_PC) || (type == COALESCE_HASH_PC) ||(type == COALESCE_HASH_PTR_PC) ||(type == COALESCE_CHUNK_HASH_PC )|| (type == COALESCE_COARSE_PTR_PC) || (type == COALESCE_HASH_PTR_PRELOAD_PC) || (type == COALESCE_HASH_COARSE_PTR_PC) || (type == COALESCE_HASH_HALF_PTR_PC ) || (type == OPTIMIZED_PC)){
@@ -1362,20 +1363,20 @@ int main(int argc, char *argv[]) {
         if((type == OPTIMIZED_PC) || (type == OPTIMIZED)){
             n_pages = (edge_count+num_elems_in_cl) / num_elems_in_cl;
             cuda_err_chk(cudaMalloc((void**)&winnerList_d,   (n_pages)* sizeof(unsigned long long int)));
-            cuda_err_chk(cudaMemset(winnerList_d, UINT64MAX, (n_pages)* sizeof(unsigned long long int)));
-            //printf("UNIT64MAX is: %llu\n", UINT64MAX);
+            cuda_err_chk(cudaMemset(winnerList_d, 0xFFu, (n_pages)* sizeof(unsigned long long int)));
+            //printf("UNIT64MAX is: %lu\n", UINT64MAX);
             //uint64_t nblocks = (n_pages+numthreads)/numthreads;
             //dim3 verifyBlockDim(nblocks); 
             //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages,winnerList_d, UINT64MAX, 1);
 
             // cuda_err_chk(cudaDeviceSynchronize());
             //num_elems_in_cl  = 6;
-            printf("Allocating %f MB for FirstVertexList with n_pages: %llu numelemspercl: %llu\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)), n_pages, num_elems_in_cl);
+            printf("Allocating %f MB for FirstVertexList with n_pages: %lu numelemspercl: %lu\n", ((double)n_pages*sizeof(uint64_t)/(1024*1024)), n_pages, num_elems_in_cl);
             cuda_err_chk(cudaMalloc((void**)&firstVertexList_d, n_pages * sizeof(uint64_t)));
 
             uint64_t nblocks_step1 = (vertex_count+1+numthreads)/numthreads; 
             uint64_t nblocks_step2 = (n_pages+numthreads)/numthreads; 
-            printf("Launching step1 in generation of FirstVertexList: numblocks: %llu numthreads: %llu\n", nblocks_step1, numthreads);
+            printf("Launching step1 in generation of FirstVertexList: numblocks: %lu numthreads: %lu\n", nblocks_step1, numthreads);
             dim3 step1blockdim(nblocks_step1);
             dim3 step2blockdim(nblocks_step2);
             kernel_first_vertex_step1<<<step1blockdim,numthreads>>>(vertex_count+1, vertexList_d, num_elems_in_cl, winnerList_d);
@@ -1385,7 +1386,7 @@ int main(int argc, char *argv[]) {
             //cuda_err_chk(cudaMemcpy((void**)winnerList_h, (void**)winnerList_d, copysize, cudaMemcpyDeviceToHost));
             //printf("winnerlist values: \n");
             //for(uint64_t i=0; i< n_pages; i++){
-            //      printf("i: %llu, winner: %llu\n",i, winnerList_h[i]);
+            //      printf("i: %lu, winner: %lu\n",i, winnerList_h[i]);
             //}
             //printf("\n");
             kernel_first_vertex_step2<<<step2blockdim,numthreads>>>(n_pages, vertexList_d, winnerList_d, num_elems_in_cl, firstVertexList_d);
@@ -1396,9 +1397,9 @@ int main(int argc, char *argv[]) {
             //cuda_err_chk(cudaMemcpy((void**)firstVertexList_h, (void**)firstVertexList_d, copysize2, cudaMemcpyDeviceToHost));
             //printf("Firstvertex values\n");
             //for(uint64_t i=0; i< n_pages; i++){
-            //    printf("%llu\n", firstVertexList_h[i]);
+            //    printf("%lu\n", firstVertexList_h[i]);
             //}
-            uint64_t nblocks = (n_pages+numthreads)/numthreads;
+            //uint64_t nblocks = (n_pages+numthreads)/numthreads;
             //dim3 verifyBlockDim(nblocks); 
             //kernel_verify<<<verifyBlockDim,numthreads>>>(n_pages, (unsigned long long int*) firstVertexList_d, UINT64MAX, 2);
             
@@ -1413,7 +1414,7 @@ int main(int argc, char *argv[]) {
             // printf("*****baseaddr: %p\n", h_pc->pdt.base_addr);
             //          fflush(stdout);
 
-           // printf("Hash Stride: %llu Coarse: %llu\n", (settings.stride), settings.coarse);
+           // printf("Hash Stride: %lu Coarse: %lu\n", (settings.stride), settings.coarse);
             // Run CC
             do {
                 //unsigned long long int totalcount_h=0; 
@@ -1494,12 +1495,12 @@ int main(int argc, char *argv[]) {
                         preload_kernel_coalesce_hash_ptr_pc<<<blockDim, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, pc_page_size, settings.stride);
                         break;
                     case OPTIMIZED:
-                        //printf("Launching optimized kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        //printf("Launching optimized kernel with n_pages:%lu , blockDim.x: %lu, numthreads: %lu\n",n_pages, numblocks,  numthreads);
                         //kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
                         kernel_optimized<<<numblocks, numthreads>>>(curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
                         break;
                     case OPTIMIZED_PC:
-                        //printf("Launching optimized PC kernel with n_pages:%llu , blockDim.x: %llu, numthreads: %llu\n",n_pages, numblocks,  numthreads);
+                        //printf("Launching optimized PC kernel with n_pages:%lu , blockDim.x: %lu, numthreads: %lu\n",n_pages, numblocks,  numthreads);
                         //kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, totalcount_d, n_pages);
                         kernel_optimized_ptr_pc<<<numblocks, numthreads>>>(h_array->d_array_ptr, curr_visit_d, next_visit_d, vertex_count, vertexList_d, edgeList_d, comp_d, changed_d, firstVertexList_d, num_elems_in_cl, n_pages);
                         break;
@@ -1510,7 +1511,7 @@ int main(int argc, char *argv[]) {
                         break;
                 }
                 //cuda_err_chk(cudaMemcpy(&totalcount_h, totalcount_d, sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
-                //printf("totalcount: %llu\n", totalcount_h);
+                //printf("totalcount: %lu\n", totalcount_h);
 
                 cuda_err_chk(cudaMemset(curr_visit_d, 0x00, vertex_count * sizeof(bool)));
                 bool *temp = curr_visit_d;
@@ -1534,13 +1535,13 @@ int main(int argc, char *argv[]) {
                     //cuda_err_chk(cudaMemcpy(neigBin_h.data(), neigBin, largebin*sizeof(unsigned long long int), cudaMemcpyDeviceToHost));
                     //cuda_err_chk(cudaMemset(neigBin, 0, largebin*sizeof(unsigned long long int)));
                    
-					//printf("\nHisto of neighbor sizes: %llu Bins  with %llu elems per bin in iteration: %d\n \t",largebin,binelems, iter-1 );
+					//printf("\nHisto of neighbor sizes: %lu Bins  with %lu elems per bin in iteration: %d\n \t",largebin,binelems, iter-1 );
                     //for (unsigned long long int val = 0; val < largebin;val++)
-                    //        printf("bin:%d \t %llu\n", val, neigBin_h[val]);
+                    //        printf("bin:%d \t %lu\n", val, neigBin_h[val]);
                     
                     printf("VertexList:\n");
                     for(uint64_t i=0; i<512;i++)
-                        printf("\t %llu", vertexList_h[i]);
+                        printf("\t %lu", vertexList_h[i]);
 
                     printf("***********\n");
 
@@ -1555,7 +1556,7 @@ int main(int argc, char *argv[]) {
                     
                     printf("Frequency bin of first 512 nodes::\n");
                     for(uint64_t i=0; i<512;i++)
-                        printf("\t %llu", outarray_h[i]);
+                        printf("\t %lu", outarray_h[i]);
                     printf("***********\n");
 
                     std::sort(outarray_h.begin(), outarray_h.end(), std::greater<uint64_t>());
@@ -1565,7 +1566,7 @@ int main(int argc, char *argv[]) {
                     
                     printf("Frequency bin of first 512 top pages with max nodes::\n");
                     for(uint64_t i=0; i<512;i++)
-                        printf("\t %llu", outarray_h[i]);
+                        printf("\t %lu", outarray_h[i]);
                     printf("***********\n");
                    
 
@@ -1573,7 +1574,7 @@ int main(int argc, char *argv[]) {
                     auto tmp1= std::distance(outarray_h.begin(), tmp);
                     auto avgactual = std::accumulate(outarray_h.begin(), outarray_h.end(),0.0)/tmp1; 
                     auto avgtotal = std::accumulate(outarray_h.begin(), outarray_h.end(),0.0)/outarray_h.size(); 
-                    printf("Avg Actual :%f \t avg total: %f no_of_actual_pages:%llu\n", avgactual, avgtotal, tmp1 );
+                    printf("Avg Actual :%f \t avg total: %f no_of_actual_pages:%lu\n", avgactual, avgtotal, tmp1 );
                     cuda_err_chk(cudaFree(outarray_d));
                     exit(0);
                     /*
@@ -1642,7 +1643,7 @@ int main(int argc, char *argv[]) {
                  h_array->print_reset_stats();
                  cuda_err_chk(cudaDeviceSynchronize());
             }
-            printf("\nCC %d Graph:%s \t Impl: %d \t SSD: %d \t CL: %d \t Cache: %llu \t Stride: %d \t Coarse: %d \t TotalTime %f ms\n", titr, filename.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, settings.coarse,  milliseconds); 
+            printf("\nCC %d Graph:%s \t Impl: %d \t SSD: %d \t CL: %lu \t Cache: %lu \t Stride: %lu \t Coarse: %lu \t TotalTime %f ms\n", titr, filename.c_str(), type, settings.n_ctrls, settings.pageSize,settings.maxPageCacheSize, settings.stride, settings.coarse,  milliseconds); 
             fflush(stdout);
             
             comp_total =0; 

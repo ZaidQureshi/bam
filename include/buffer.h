@@ -129,7 +129,7 @@ static void getDeviceMemory2(int device, void*& bufferPtr, size_t size, void*& o
     //std::cout << "getdeviceMemory: " << std::hex << bufferPtr <<  std::endl;
 }
 
-static void getDeviceMemory(int device, void*& bufferPtr, size_t size)
+static inline void getDeviceMemory(int device, void*& bufferPtr, size_t size)
 {
     void* notUsed = nullptr;
     getDeviceMemory(device, bufferPtr, notUsed, size, notUsed);

@@ -9,7 +9,7 @@
 #include <simt/atomic>
 
 
-int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, bool cq, uint16_t no, uint32_t qs, 
+int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, enum QueueType qt, uint16_t no, uint32_t qs,
         bool local, volatile void* vaddr, uint64_t ioaddr)
 {
     if (qs < 2 || qs > 0x10000 || qs > ctrl->max_qs)
@@ -19,7 +19,7 @@ int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, bool cq, uint16_
 
     queue->no = no;
     queue->qs = qs;
-    queue->es = cq ? sizeof(nvm_cpl_t) : sizeof(nvm_cmd_t);
+    queue->es = qt == QT_CQ ? sizeof(nvm_cpl_t) : sizeof(nvm_cmd_t);
     queue->head = 0;
     queue->tail = 0;
     queue->last = 0;
@@ -32,7 +32,7 @@ int nvm_queue_clear(nvm_queue_t* queue, const nvm_ctrl_t* ctrl, bool cq, uint16_
     queue->in_ticket = 0;
     queue->cid_ticket = 0;
 
-    queue->db = (cq ? CQ_DBL(ctrl->mm_ptr, queue->no, ctrl->dstrd) : SQ_DBL(ctrl->mm_ptr, queue->no, ctrl->dstrd));
+    queue->db = (qt == QT_CQ ? CQ_DBL(ctrl->mm_devp, queue->no, ctrl->dstrd) : SQ_DBL(ctrl->mm_devp, queue->no, ctrl->dstrd));
     queue->vaddr = vaddr;
     queue->ioaddr = ioaddr;
     
