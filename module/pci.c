@@ -11,6 +11,7 @@
 #include <linux/fs.h>
 #include <linux/err.h>
 #include <linux/device.h>
+#include <linux/version.h>
 #include <linux/uaccess.h>
 #include <asm/io.h>
 #include <asm/errno.h>
@@ -327,8 +328,12 @@ static int __init libnvm_helper_entry(void)
         return err;
     }
 
-    // Create character device class
+    // Create character device class (single-arg class_create since Linux 6.4)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+    dev_class = class_create(DRIVER_NAME);
+#else
     dev_class = class_create(THIS_MODULE, DRIVER_NAME);
+#endif
     if (IS_ERR(dev_class))
     {
         unregister_chrdev_region(dev_first, max_num_ctrls);
